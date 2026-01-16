@@ -1,0 +1,128 @@
+﻿export default function AlSuggestorPage() {
+  const suggestions = [
+    { id: 1, title: 'Weekend Cleanup Challenge', category: 'Family Activity', points: 200, description: 'Turn cleaning into a game with timed challenges' },
+    { id: 2, title: 'Homework Helper System', category: 'Education', points: 150, description: 'Pair older kids with younger ones for homework help' },
+    { id: 3, title: 'Meal Prep Team', category: 'Cooking', points: 180, description: 'Assign different meal prep tasks to family members' },
+    { id: 4, title: 'Green Thumb Garden', category: 'Outdoor', points: 250, description: 'Create a family garden with watering schedules' },
+    { id: 5, title: 'Digital Detox Day', category: 'Wellness', points: 100, description: 'Screen-free day with alternative activities' },
+    { id: 6, title: 'Charity Together', category: 'Community', points: 300, description: 'Family volunteer activity with bonus points' },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-violet-50 p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-10">
+          <div className="inline-block p-4 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl mb-4">
+            <span className="text-4xl">AI</span>
+          </div>
+          <h1 className="text-4xl font-bold text-indigo-800 mb-2">AI Family Suggestor</h1>
+          <p className="text-lg text-indigo-600">Smart suggestions to make family management fun and effective!</p>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Success Rate', value: '92%', color: 'bg-green-500' },
+            { label: 'Suggestions Used', value: '48', color: 'bg-blue-500' },
+            { label: 'Avg. Points', value: '180', color: 'bg-purple-500' },
+            { label: 'Happy Families', value: '1,234', color: 'bg-pink-500' },
+          ].map((stat, index) => (
+            <div key={index} className="bg-white rounded-xl shadow-lg p-4 text-center">
+              <div className={`inline-block w-3 h-3 ${stat.color} rounded-full mb-2`}></div>
+              <div className="text-2xl font-bold text-gray-800">{stat.value}</div>
+              <div className="text-sm text-gray-500">{stat.label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* AI Suggestions */}
+        <div className="mb-10">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Personalized Suggestions</h2>
+            <button className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90">
+              Generate New Ideas
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {suggestions.map((suggestion) => (
+              <div key={suggestion.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100">
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl font-bold text-gray-800">{suggestion.title}</h3>
+                    <span className="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-bold">
+                      +{suggestion.points} pts
+                    </span>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <span className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm">
+                      {suggestion.category}
+                    </span>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-6">{suggestion.description}</p>
+                  
+                  <div className="flex space-x-3">
+                    <button className="flex-1 px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-lg hover:opacity-90">
+                      Use This
+                    </button>
+                    <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* AI Assistant Chat */}
+        <div className="bg-white rounded-2xl shadow-xl p-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Ask AI Assistant</h2>
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="flex items-center mb-2">
+                <div className="w-8 h-8 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white mr-3">
+                  AI
+                </div>
+                <span className="font-medium">FamilyTask AI</span>
+              </div>
+              <p className="text-gray-700">
+                Hi! I can help you with:
+                <br/> Creating custom task plans
+                <br/> Suggesting age-appropriate chores
+                <br/> Balancing points and rewards
+                <br/> Solving family management challenges
+              </p>
+            </div>
+            
+            <div className="flex space-x-4">
+              <input
+                type="text"
+                placeholder="Ask me anything about family task management..."
+                className="flex-1 p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              <button className="px-6 py-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-xl hover:opacity-90">
+                Send
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {['Suggest weekend activities', 'Create teen chore list', 'Balance sibling points'].map((prompt, index) => (
+                <button
+                  key={index}
+                  className="p-3 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 text-left"
+                >
+                  &quot;{prompt}&quot;
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+

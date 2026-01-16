@@ -1,0 +1,282 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FamilyTask - Parent Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-cyan: #00C2E0;
+            --sidebar-teal: #006372; 
+            --bg-light: #E2EEF1;    
+            --text-dark: #142229;
+            --gray-muted: #5A6A7E;
+            --white: #FFFFFF;
+            --gold-star: #FFC107;   
+            --shadow: 0 10px 25px rgba(0,0,0,0.05);
+            --radius: 24px; 
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-light); color: var(--text-dark); min-height: 100vh; }
+
+        .dashboard-container { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+
+        /* SIDEBAR */
+        .sidebar { background-color: var(--sidebar-teal); padding: 30px 20px; color: white; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; }
+        .logo { display: flex; align-items: center; gap: 12px; font-size: 24px; font-weight: 800; margin-bottom: 40px; padding-left: 10px; }
+        
+        .nav-link { 
+            display: flex; align-items: center; gap: 14px; padding: 12px 18px; 
+            color: rgba(255, 255, 255, 0.8); text-decoration: none; border-radius: 12px; 
+            margin-bottom: 5px; font-weight: 500; cursor: pointer; transition: 0.3s; 
+        }
+        .nav-link i { width: 20px; font-size: 18px; }
+        .nav-link:hover, .nav-link.active { background: rgba(255, 255, 255, 0.15); color: white; }
+        .sidebar-footer { margin-top: auto; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px; }
+
+        /* MAIN CONTENT */
+        .main-content { padding: 40px; overflow-y: auto; }
+        .top-nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .view-title { font-size: 28px; font-weight: 800; color: var(--primary-cyan); }
+        
+        .btn-create { 
+            background: var(--primary-cyan); color: white; border: none; padding: 12px 24px; 
+            border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; 
+            align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0, 194, 224, 0.2); 
+        }
+
+        /* STATS CARDS */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 35px; }
+        .stat-card { background: var(--white); padding: 25px; border-radius: var(--radius); box-shadow: var(--shadow); position: relative; }
+        .stat-card h4 { color: var(--gray-muted); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .stat-card .value { font-size: 42px; font-weight: 800; }
+        .stat-card .icon-bg { position: absolute; right: 25px; top: 50%; transform: translateY(-50%); font-size: 40px; color: var(--primary-cyan); opacity: 0.1; }
+        .stat-card .fa-star { color: var(--gold-star); opacity: 0.9; }
+
+        /* SECTION BOXES */
+        .section-box { background: var(--white); border-radius: var(--radius); padding: 30px; box-shadow: var(--shadow); margin-bottom: 30px; }
+        .section-header { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 800; color: var(--primary-cyan); margin-bottom: 20px; }
+
+        /* REQUEST CARDS */
+        .item-row { 
+            background: #F8FAFC; border-radius: 16px; padding: 15px 25px; 
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+        .item-meta { display: flex; align-items: center; gap: 15px; }
+        .avatar { width: 45px; height: 45px; border-radius: 50%; background: #E0F7FA; color: var(--primary-cyan); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+        
+        .points-badge { 
+            background: var(--primary-cyan); color: white; padding: 6px 14px; 
+            border-radius: 50px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; 
+        }
+        .points-badge i { color: var(--gold-star); }
+
+        .action-group { display: flex; gap: 10px; }
+        .btn-circle { 
+            width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid #E2E8F0; 
+            background: white; cursor: pointer; transition: 0.2s; color: #64748B;
+        }
+        .btn-approve:hover { border-color: #10B981; color: #10B981; background: #ECFDF5; }
+        .btn-reject:hover { border-color: #EF4444; color: #EF4444; background: #FEF2F2; }
+
+        /* BULLETIN STYLE */
+        .bulletin-bubble { display: flex; gap: 12px; align-items: center; background: #F8FAFC; padding: 12px 20px; border-radius: 30px; margin-bottom: 10px; }
+        .bulletin-input-area { display: flex; gap: 10px; margin-top: 20px; }
+        .bulletin-input { flex: 1; padding: 12px 20px; border-radius: 12px; border: 1.5px solid #E2E8F0; outline: none; }
+        .btn-post { background: var(--primary-cyan); color: white; border: none; padding: 0 25px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+
+        /* REWARDS SHOP GRID (Added to fill the Rewards View) */
+        .rewards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .reward-item { background: #F8FAFC; padding: 25px; border-radius: 20px; text-align: center; border: 1px solid #E2E8F0; }
+        .reward-item i { font-size: 40px; color: var(--primary-cyan); margin-bottom: 15px; }
+
+        /* MODAL FOR CREATE TASK */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal-content { background: white; padding: 35px; border-radius: 24px; width: 400px; box-shadow: var(--shadow); }
+        .modal-content h2 { color: var(--primary-cyan); margin-bottom: 20px; }
+        .modal-content input { width: 100%; padding: 12px; margin-bottom: 15px; border-radius: 10px; border: 1px solid #E2E8F0; }
+
+        .view { display: none; }
+        .view.active { display: block; }
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <aside class="sidebar">
+        <div class="logo"><i class="fas fa-smile"></i> FamilyTask</div>
+        <nav>
+            <div class="nav-link" onclick="switchView('home', this)"><i class="fas fa-home"></i> Home</div>
+            <div class="nav-link active" onclick="switchView('dashboard', this)"><i class="fas fa-th-large"></i> Dashboard</div>
+            <div class="nav-link" onclick="switchView('tasks', this)"><i class="fas fa-list-ul"></i> My Tasks</div>
+            <div class="nav-link" onclick="switchView('rewards', this)"><i class="fas fa-gift"></i> Rewards Store</div>
+            <div class="nav-link" style="margin-top: 20px;"><i class="fas fa-brain"></i> AI Suggester</div>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="nav-link"><i class="fas fa-info-circle"></i> About</div>
+            <div class="nav-link"><i class="fas fa-cog"></i> Settings</div>
+            <div class="nav-link"><i class="fas fa-sign-out-alt"></i> Logout</div>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div id="dashboard-view" class="view active">
+            <div class="top-nav">
+                <h1 class="view-title">Parent Dashboard</h1>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <button class="btn-create" onclick="openTaskModal()"><i class="fas fa-plus-circle"></i> Create Task</button>
+                    <div style="position: relative;"><i class="far fa-bell" style="font-size: 20px; color: var(--gray-muted);"></i></div>
+                    <div class="avatar" style="background: #E0F7FA; border: 2px solid white;">M</div>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card">
+                    <h4>Tasks Completed</h4>
+                    <div class="value">3</div>
+                    <i class="fas fa-check-circle icon-bg"></i>
+                </div>
+                <div class="stat-card">
+                    <h4>Tasks Pending</h4>
+                    <div id="pending-count" class="value">1</div>
+                    <i class="fas fa-clock icon-bg"></i>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Points Awarded</h4>
+                    <div id="total-points" class="value">212</div>
+                    <i class="fas fa-star icon-bg fa-star"></i>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <div class="section-header"><i class="fas fa-hand-holding-heart"></i> Reward Requests</div>
+                <div id="request-container">
+                    <div class="item-row" id="req-1">
+                        <div class="item-meta">
+                            <div class="avatar">C</div>
+                            <div>
+                                <div style="font-weight: 700;">Video Game Hour</div>
+                                <div style="font-size: 12px; color: var(--gray-muted);">Requested by Child</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div class="points-badge"><i class="fas fa-star"></i> 50 pts</div>
+                            <div class="action-group">
+                                <button class="btn-circle btn-approve" onclick="approveReward('req-1', 50)"><i class="fas fa-check"></i></button>
+                                <button class="btn-circle btn-reject" onclick="removeElement('req-1')"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-box">
+                <div class="section-header"><i class="fas fa-bullhorn"></i> Family Bulletin</div>
+                <div id="bulletin-list">
+                    <div class="bulletin-bubble"><div class="avatar" style="width:30px; height:30px; font-size:12px;">C</div> Can we get pizza for movie night? 🍕</div>
+                    <div class="bulletin-bubble"><div class="avatar" style="width:30px; height:30px; font-size:12px; background:#FFD700;">M</div> Family movie night this Friday!</div>
+                </div>
+                <div class="bulletin-input-area">
+                    <input type="text" id="bul-input" class="bulletin-input" placeholder="Type a message...">
+                    <button class="btn-post" onclick="postBulletin()">Post</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tasks-view" class="view">
+            <h1 class="view-title">Task Management</h1>
+            <div class="section-box" style="margin-top:20px;">
+                <div id="active-tasks-list">
+                    <div class="item-row"><span>Homework</span> <div class="points-badge">10 pts</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="rewards-view" class="view">
+            <h1 class="view-title">Rewards Store</h1>
+            <div class="rewards-grid">
+                <div class="reward-item"><i class="fas fa-ice-cream"></i><h3>Ice Cream</h3><p>50 pts</p></div>
+                <div class="reward-item"><i class="fas fa-book"></i><h3>New Book</h3><p>100 pts</p></div>
+                <div class="reward-item"><i class="fas fa-gamepad"></i><h3>Gaming Time</h3><p>75 pts</p></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="taskModal" class="modal">
+    <div class="modal-content">
+        <h2>New Task</h2>
+        <input type="text" id="modalTaskName" placeholder="Task Name">
+        <input type="number" id="modalTaskPoints" placeholder="Points">
+        <div style="display:flex; gap:10px;">
+            <button class="btn-create" style="flex:1; justify-content:center;" onclick="saveNewTask()">Create</button>
+            <button class="btn-circle" style="flex:1; width:auto; height:45px;" onclick="closeTaskModal()">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function switchView(viewName, element) {
+        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+        const target = document.getElementById(viewName + '-view');
+        if(target) target.classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+        element.classList.add('active');
+    }
+
+    // Bulletin Logic
+    function postBulletin() {
+        const input = document.getElementById('bul-input');
+        if(!input.value) return;
+        const list = document.getElementById('bulletin-list');
+        const bubble = document.createElement('div');
+        bubble.className = 'bulletin-bubble';
+        bubble.innerHTML = `<div class="avatar" style="width:30px; height:30px; font-size:12px; background:#FFD700;">M</div> ${input.value}`;
+        list.appendChild(bubble);
+        input.value = '';
+    }
+
+    // Create Task Logic
+    function openTaskModal() { document.getElementById('taskModal').style.display = 'flex'; }
+    function closeTaskModal() { document.getElementById('taskModal').style.display = 'none'; }
+    
+    function saveNewTask() {
+        const name = document.getElementById('modalTaskName').value;
+        const pts = document.getElementById('modalTaskPoints').value;
+        if(!name || !pts) return;
+        
+        const list = document.getElementById('active-tasks-list');
+        const row = document.createElement('div');
+        row.className = 'item-row';
+        row.innerHTML = `<span>${name}</span> <div class="points-badge"><i class="fas fa-star"></i> ${pts} pts</div>`;
+        list.prepend(row);
+        
+        const pending = document.getElementById('pending-count');
+        pending.innerText = parseInt(pending.innerText) + 1;
+        
+        closeTaskModal();
+        alert("Task Assigned!");
+    }
+
+    function approveReward(id, points) {
+        const totalEl = document.getElementById('total-points');
+        totalEl.innerText = parseInt(totalEl.innerText) + points;
+        removeElement(id);
+    }
+
+    function removeElement(id) {
+        const el = document.getElementById(id);
+        el.style.opacity = '0';
+        el.style.transform = 'translateX(20px)';
+        el.style.transition = '0.3s';
+        setTimeout(() => el.remove(), 300);
+    }
+</script>
+
+</body>
+</html>

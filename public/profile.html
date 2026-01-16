@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FamilyTask - My Profile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-cyan: #00C2E0;
+            --sidebar-teal: #006372;
+            --bg-light: #f4f7f9;
+            --text-dark: #1e293b;
+            --gray-muted: #64748b;
+            --border-color: #e2e8f0;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-light); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar exactly as seen in Profile dashboard.PNG */
+        .sidebar { width: 260px; background-color: var(--sidebar-teal); color: white; display: flex; flex-direction: column; padding: 25px 0; }
+        .sidebar-brand { padding: 0 25px 40px; font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+        .nav-item { padding: 12px 25px; display: flex; align-items: center; gap: 15px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 15px; cursor: pointer; }
+        .nav-item:hover { background: rgba(255,255,255,0.05); }
+        .sidebar-footer { margin-top: auto; padding: 20px 0; border-top: 1px solid rgba(255,255,255,0.1); }
+
+        /* Main Content */
+        .main-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        
+        /* Header exactly as seen in images */
+        .page-header { padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; background: white; border-bottom: 1px solid var(--border-color); }
+        .breadcrumb { display: flex; align-items: center; gap: 8px; color: var(--primary-cyan); font-weight: 700; text-decoration: none; font-size: 18px; }
+        .header-actions { display: flex; align-items: center; gap: 15px; }
+        .notif-badge { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--primary-cyan); color: var(--primary-cyan); display: flex; align-items: center; justify-content: center; background: white; }
+        .user-avatar-small { width: 40px; height: 40px; border-radius: 50%; background: #E0F7FA; color: var(--primary-cyan); display: flex; align-items: center; justify-content: center; font-weight: 700; border: 1px solid #B2EBF2; }
+
+        .content-body { padding: 30px 40px; max-width: 1000px; }
+        .view-title { font-size: 32px; font-weight: 800; color: var(--primary-cyan); display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+        .view-subtitle { color: var(--gray-muted); margin-bottom: 30px; font-size: 15px; }
+
+        /* Tabs Section */
+        .tabs-container { background: #eef2f6; padding: 6px; border-radius: 12px; display: flex; gap: 5px; margin-bottom: 25px; }
+        .tab-btn { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-family: inherit; transition: 0.2s; }
+        .tab-btn.active { background: white; color: var(--text-dark); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .tab-btn.inactive { background: transparent; color: var(--gray-muted); }
+
+        /* Profile Card */
+        .profile-card { background: white; border-radius: 16px; border: 1px solid var(--border-color); padding: 35px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        
+        /* Avatar Generation Section from profile dashboard3.PNG */
+        .avatar-section { border-top: 1px solid #f1f5f9; margin-top: 30px; padding-top: 30px; }
+        .section-headline { font-size: 24px; font-weight: 700; color: #1e293b; margin-bottom: 5px; }
+        .section-subheadline { color: var(--gray-muted); font-size: 14px; margin-bottom: 25px; }
+        
+        .current-avatar-display { text-align: center; margin-bottom: 30px; }
+        .current-label { font-size: 14px; color: var(--gray-muted); margin-bottom: 12px; display: block; }
+        .avatar-circle-large { width: 110px; height: 110px; border-radius: 50%; background: #D1F7FF; color: var(--primary-cyan); display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 700; margin: 0 auto; box-shadow: 0 0 0 5px white, 0 4px 15px rgba(0,0,0,0.05); }
+
+        .gen-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 20px; }
+        .tool-title { color: var(--primary-cyan); font-weight: 700; margin-bottom: 15px; font-size: 17px; }
+        
+        .input-label { display: block; font-size: 14px; font-weight: 600; color: var(--text-dark); margin-bottom: 8px; }
+        .styled-input { width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 10px; font-family: inherit; margin-bottom: 15px; }
+        
+        .btn-generate { background: var(--primary-cyan); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; margin-top: 10px; }
+        
+        .file-upload-box { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; display: flex; align-items: center; gap: 10px; color: var(--gray-muted); font-size: 14px; }
+        .choose-file-btn { border: 1px solid var(--primary-cyan); background: white; color: var(--primary-cyan); padding: 6px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <i class="far fa-smile-beam"></i> FamilyTask
+        </div>
+        <nav>
+            <a class="nav-item"><i class="fas fa-home"></i> Home</a>
+            <a class="nav-item"><i class="fas fa-th-large"></i> My Dashboard</a>
+            <a class="nav-item"><i class="fas fa-gift"></i> Rewards Store</a>
+        </nav>
+        <div class="sidebar-footer">
+            <a class="nav-item"><i class="fas fa-cog"></i> Settings</a>
+            <a class="nav-item"><i class="fas fa-sign-out-alt"></i> Logout</a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <header class="page-header">
+            <a href="#" class="breadcrumb"><i class="fas fa-chevron-left"></i> My Profile</a>
+            <div class="header-actions">
+                <div class="notif-badge"><i class="far fa-bell"></i></div>
+                <div class="user-avatar-small">C</div>
+            </div>
+        </header>
+
+        <div class="content-body">
+            <h1 class="view-title"><i class="far fa-user"></i> Your Profile</h1>
+            <p class="view-subtitle">View and manage your account details and avatar.</p>
+
+            <div class="tabs-container">
+                <button class="tab-btn inactive">Account Details</button>
+                <button class="tab-btn active">Avatar</button>
+            </div>
+
+            <div class="profile-card">
+                <h2 class="section-headline">Create Your Avatar</h2>
+                <p class="section-subheadline">Generate a unique avatar with AI or upload your own picture.</p>
+
+                <div class="current-avatar-display">
+                    <span class="current-label">Current</span>
+                    <div class="avatar-circle-large">C</div>
+                </div>
+
+                <div class="gen-tools">
+                    <div>
+                        <h3 class="tool-title">Generate with AI</h3>
+                        <label class="input-label">AI Prompt</label>
+                        <input type="text" class="styled-input" placeholder="e.g., a happy cartoon robot">
+                        <button class="btn-generate">
+                            <i class="fas fa-wand-magic-sparkles"></i> Generate
+                        </button>
+                    </div>
+
+                    <div>
+                        <h3 class="tool-title">Upload a Picture</h3>
+                        <label class="input-label">Image File</label>
+                        <div class="file-upload-box">
+                            <button class="choose-file-btn">Choose File</button>
+                            <span>No file chosen</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+</body>
+</html>
