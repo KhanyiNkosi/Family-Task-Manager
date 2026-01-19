@@ -1,235 +1,172 @@
 ﻿"use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-
-export default function AISuggesterPage() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "ai">("ai");
-  const [dadSkills, setDadSkills] = useState("Grilling\nFixing things\nLawn mowing");
-  const [availableTasks, setAvailableTasks] = useState("Take out the trash\nSet the table\nClear the table\nFeed the pet\nHelp with groceries");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [suggestions, setSuggestions] = useState([
-    {
-      id: 1,
-      title: "Help with groceries",
-      member: "Dad",
-      avatar: "https://i.pravatar.cc/100?u=1",
-      description: "As an adult, he can manage heavier items and assist with shopping logistics, aligning with his practical skills.",
-      points: 20
-    },
-    {
-      id: 2,
-      title: "Lawn mowing",
-      member: "Dad",
-      avatar: "https://i.pravatar.cc/100?u=1",
-      description: "Matches his skill of 'Lawn mowing' perfectly. Good physical activity and outdoor task.",
-      points: 25
-    },
-    {
-      id: 3,
-      title: "Set the table",
-      member: "Child",
-      avatar: "https://i.pravatar.cc/100?u=2",
-      description: "Simple, routine task suitable for younger family members to build responsibility.",
-      points: 10
-    },
-    {
-      id: 4,
-      title: "Feed the pet",
-      member: "Child",
-      avatar: "https://i.pravatar.cc/100?u=2",
-      description: "Caring for pets teaches responsibility and routine. Great for developing empathy.",
-      points: 15
-    }
-  ]);
-
-  const pathname = usePathname();
-  
-  const familyMembers = [
-    { name: "Dad", age: 42, icon: "fas fa-shield-alt", avatar: "https://i.pravatar.cc/100?u=1" },
-    { name: "Mom", age: 40, icon: "fas fa-heart", avatar: "https://i.pravatar.cc/100?u=3" },
-    { name: "Child", age: 12, icon: "fas fa-child", avatar: "https://i.pravatar.cc/100?u=2" }
+export default function AlSuggestorPage() {
+  const suggestions = [
+    { id: 1, title: 'Weekend Cleanup Challenge', category: 'Family Activity', points: 200, description: 'Turn cleaning into a game with timed challenges' },
+    { id: 2, title: 'Homework Helper System', category: 'Education', points: 150, description: 'Pair older kids with younger ones for homework help' },
+    { id: 3, title: 'Meal Prep Team', category: 'Cooking', points: 180, description: 'Assign different meal prep tasks to family members' },
+    { id: 4, title: 'Green Thumb Garden', category: 'Outdoor', points: 250, description: 'Create a family garden with watering schedules' },
+    { id: 5, title: 'Digital Detox Day', category: 'Wellness', points: 100, description: 'Screen-free day with alternative activities' },
+    { id: 6, title: 'Charity Together', category: 'Community', points: 300, description: 'Family volunteer activity with bonus points' },
   ];
 
-  const handleGenerateSuggestions = () => {
-    setIsGenerating(true);
-    
-    // Simulate AI processing
-    setTimeout(() => {
-      // Add new AI-generated suggestions
-      const newSuggestions = [
-        {
-          id: suggestions.length + 1,
-          title: "Take out the trash",
-          member: "Dad",
-          avatar: "https://i.pravatar.cc/100?u=1",
-          description: "Regular chore that fits well with 'Fixing things' skill - requires coordination and timing.",
-          points: 15
-        },
-        {
-          id: suggestions.length + 2,
-          title: "Clear the table",
-          member: "Child",
-          avatar: "https://i.pravatar.cc/100?u=2",
-          description: "Teamwork task that helps after meals. Good for developing coordination skills.",
-          points: 8
-        }
-      ];
-      
-      setSuggestions([...suggestions, ...newSuggestions]);
-      setIsGenerating(false);
-      alert("AI suggestions generated! Added 2 new task matches.");
-    }, 2000);
-  };
-
-  const handleAddToTaskList = (suggestionId: number) => {
-    const suggestion = suggestions.find(s => s.id === suggestionId);
-    if (suggestion) {
-      alert(`Added "${suggestion.title}" to ${suggestion.member}'s task list for ${suggestion.points} points!`);
-    }
-  };
-
   return (
-    <div className="flex">
-      {/* Sidebar */}
-      <div className="sidebar w-70 bg-[#006372] text-white h-screen fixed p-8">
-        <div className="logo text-2xl font-black mb-10 flex items-center gap-2.5">
-          <i className="fas fa-smile"></i> FamilyTask
-        </div>
-        
-        <Link
-          href="/parent-dashboard"
-          className="nav-link flex items-center gap-3 px-4 py-3 text-white/70 no-underline rounded-xl mb-2 hover:bg-white/5 transition-colors"
-        >
-          <i className="fas fa-home"></i> Home
-        </Link>
-        <div 
-          className="nav-link active flex items-center gap-3 px-4 py-3 text-white no-underline rounded-xl mb-2 bg-white/10 cursor-pointer"
-        >
-          <i className="fas fa-brain"></i> AI Suggester
-        </div>
-        <Link
-          href="/rewards-store"
-          className="nav-link flex items-center gap-3 px-4 py-3 text-white/70 no-underline rounded-xl mb-2 hover:bg-white/5 transition-colors"
-        >
-          <i className="fas fa-gift"></i> Rewards Store
-        </Link>
-        <Link
-          href="/profile"
-          className="nav-link flex items-center gap-3 px-4 py-3 text-white/70 no-underline rounded-xl mb-2 hover:bg-white/5 transition-colors"
-        >
-          <i className="fas fa-user"></i> Profile
-        </Link>
-      </div>
-
-      {/* Main Content */}
-      <div className="main-content ml-70 w-[calc(100%-280px)] p-10">
-        {/* AI Suggester Tab */}
-        <div className="ai-view">
-          <h1 className="ai-title text-2xl font-black text-[#00C2E0] mb-3">
-            AI Task Suggester
-          </h1>
-          <p className="text-[#64748b] mb-6 text-base">
-            Let our AI help find the right tasks for each family member based on their skills, habits, and age.
+    <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE] p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header with logo matching other pages */}
+        <div className="text-center mb-10">
+          <div className="flex justify-center items-center gap-4 mb-6">
+            <div className="w-16 h-16 bg-[#00C2E0] rounded-full relative flex justify-center items-center overflow-hidden">
+              <div className="eyes absolute top-5 w-10 h-3 flex justify-between">
+                <div className="w-3 h-3 bg-white rounded-full"></div>
+                <div className="w-3 h-3 bg-white rounded-full"></div>
+              </div>
+              <div className="smile absolute bottom-4 w-8 h-4 border-b-3 border-white rounded-b-full"></div>
+            </div>
+            <h1 className="text-5xl font-black text-[#006372]">AI Family Suggester</h1>
+          </div>
+          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
+            Smart suggestions to make family management fun and effective!
           </p>
+        </div>
 
-          <h2 className="ai-subtitle text-xl font-bold text-[#00C2E0] mb-5">
-            Family & Tasks
-          </h2>
-          
-          {/* AI Input Container */}
-          <div className="ai-input-container bg-[#f8fafc] rounded-2xl p-6 border border-[#e2e8f0] mb-8">
-            <div className="text-[#00C2E0] font-bold mb-4 flex items-center gap-2">
-              <i className="fas fa-microchip"></i> Input for AI
+        {/* Stats Overview - Updated colors */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {[
+            { label: 'Success Rate', value: '92%', color: 'bg-green-500' },
+            { label: 'Suggestions Used', value: '48', color: 'bg-[#00C2E0]' },
+            { label: 'Avg. Points', value: '180', color: 'bg-[#006372]' },
+            { label: 'Happy Families', value: '1,234', color: 'bg-gradient-to-r from-cyan-500 to-teal-500' },
+          ].map((stat, index) => (
+            <div key={index} className="bg-white rounded-xl shadow-lg p-4 text-center border border-gray-100">
+              <div className="text-2xl font-bold text-gray-800 mb-1">{stat.value}</div>
+              <div className="text-sm text-gray-500">{stat.label}</div>
+              <div className={`mt-2 h-1 ${stat.color} rounded-full mx-auto w-12`}></div>
             </div>
-            
-            {/* Family Members Input */}
-            <div className="space-y-6 mb-6">
-              {familyMembers.map((member) => (
-                <div key={member.name} className="mb-5">
-                  <div className="member-info flex items-center gap-2 text-[#00C2E0] font-semibold mb-3">
-                    <i className={member.icon}></i> 
-                    {member.name} 
-                    <small className="text-[#64748b] font-normal">Age: {member.age}</small>
-                  </div>
-                  <label className="textarea-label block text-sm font-medium text-gray-700 mb-2">
-                    Skills (one per line)
-                  </label>
-                  <textarea 
-                    className="ai-textarea w-full rounded-xl border border-[#cbd5e1] px-4 py-3 font-inherit mb-4 resize-none"
-                    rows={3}
-                    placeholder="Enter skills..."
-                    defaultValue={member.name === "Dad" ? dadSkills : ""}
-                    onChange={(e) => {
-                      if (member.name === "Dad") setDadSkills(e.target.value);
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+          ))}
+        </div>
 
-            <label className="textarea-label block font-bold text-gray-700 mb-2">
-              Available Tasks (one per line)
-            </label>
-            <textarea 
-              className="ai-textarea w-full rounded-xl border border-[#cbd5e1] px-4 py-3 font-inherit mb-6 resize-none"
-              rows={5}
-              value={availableTasks}
-              onChange={(e) => setAvailableTasks(e.target.value)}
-            />
-
-            <button 
-              onClick={handleGenerateSuggestions}
-              disabled={isGenerating}
-              className="btn-generate w-full bg-[#00C2E0] text-white border-none py-4 rounded-xl font-bold text-base cursor-pointer flex justify-center items-center gap-2.5 hover:bg-[#00A8C2] transition-colors disabled:opacity-70"
-            >
-              <i className="fas fa-magic"></i>
-              {isGenerating ? "Generating AI Suggestions..." : "Generate Suggestions"}
+        {/* AI Suggestions - Updated colors */}
+        <div className="mb-10">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-gray-800">Personalized Suggestions</h2>
+            <button className="px-6 py-3 bg-gradient-to-r from-[#00C2E0] to-[#00A3CC] text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-lg">
+              <i className="fas fa-magic mr-2"></i>
+              Generate New Ideas
             </button>
           </div>
-
-          <h2 className="ai-subtitle text-xl font-bold text-[#00C2E0] mb-5">
-            Suggestions ({suggestions.length})
-          </h2>
-
-          {/* Suggestions Grid */}
-          <div className="space-y-4">
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {suggestions.map((suggestion) => (
-              <div key={suggestion.id} className="suggestion-card bg-white rounded-2xl p-5 mb-4 shadow-sm border border-[#f1f5f9]">
-                <div className="suggestion-header flex justify-between items-center mb-3">
-                  <h3 className="text-lg font-bold">{suggestion.title}</h3>
-                  <div className="member-info flex items-center gap-2 text-[#00C2E0] font-semibold">
-                    <div className="w-8 h-8 rounded-full overflow-hidden">
-                      <img 
-                        src={suggestion.avatar} 
-                        alt={suggestion.member}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    {suggestion.member}
+              <div key={suggestion.id} className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 hover:shadow-2xl transition-all duration-300">
+                <div className="p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-xl font-bold text-gray-800">{suggestion.title}</h3>
+                    <span className="px-3 py-1 bg-gradient-to-r from-[#00C2E0] to-[#00A3CC] text-white rounded-full text-sm font-bold shadow">
+                      +{suggestion.points} pts
+                    </span>
                   </div>
-                </div>
-                <p className="text-[#64748b] text-sm mb-4 leading-relaxed">
-                  {suggestion.description}
-                </p>
-                <div className="flex justify-between items-center">
-                  <div className="text-[#00C2E0] font-bold">
-                    <i className="fas fa-star mr-1"></i> {suggestion.points} points
+                  
+                  <div className="mb-4">
+                    <span className="inline-block px-3 py-1 bg-[#00C2E0]/10 text-[#006372] rounded-full text-sm font-medium">
+                      {suggestion.category}
+                    </span>
                   </div>
-                  <button 
-                    onClick={() => handleAddToTaskList(suggestion.id)}
-                    className="btn-add bg-white border border-[#e2e8f0] px-4 py-2 rounded-lg cursor-pointer text-sm font-semibold flex items-center gap-1.5 hover:bg-[#00C2E0] hover:text-white hover:border-[#00C2E0] transition-colors"
-                  >
-                    <i className="fas fa-plus"></i> Add to Task List
-                  </button>
+                  
+                  <p className="text-gray-600 mb-6">{suggestion.description}</p>
+                  
+                  <div className="flex space-x-3">
+                    <button className="flex-1 px-4 py-2 bg-gradient-to-r from-[#00C2E0] to-[#00A3CC] text-white rounded-lg hover:opacity-90 font-medium transition-all">
+                      <i className="fas fa-check-circle mr-2"></i>
+                      Use This
+                    </button>
+                    <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                      <i className="fas fa-bookmark mr-2"></i>
+                      Save
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* AI Assistant Chat - Updated colors */}
+        <div className="bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-800 mb-6">Ask AI Assistant</h2>
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-[#00C2E0]/10 to-[#00A3CC]/10 rounded-xl p-6 border border-[#00C2E0]/20">
+              <div className="flex items-center mb-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-[#00C2E0] to-[#00A3CC] rounded-full flex items-center justify-center text-white mr-3 shadow">
+                  <i className="fas fa-robot"></i>
+                </div>
+                <div>
+                  <span className="font-bold text-[#006372]">FamilyTask AI Assistant</span>
+                  <div className="text-xs text-gray-500">Powered by smart family management algorithms</div>
+                </div>
+              </div>
+              <p className="text-gray-700">
+                Hi! I can help you with:
+                <br/>• Creating custom task plans
+                <br/>• Suggesting age-appropriate chores
+                <br/>• Balancing points and rewards
+                <br/>• Solving family management challenges
+              </p>
+            </div>
+            
+            <div className="flex space-x-4">
+              <input
+                type="text"
+                placeholder="Ask me anything about family task management..."
+                className="flex-1 p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+              />
+              <button className="px-6 py-4 bg-gradient-to-r from-[#00C2E0] to-[#00A3CC] text-white rounded-xl hover:opacity-90 font-bold transition-all shadow-lg">
+                <i className="fas fa-paper-plane mr-2"></i>
+                Send
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                {text: 'Suggest weekend activities', icon: 'fas fa-calendar-week'},
+                {text: 'Create teen chore list', icon: 'fas fa-tasks'},
+                {text: 'Balance sibling points', icon: 'fas fa-balance-scale'}
+              ].map((prompt, index) => (
+                <button
+                  key={index}
+                  className="p-3 bg-[#00C2E0]/5 text-[#006372] rounded-lg hover:bg-[#00C2E0]/10 transition-colors text-left border border-[#00C2E0]/10"
+                >
+                  <i className={`${prompt.icon} mr-2 text-[#00C2E0]`}></i>
+                  &quot;{prompt.text}&quot;
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Info Section */}
+        <div className="mt-8 p-6 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl text-white text-center">
+          <h3 className="text-xl font-bold mb-3">How Our AI Works</h3>
+          <p className="opacity-90">
+            Our AI analyzes thousands of successful family patterns to suggest activities 
+            that promote teamwork, learning, and fun while building positive habits.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+            <div className="p-3 bg-white/20 rounded-lg">
+              <i className="fas fa-brain text-2xl mb-2"></i>
+              <div className="font-bold">Smart Analysis</div>
+            </div>
+            <div className="p-3 bg-white/20 rounded-lg">
+              <i className="fas fa-child text-2xl mb-2"></i>
+              <div className="font-bold">Age-Appropriate</div>
+            </div>
+            <div className="p-3 bg-white/20 rounded-lg">
+              <i className="fas fa-star text-2xl mb-2"></i>
+              <div className="font-bold">Reward Optimized</div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-
