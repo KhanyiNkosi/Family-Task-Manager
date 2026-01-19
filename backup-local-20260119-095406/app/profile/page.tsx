@@ -120,7 +120,7 @@ export default function ProfilePage() {
         {/* Header */}
         <header className="page-header px-10 py-5 flex justify-between items-center bg-white border-b border-[#e2e8f0]">
           <Link 
-            href="/parent-dashboard" 
+            href="/dashboard" 
             className="breadcrumb flex items-center gap-2 text-[#00C2E0] font-bold no-underline text-lg"
           >
             <i className="fas fa-chevron-left"></i> My Profile
@@ -288,4 +288,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-

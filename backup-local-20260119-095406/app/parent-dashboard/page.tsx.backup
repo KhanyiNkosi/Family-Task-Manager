@@ -1,0 +1,297 @@
+﻿"use client";
+
+import { useState } from "react";
+import ChildSidebar from "@/app/components/ChildSidebar";
+
+export default function ParentDashboardPage() {
+  const [activeView, setActiveView] = useState("dashboard");
+  const [tasksCompleted, setTasksCompleted] = useState(3);
+  const [tasksPending, setTasksPending] = useState(1);
+  const [totalPoints, setTotalPoints] = useState(212);
+  const [requests, setRequests] = useState([
+    { id: "req-1", child: "C", name: "Video Game Hour", requester: "Child", points: 50 }
+  ]);
+  const [bulletinMessages, setBulletinMessages] = useState([
+    { id: 1, avatar: "C", message: "Can we get pizza for movie night? 🍕" },
+    { id: 2, avatar: "M", message: "Family movie night this Friday!" }
+  ]);
+  const [activeTasks, setActiveTasks] = useState([
+    { id: 1, name: "Homework", points: 10 }
+  ]);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [newTaskPoints, setNewTaskPoints] = useState("");
+  const [newBulletinMessage, setNewBulletinMessage] = useState("");
+
+  const switchView = (viewName: string) => {
+    setActiveView(viewName);
+  };
+
+  const postBulletin = () => {
+    if (!newBulletinMessage.trim()) return;
+    
+    const newMessage = {
+      id: bulletinMessages.length + 1,
+      avatar: "M",
+      message: newBulletinMessage
+    };
+    
+    setBulletinMessages([...bulletinMessages, newMessage]);
+    setNewBulletinMessage("");
+  };
+
+  const saveNewTask = () => {
+    if (!newTaskName.trim() || !newTaskPoints.trim()) return;
+    
+    const newTask = {
+      id: activeTasks.length + 1,
+      name: newTaskName,
+      points: parseInt(newTaskPoints)
+    };
+    
+    setActiveTasks([newTask, ...activeTasks]);
+    setTasksPending(tasksPending + 1);
+    setNewTaskName("");
+    setNewTaskPoints("");
+    setShowTaskModal(false);
+    
+    alert("Task Assigned!");
+  };
+
+  const approveReward = (id: string, points: number) => {
+    setTotalPoints(totalPoints + points);
+    removeRequest(id);
+  };
+
+  const removeRequest = (id: string) => {
+    setRequests(requests.filter(req => req.id !== id));
+  };
+
+  const rewardsItems = [
+    { id: 1, icon: "fas fa-ice-cream", name: "Ice Cream", points: 50 },
+    { id: 2, icon: "fas fa-book", name: "New Book", points: 100 },
+    { id: 3, icon: "fas fa-gamepad", name: "Gaming Time", points: 75 },
+    { id: 4, icon: "fas fa-film", name: "Movie Night", points: 150 },
+    { id: 5, icon: "fas fa-pizza-slice", name: "Pizza Dinner", points: 200 },
+    { id: 6, icon: "fas fa-bicycle", name: "Bike Ride", points: 80 }
+  ];
+
+  return (
+    <div className="flex min-h-screen">
+      <ChildSidebar activeView={activeView} onViewChange={setActiveView} />
+      
+      <main className="flex-1 p-8 ml-[260px] bg-[#E2EEF1] min-h-screen">
+        {/* Dashboard View */}
+        <div id="dashboard-view" className={activeView === "dashboard" ? "block" : "hidden"}>
+          <div className="top-nav flex justify-between items-center mb-8">
+            <h1 className="view-title text-[28px] font-[800] text-[#00C2E0]">Parent Dashboard</h1>
+            <div className="flex gap-4 items-center">
+              <button 
+                onClick={() => setShowTaskModal(true)}
+                className="btn-create bg-[#00C2E0] text-white border-none py-3 px-6 rounded-xl font-bold cursor-pointer flex items-center gap-2 shadow-[0_4px_12px_rgba(0,194,224,0.2)]"
+              >
+                <i className="fas fa-plus-circle"></i> Create Task
+              </button>
+              <div className="relative">
+                <i className="far fa-bell text-[20px] text-[#5A6A7E]"></i>
+              </div>
+              <div className="avatar w-10 h-10 bg-[#E0F7FA] rounded-full flex items-center justify-center font-bold border-2 border-white">
+                M
+              </div>
+            </div>
+          </div>
+
+          {/* Stats Row */}
+          <div className="stats-row grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="stat-card bg-white p-6 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.05)] relative">
+              <h4 className="text-[13px] text-[#5A6A7E] uppercase tracking-wider mb-2">Tasks Completed</h4>
+              <div className="value text-[42px] font-[800]">{tasksCompleted}</div>
+              <i className="fas fa-check-circle icon-bg absolute right-6 top-1/2 transform -translate-y-1/2 text-[40px] text-[#00C2E0] opacity-10"></i>
+            </div>
+            
+            <div className="stat-card bg-white p-6 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.05)] relative">
+              <h4 className="text-[13px] text-[#5A6A7E] uppercase tracking-wider mb-2">Tasks Pending</h4>
+              <div id="pending-count" className="value text-[42px] font-[800]">{tasksPending}</div>
+              <i className="fas fa-clock icon-bg absolute right-6 top-1/2 transform -translate-y-1/2 text-[40px] text-[#00C2E0] opacity-10"></i>
+            </div>
+            
+            <div className="stat-card bg-white p-6 rounded-2xl shadow-[0_10px_25px_rgba(0,0,0,0.05)] relative">
+              <h4 className="text-[13px] text-[#5A6A7E] uppercase tracking-wider mb-2">Total Points Awarded</h4>
+              <div id="total-points" className="value text-[42px] font-[800]">{totalPoints}</div>
+              <i className="fas fa-star icon-bg absolute right-6 top-1/2 transform -translate-y-1/2 text-[40px] text-[#FFC107] opacity-80"></i>
+            </div>
+          </div>
+
+          {/* Reward Requests Section */}
+          <div className="section-box bg-white rounded-2xl p-8 shadow-[0_10px_25px_rgba(0,0,0,0.05)] mb-8">
+            <div className="section-header flex items-center gap-2 text-[22px] font-[800] text-[#00C2E0] mb-6">
+              <i className="fas fa-hand-holding-heart"></i> Reward Requests
+            </div>
+            
+            <div id="request-container" className="space-y-3">
+              {requests.map((request) => (
+                <div key={request.id} className="item-row bg-[#F8FAFC] rounded-2xl p-4 flex items-center justify-between">
+                  <div className="item-meta flex items-center gap-4">
+                    <div className="avatar w-12 h-12 bg-[#E0F7FA] text-[#00C2E0] rounded-full flex items-center justify-center font-bold">
+                      {request.child}
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-800">{request.name}</div>
+                      <div className="text-[12px] text-[#5A6A7E]">Requested by {request.requester}</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-5">
+                    <div className="points-badge bg-[#00C2E0] text-white py-2 px-4 rounded-full text-sm font-bold flex items-center gap-2">
+                      <i className="fas fa-star text-[#FFC107]"></i> {request.points} pts
+                    </div>
+                    
+                    <div className="action-group flex gap-2">
+                      <button 
+                        onClick={() => approveReward(request.id, request.points)}
+                        className="btn-circle w-10 h-10 rounded-xl border-2 border-[#E2E8F0] bg-white cursor-pointer transition-all hover:border-[#10B981] hover:text-[#10B981] hover:bg-[#ECFDF5]"
+                      >
+                        <i className="fas fa-check"></i>
+                      </button>
+                      <button 
+                        onClick={() => removeRequest(request.id)}
+                        className="btn-circle w-10 h-10 rounded-xl border-2 border-[#E2E8F0] bg-white cursor-pointer transition-all hover:border-[#EF4444] hover:text-[#EF4444] hover:bg-[#FEF2F2]"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {requests.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No pending reward requests
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Family Bulletin Section */}
+          <div className="section-box bg-white rounded-2xl p-8 shadow-[0_10px_25px_rgba(0,0,0,0.05)]">
+            <div className="section-header flex items-center gap-2 text-[22px] font-[800] text-[#00C2E0] mb-6">
+              <i className="fas fa-bullhorn"></i> Family Bulletin
+            </div>
+            
+            <div id="bulletin-list" className="space-y-3 mb-6">
+              {bulletinMessages.map((message) => (
+                <div key={message.id} className="bulletin-bubble bg-[#F8FAFC] rounded-3xl p-3 flex items-center gap-3">
+                  <div className={`avatar w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                    message.avatar === "M" ? "bg-[#FFD700]" : "bg-[#E0F7FA]"
+                  }`}>
+                    {message.avatar}
+                  </div>
+                  <span>{message.message}</span>
+                </div>
+              ))}
+            </div>
+            
+            <div className="bulletin-input-area flex gap-3">
+              <input
+                type="text"
+                value={newBulletinMessage}
+                onChange={(e) => setNewBulletinMessage(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && postBulletin()}
+                placeholder="Type a message..."
+                className="bulletin-input flex-1 p-3 rounded-xl border-2 border-[#E2E8F0] outline-none"
+              />
+              <button 
+                onClick={postBulletin}
+                className="btn-post bg-[#00C2E0] text-white border-none py-3 px-6 rounded-xl font-bold cursor-pointer"
+              >
+                Post
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Tasks View */}
+        <div id="tasks-view" className={activeView === "tasks" ? "block" : "hidden"}>
+          <h1 className="view-title text-[28px] font-[800] text-[#00C2E0] mb-6">Task Management</h1>
+          
+          <div className="section-box bg-white rounded-2xl p-8 shadow-[0_10px_25px_rgba(0,0,0,0.05)]">
+            <div id="active-tasks-list" className="space-y-3">
+              {activeTasks.map((task) => (
+                <div key={task.id} className="item-row bg-[#F8FAFC] rounded-2xl p-4 flex items-center justify-between">
+                  <span className="font-medium">{task.name}</span>
+                  <div className="points-badge bg-[#00C2E0] text-white py-2 px-4 rounded-full text-sm font-bold flex items-center gap-2">
+                    <i className="fas fa-star text-[#FFC107]"></i> {task.points} pts
+                  </div>
+                </div>
+              ))}
+              
+              {activeTasks.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No active tasks
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Rewards View */}
+        <div id="rewards-view" className={activeView === "rewards" ? "block" : "hidden"}>
+          <h1 className="view-title text-[28px] font-[800] text-[#00C2E0] mb-6">Rewards Store</h1>
+          
+          <div className="rewards-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rewardsItems.map((reward) => (
+              <div key={reward.id} className="reward-item bg-[#F8FAFC] p-6 rounded-2xl text-center border border-[#E2E8F0]">
+                <i className={`${reward.icon} text-[40px] text-[#00C2E0] mb-4`}></i>
+                <h3 className="text-lg font-bold mb-2">{reward.name}</h3>
+                <p className="text-[#00C2E0] font-bold">{reward.points} pts</p>
+                <button className="mt-4 bg-[#00C2E0] hover:bg-[#0099B8] text-white font-medium py-2 px-4 rounded-lg w-full transition-colors">
+                  Add to Store
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </main>
+
+      {/* Create Task Modal */}
+      {showTaskModal && (
+        <div className="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="modal-content bg-white p-8 rounded-2xl w-full max-w-md shadow-[0_10px_25px_rgba(0,0,0,0.05)]">
+            <h2 className="text-2xl font-bold text-[#00C2E0] mb-6">New Task</h2>
+            
+            <input
+              type="text"
+              value={newTaskName}
+              onChange={(e) => setNewTaskName(e.target.value)}
+              placeholder="Task Name"
+              className="w-full p-3 mb-4 rounded-xl border-2 border-[#E2E8F0] outline-none"
+            />
+            
+            <input
+              type="number"
+              value={newTaskPoints}
+              onChange={(e) => setNewTaskPoints(e.target.value)}
+              placeholder="Points"
+              className="w-full p-3 mb-6 rounded-xl border-2 border-[#E2E8F0] outline-none"
+            />
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={saveNewTask}
+                className="btn-create flex-1 bg-[#00C2E0] text-white border-none py-3 rounded-xl font-bold cursor-pointer flex items-center justify-center"
+              >
+                Create
+              </button>
+              <button 
+                onClick={() => setShowTaskModal(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 border-2 border-[#E2E8F0] py-3 rounded-xl font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

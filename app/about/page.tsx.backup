@@ -28,9 +28,11 @@ export default function AboutPage() {
               <h2 className="text-2xl font-bold text-gray-800">Our Mission</h2>
             </div>
             <p className="text-gray-700 text-lg leading-relaxed">
-              FamilyTask was born from the simple idea: managing school, work and home tasks effortlessly. We believe that with the right tools, families can work together to create a harmonious, organized, and happy home environment.
-
-              Our app is designed to be a fun and engaging platform for the whole family. By turning tasks into opportunities to earn points and redeem exciting rewards, we help motivate children to contribute while teaching them valuable lessons about responsibility and teamwork.
+              FamilyTask was created to solve a common challenge: making household responsibilities 
+              and family tasks enjoyable for children while giving parents an easy way to manage and 
+              reward progress. We believe that by turning chores into achievements and adding an 
+              element of gamification, we can foster responsibility, teamwork, and positive habits 
+              in children.
             </p>
           </div>
 
@@ -150,3 +152,5 @@ export default function AboutPage() {
     </div>
   );
 }
+
+

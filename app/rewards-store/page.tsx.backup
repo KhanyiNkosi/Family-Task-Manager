@@ -1,0 +1,316 @@
+﻿// app/rewards-store/page.tsx
+"use client";
+
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Sidebar from '@/app/components/Sidebar';
+import RewardModal from '@/app/components/RewardModal';
+
+interface Reward {
+  id: string;
+  name: string;
+  description: string;
+  points: number;
+  icon: string;
+  status: 'available' | 'pending';
+  requestedBy?: string;
+}
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar: string;
+  points: number;
+}
+
+export default function RewardsStorePage() {
+  const router = useRouter();
+  const [activeView, setActiveView] = useState('rewards');
+  const [rewards, setRewards] = useState<Reward[]>([
+    { id: '1', name: 'New Book', description: 'Pick out a brand new book...', points: 120, icon: 'fas fa-book', status: 'available' },
+    { id: '2', name: 'Movie Night Pick', description: 'You get to choose the movie...', points: 75, icon: 'fas fa-film', status: 'available' },
+    { id: '3', name: 'Ice Cream Trip', description: 'A special trip to your favorite...', points: 100, icon: 'fas fa-ice-cream', status: 'available' },
+    { id: '4', name: 'Video Game Hour', description: 'One hour of extra video game...', points: 50, icon: 'fas fa-gamepad', status: 'available' }
+  ]);
+  const [pendingRewards, setPendingRewards] = useState<Reward[]>([
+    { id: '5', name: 'Video Game Hour', description: 'Requested by Child', points: 50, icon: 'fas fa-ice-cream', status: 'pending', requestedBy: 'Child' }
+  ]);
+  const [showRewardModal, setShowRewardModal] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Get user from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    } else {
+      router.push('/login');
+      return;
+    }
+    
+    // In a real app, we would fetch rewards from API here
+    setLoading(false);
+  }, []);
+
+  const switchView = (view: string) => {
+    if (view === 'logout') {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      router.push('/login');
+      return;
+    }
+    
+    if (view === 'home') {
+      router.push('/');
+      return;
+    }
+    
+    if (view === 'dashboard') {
+      router.push('/dashboard');
+      return;
+    }
+    
+    if (view === 'tasks') {
+      // We would navigate to tasks page
+      console.log('Navigate to tasks');
+      return;
+    }
+    
+    if (view === 'ai') {
+      router.push('/ai-suggester');
+      return;
+    }
+    
+    setActiveView(view);
+  };
+
+  const handleApproveReward = (rewardId: string, points: number) => {
+    // Move from pending to available
+    const reward = pendingRewards.find(r => r.id === rewardId);
+    if (reward) {
+      setPendingRewards(prev => prev.filter(r => r.id !== rewardId));
+      setRewards(prev => [...prev, { ...reward, status: 'available', requestedBy: undefined }]);
+      
+      // Update user points (deduct for approval)
+      if (user) {
+        const updatedUser = { ...user, points: user.points + points }; // Adding points to user
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+      }
+    }
+  };
+
+  const handleRejectReward = (rewardId: string) => {
+    setPendingRewards(prev => prev.filter(r => r.id !== rewardId));
+  };
+
+  const handleDeleteReward = (rewardId: string) => {
+    setRewards(prev => prev.filter(r => r.id !== rewardId));
+  };
+
+  const handleCreateReward = (rewardData: { name: string; description: string; points: number; icon: string }) => {
+    const newReward: Reward = {
+      id: Date.now().toString(),
+      name: rewardData.name,
+      description: rewardData.description,
+      points: rewardData.points,
+      icon: rewardData.icon,
+      status: 'available'
+    };
+    
+    setRewards(prev => [newReward, ...prev]);
+    setShowRewardModal(false);
+  };
+
+  if (loading) {
+    return (
+      
+          <p className="mt-4 text-[#142229]">Loading rewards store...</p>
+        </div>
+        {/* Go Back Button */}
+        <div style={{paddingTop: '20px'}}>
+          <button 
+            onClick={() => window.history.back()}
+            style={{
+              width: '100%', 
+              background: 'rgba(255,255,255,0.1)', 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              color: 'white', 
+              padding: '12px', 
+              borderRadius: '10px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '10px', 
+              fontWeight: '600', 
+              fontFamily: 'inherit'
+            }}
+          >
+            <i className="fas fa-arrow-left"></i> Go Back
+          </button>
+        </div>
+              {/* Go Back Button */}
+        <div style={{paddingTop: '20px'}}>
+          <button 
+            onClick={() => window.history.back()}
+            style={{
+              width: '100%', 
+              background: 'rgba(255,255,255,0.1)', 
+              border: '1px solid rgba(255,255,255,0.2)', 
+              color: 'white', 
+              padding: '12px', 
+              borderRadius: '10px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              gap: '10px', 
+              fontWeight: '600', 
+              fontFamily: 'inherit'
+            }}
+          >
+            <i className="fas fa-arrow-left"></i> Go Back
+          </button>
+        </div></div>
+    );
+  }
+
+  return (
+    <div className="dashboard-container min-h-screen bg-[#E2EEF1] text-[#142229] font-['Inter']">
+      <div className="absolute top-8 left-8 z-10">
+        
+      </div>
+      <Sidebar activeView={activeView} onViewChange={switchView} userInitial={user?.name?.charAt(0) || 'M'} />
+      
+      <main className="main-content p-10 overflow-y-auto">
+      <div className="absolute top-8 left-8 z-10">
+        
+      </div>
+        {/* Top Navigation */}
+        <div className="top-nav flex justify-between items-center mb-9">
+          <h1 className="text-[28px] font-extrabold">Rewards Management</h1>
+          <button 
+            className="btn-create bg-[#00C2E0] text-white border-none py-3 px-6 rounded-xl font-bold cursor-pointer flex items-center gap-3"
+            onClick={() => setShowRewardModal(true)}
+          >
+            <i className="fas fa-plus"></i> New Reward
+          </button>
+        </div>
+
+        {/* Reward Approval Section */}
+        <div className="section-box bg-white rounded-[20px] p-8 shadow-[0_10px_25px_rgba(0,0,0,0.08)] mb-9">
+          <div className="section-title flex items-center gap-3 text-[24px] font-extrabold text-[#00C2E0] mb-2.5">
+            <i className="fas fa-clock-rotate-left"></i> Reward Approval
+          </div>
+          <p className="subtitle text-[#5A6A7E] text-sm uppercase tracking-wider mb-5">
+            Pending Approval ({pendingRewards.length})
+          </p>
+          
+          {pendingRewards.map((reward) => (
+            <div key={reward.id} className="approval-card bg-[#F1F5F9] rounded-2xl p-4.5 mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="reward-icon-box w-11 h-11 rounded-xl bg-[#E0F7FA] flex items-center justify-center text-[#00C2E0] text-xl">
+                  <i className={reward.icon}></i>
+                </div>
+                <div>
+                  <div className="font-bold">{reward.name}</div>
+                  <div className="text-sm text-[#5A6A7E]">Requested by {reward.requestedBy}</div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="pts-tag bg-[#00C2E0] text-white py-1.5 px-3.5 rounded-full text-sm font-bold flex items-center gap-1.5">
+                  <i className="fas fa-star text-[#FFC107]"></i> {reward.points} pts
+                </div>
+                
+                <div className="flex gap-2">
+                  <button 
+                    className="text-[#00C2E0] border border-[#00C2E0] w-9 h-9 rounded-lg bg-white cursor-pointer flex items-center justify-center"
+                    onClick={() => handleApproveReward(reward.id, reward.points)}
+                  >
+                    <i className="fas fa-check"></i>
+                  </button>
+                  <button 
+                    className="text-[#F56565] border border-[#F56565] w-9 h-9 rounded-lg bg-white cursor-pointer flex items-center justify-center"
+                    onClick={() => handleRejectReward(reward.id)}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+          
+          {pendingRewards.length === 0 && (
+            <div className="text-center py-8 text-[#5A6A7E]">
+              No pending reward approvals
+            </div>
+          )}
+        </div>
+
+        {/* Reward Store Section */}
+        <div className="section-box bg-white rounded-[20px] p-8 shadow-[0_10px_25px_rgba(0,0,0,0.08)]">
+          <div className="section-title flex items-center gap-3 text-[24px] font-extrabold text-[#00C2E0] mb-2.5">
+            <i className="fas fa-store"></i> Reward Store
+          </div>
+          <p className="subtitle text-[#5A6A7E] text-sm uppercase tracking-wider mb-5">
+            There are {rewards.length} rewards available in the shop.
+          </p>
+
+          {/* Reward Grid */}
+          <div className="reward-grid grid grid-cols-2 gap-5 mt-5">
+            {rewards.map((reward) => (
+              <div key={reward.id} className="reward-item bg-[#F1F5F9] rounded-2xl p-5 flex items-center justify-between border border-transparent transition hover:border-[#00C2E0] hover:bg-white">
+                <div className="reward-main flex items-center gap-4">
+                  <div className="reward-icon-box w-11 h-11 rounded-xl bg-white flex items-center justify-center text-[#00C2E0] text-xl">
+                    <i className={reward.icon}></i>
+                  </div>
+                  <div className="reward-details">
+                    <h5 className="text-base font-bold mb-1">{reward.name}</h5>
+                    <p className="text-sm text-[#5A6A7E]">{reward.description}</p>
+                  </div>
+                </div>
+                
+                <div className="reward-actions flex items-center gap-3">
+                  <div className="pts-tag bg-[#00C2E0] text-white py-1.5 px-3.5 rounded-full text-sm font-bold flex items-center gap-1.5">
+                    <i className="fas fa-star text-[#FFC107]"></i> {reward.points}
+                  </div>
+                  <button 
+                    className="btn-delete text-[#F56565] bg-none border-none cursor-pointer text-base"
+                    onClick={() => handleDeleteReward(reward.id)}
+                  >
+                    <i className="far fa-trash-can"></i>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {rewards.length === 0 && (
+            <div className="text-center py-12 text-[#5A6A7E]">
+              <i className="fas fa-gift text-4xl mb-4 text-[#00C2E0] opacity-50"></i>
+              <p>No rewards available. Create your first reward!</p>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Reward Modal */}
+      <RewardModal 
+        isOpen={showRewardModal}
+        onClose={() => setShowRewardModal(false)}
+        onCreate={handleCreateReward}
+      />
+    </div>
+  );
+}
+
+
+
+
+

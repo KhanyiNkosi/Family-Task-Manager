@@ -99,7 +99,7 @@ export default function AISuggesterPage() {
         </div>
         
         <Link
-          href="/parent-dashboard"
+          href="/dashboard"
           className="nav-link flex items-center gap-3 px-4 py-3 text-white/70 no-underline rounded-xl mb-2 hover:bg-white/5 transition-colors"
         >
           <i className="fas fa-home"></i> Home
@@ -232,4 +232,3 @@ export default function AISuggesterPage() {
     </div>
   );
 }
-
