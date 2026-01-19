@@ -5,38 +5,38 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export default function ChildDashboardPage() {
-  const [points, setPoints] = useState(12);
+  const [points, setPoints] = useState(1250);
   const [tasks, setTasks] = useState([
     { id: 1, title: "Hockey practice", points: 5, completed: false, category: "sports" },
     { id: 2, title: "Homework", points: 10, completed: true, category: "school" },
-    { id: 3, title: "Clean Room", points: 2, completed: true, category: "chores" }
+    { id: 3, title: "Clean Room", points: 2, completed: true, category: "chores" },
+    { id: 4, title: "Walk the dog", points: 8, completed: false, category: "chores" },
   ]);
   const [rewards, setRewards] = useState([
     { id: 1, name: "Ice Cream Trip", description: "A special trip to your favorite shop.", points: 50, redeemed: false },
-    { id: 2, name: "Movie Night Pick", description: "Choose the movie for family night", points: 30, redeemed: true }
+    { id: 2, name: "Movie Night Pick", description: "Choose the movie for family night", points: 30, redeemed: true },
+    { id: 3, name: "Extra Game Time", description: "30 minutes extra video game time", points: 25, redeemed: false },
+    { id: 4, name: "New Book", description: "Choose a new book from the store", points: 40, redeemed: false },
   ]);
   const [toast, setToast] = useState({ show: false, message: "" });
 
   const pathname = usePathname();
   
+  // Navigation items matching parent dashboard style
   const navItems = [
-    { href: "/", icon: "fas fa-home", label: "Home" },
-    { href: "/child-dashboard", icon: "fas fa-th-large", label: "My Dashboard" },
-    { href: "/rewards-store", icon: "fas fa-gift", label: "Rewards Store" },
-    { href: "/ai-suggester", icon: "fas fa-magic", label: "AI Suggester" },
+    { href: "/", icon: "fas fa-home", label: "Home", active: false },
+    { href: "/child-dashboard", icon: "fas fa-th-large", label: "My Dashboard", active: true },
+    { href: "/rewards-store", icon: "fas fa-gift", label: "Rewards Store", active: false },
+    { href: "/ai-suggester", icon: "fas fa-magic", label: "AI Suggester", active: false },
+    { href: "/settings", icon: "fas fa-cog", label: "Settings", active: false },
   ];
   
-  const bottomItems = [
-    { href: "/settings", icon: "fas fa-cog", label: "Settings" },
-    { href: "/logout", icon: "fas fa-sign-out-alt", label: "Logout" },
-  ];
-
   const completeTask = (taskId: number) => {
     setTasks(tasks.map(task => 
       task.id === taskId ? { ...task, completed: true } : task
     ));
     const task = tasks.find(t => t.id === taskId);
-    if (task) {
+    if (task && !task.completed) {
       setPoints(prev => prev + task.points);
       
       setToast({ 
@@ -85,157 +85,237 @@ export default function ChildDashboardPage() {
   const completedTasks = tasks.filter(task => task.completed);
 
   return (
-    <div className="child-dashboard-container">
-      <aside className="child-sidebar">
-        <div className="child-logo">
-          <i className="far fa-smile-beam"></i> FamilyTask
+    <div className="dashboard-container flex min-h-screen bg-gray-50">
+      {/* Sidebar Navigation - EXACTLY MATCHING PARENT DASHBOARD */}
+      <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+        <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
+          <i className="fas fa-smile text-3xl"></i>
+          <span>FamilyTask</span>
         </div>
         
-        <nav className="flex-1">
+        <nav className="space-y-2">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`child-nav-link ${pathname === item.href ? "active" : ""}`}
+              className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all ${
+                pathname === item.href || item.active
+                  ? "bg-white/20 text-white shadow-lg"
+                  : "hover:bg-white/10 text-white/90"
+              }`}
             >
-              <i className={item.icon}></i> {item.label}
+              <i className={`${item.icon} w-5 text-center`}></i>
+              <span className="font-medium">{item.label}</span>
             </Link>
           ))}
         </nav>
         
-        <div className="child-sidebar-bottom">
-          {bottomItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="child-nav-link"
-            >
-              <i className={item.icon}></i> {item.label}
-            </Link>
-          ))}
-        </div>
+        <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
+  <button
+    onClick={() => window.history.back()}
+    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+  >
+    <i className="fas fa-arrow-left"></i>
+    Go Back
+  </button>
+  
+  <button
+    onClick={() => {
+      if (confirm("Are you sure you want to logout?")) {
+        alert("Logging out..."); // In real app: router.push("/login");
+      }
+    }}
+    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
+  >
+    <i className="fas fa-sign-out-alt"></i>
+    Logout
+  </button>
+</div>
       </aside>
 
-      <main className="child-main-content">
-        <div className="child-header-bar">
-          <h1 style={{color: "#00C2E0", fontWeight: "800"}}>Hi, Child!</h1>
-          <div style={{display: "flex", gap: "15px", alignItems: "center"}}>
-            <div style={{color: "#00C2E0", fontSize: "20px"}}>
-              <i className="far fa-bell"></i>
-            </div>
-            <div className="child-points-pill">
-              <i className="fas fa-star"></i> <span>{points}</span> Points
-            </div>
-          </div>
-        </div>
-
-        <div className="child-stats-grid">
-          <div className="child-stat-card">
-            <h3>Tasks To-Do</h3>
-            <div className="value">{stats.todo}</div>
-            <i className="fas fa-clipboard-list child-stat-icon-bg"></i>
+      <main className="main-content ml-64 flex-1 p-10">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-bold text-[#006372]">Child Dashboard</h1>
+            <p className="text-gray-600 mt-2">Complete tasks, earn points, and get rewards!</p>
           </div>
           
-          <div className="child-stat-card">
-            <h3>Tasks Completed</h3>
-            <div className="value">{stats.completed}</div>
-            <i className="fas fa-check-circle child-stat-icon-bg"></i>
-          </div>
-          
-          <div className="child-stat-card">
-            <h3>Rewards Redeemed</h3>
-            <div className="value">{stats.redeemed}</div>
-            <i className="fas fa-gift child-stat-icon-bg"></i>
-          </div>
-        </div>
-
-        <div className="child-challenge-banner">
-          <h2 style={{color: "#007A8C"}}>Ready for a challenge?</h2>
-          <p style={{color: "#64748B"}}>Complete your tasks to earn points and unlock cool rewards!</p>
-          <button 
-            onClick={getPepTalk}
-            className="child-pep-talk-btn"
-          >
-            <i className="fas fa-sparkles"></i> Get a Pep Talk!
-          </button>
-        </div>
-
-        <h2 className="child-section-header">Your Tasks</h2>
-        
-        <div className="child-task-group">
-          <div className="child-group-label child-todo-bg">To Do ({stats.todo})</div>
-          {todoTasks.map(task => (
-            <div key={task.id} className="child-task-item">
-              <div style={{display: "flex", alignItems: "center"}}>
-                <div 
-                  className="child-checkbox"
-                  onClick={() => completeTask(task.id)}
-                ></div>
-                <span>{task.title}</span>
-              </div>
-              <div style={{display: "flex", gap: "10px", alignItems: "center"}}>
-                <span style={{color: "#00C2E0", fontSize: "12px", fontWeight: "600"}}>Child</span>
-                <span style={{fontSize: "13px", color: "#64748B"}}>
-                  <i className="far fa-star"></i> {task.points} pts
-                </span>
+          <div className="mt-4 md:mt-0 flex items-center gap-4">
+            <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg">
+              <div className="text-sm font-medium">My Points</div>
+              <div className="text-2xl font-bold flex items-center gap-2">
+                <i className="fas fa-star text-yellow-300"></i> {points.toLocaleString()}
               </div>
             </div>
-          ))}
+            
+            <button
+              onClick={getPepTalk}
+              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
+            >
+              <i className="fas fa-sparkles mr-2"></i>
+              Pep Talk!
+            </button>
+          </div>
         </div>
 
-        <div className="child-task-group">
-          <div className="child-group-label child-done-bg">Completed ({stats.completed})</div>
-          {completedTasks.map(task => (
-            <div key={task.id} className="child-task-item" style={{opacity: 0.7}}>
-              <span>{task.title}</span>
-              <span style={{fontSize: "13px", color: "#64748B"}}>
-                <i className="fas fa-star"></i> {task.points} pts
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-gray-500 text-sm font-medium">Tasks To-Do</h3>
+                <div className="text-3xl font-bold text-[#006372] mt-2">{stats.todo}</div>
+              </div>
+              <i className="fas fa-clipboard-list text-3xl text-cyan-500"></i>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-gray-500 text-sm font-medium">Tasks Completed</h3>
+                <div className="text-3xl font-bold text-green-600 mt-2">{stats.completed}</div>
+              </div>
+              <i className="fas fa-check-circle text-3xl text-green-500"></i>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-gray-500 text-sm font-medium">Rewards Redeemed</h3>
+                <div className="text-3xl font-bold text-purple-600 mt-2">{stats.redeemed}</div>
+              </div>
+              <i className="fas fa-gift text-3xl text-purple-500"></i>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Tasks Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Your Tasks</h2>
+              <span className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm font-medium">
+                {todoTasks.length} pending
               </span>
             </div>
-          ))}
+            
+            <div className="space-y-4">
+              {tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className={`p-4 rounded-xl border ${
+                    task.completed
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'
+                  } transition-all`}
+                  onClick={() => !task.completed && completeTask(task.id)}
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                        task.completed ? 'bg-green-500' : 'border-2 border-gray-400'
+                      }`}>
+                        {task.completed && (
+                          <i className="fas fa-check text-white text-xs"></i>
+                        )}
+                      </div>
+                      <span className={`font-medium ${task.completed ? 'text-gray-500 line-through' : 'text-gray-800'}`}>
+                        {task.title}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-[#00C2E0]">+{task.points} pts</div>
+                      <div className="text-xs text-gray-500 capitalize">{task.category}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Rewards Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Available Rewards</h2>
+              <span className="text-lg font-bold text-[#00C2E0]">{points} points</span>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {rewards.map((reward) => (
+                <div
+                  key={reward.id}
+                  className={`p-4 rounded-xl border ${
+                    reward.redeemed
+                      ? 'bg-gray-100 border-gray-300'
+                      : 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
+                  }`}
+                >
+                  {reward.redeemed ? (
+                    <div className="text-center py-4">
+                      <i className="fas fa-check-circle text-2xl text-gray-500 mb-2"></i>
+                      <div className="font-bold text-gray-700">Redeemed</div>
+                      <div className="text-sm text-gray-500">{reward.name}</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between items-start mb-3">
+                        <h4 className="font-bold text-gray-800">{reward.name}</h4>
+                        <div className="font-bold text-orange-600">{reward.points} pts</div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-4">{reward.description}</p>
+                      <button
+                        onClick={() => redeemReward(reward.id)}
+                        disabled={points < reward.points}
+                        className={`w-full py-2.5 rounded-lg font-medium ${
+                          points >= reward.points
+                            ? 'bg-gradient-to-r from-orange-500 to-yellow-500 text-white hover:opacity-90'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                      >
+                        {points >= reward.points ? 'Redeem Reward' : 'Need More Points'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <h2 className="child-section-header">Featured Rewards</h2>
-        <div className="child-rewards-grid">
-          {rewards.map(reward => (
-            <div 
-              key={reward.id} 
-              className={`child-reward-card ${reward.redeemed ? "redeemed" : ""}`}
-            >
-              {reward.redeemed ? (
-                <>
-                  <i className="fas fa-check-circle" style={{color: "#2D3748", fontSize: "24px", marginBottom: "10px"}}></i>
-                  <div style={{fontWeight: "700"}}>Redeemed</div>
-                  <div style={{fontSize: "12px"}}>{reward.name}</div>
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-ice-cream child-reward-icon"></i>
-                  <h4 style={{marginBottom: "5px"}}>{reward.name}</h4>
-                  <p style={{fontSize: "12px", color: "#64748B"}}>{reward.description}</p>
-                  <button 
-                    onClick={() => redeemReward(reward.id)}
-                    className="child-redeem-btn"
-                    disabled={points < reward.points}
-                  >
-                    {points >= reward.points 
-                      ? `Redeem for ${reward.points} pts`
-                      : `Need ${reward.points} pts`
-                    }
-                  </button>
-                </>
-              )}
+        {/* Progress Section */}
+        <div className="mt-8 bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+          <h2 className="text-xl font-bold text-gray-800 mb-6">Your Progress</h2>
+          <div className="space-y-4">
+            <div>
+              <div className="flex justify-between mb-2">
+                <span className="text-gray-700 font-medium">Weekly Goal</span>
+                <span className="font-bold text-[#00C2E0]">{Math.round((stats.completed / tasks.length) * 100)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div
+                  className="bg-gradient-to-r from-cyan-500 to-teal-500 h-3 rounded-full transition-all duration-500"
+                  style={{ width: `${(stats.completed / tasks.length) * 100}%` }}
+                ></div>
+              </div>
             </div>
-          ))}
+            <div className="text-center text-gray-600 text-sm">
+              Complete {tasks.length - stats.completed} more tasks this week to reach 100%!
+            </div>
+          </div>
         </div>
       </main>
 
+      {/* Toast Notification */}
       {toast.show && (
-        <div className="child-toast">
-          <div style={{fontWeight: "800", marginBottom: "5px"}}>Request Sent!</div>
-          <div style={{fontSize: "14px", color: "#64748B"}}>{toast.message}</div>
+        <div className="fixed bottom-6 right-6 bg-white p-4 rounded-xl shadow-2xl border-l-4 border-[#00C2E0] animate-slideIn">
+          <div className="font-bold text-gray-800 mb-1">Great Job! 🎉</div>
+          <div className="text-sm text-gray-600">{toast.message}</div>
         </div>
       )}
     </div>
   );
 }
+
