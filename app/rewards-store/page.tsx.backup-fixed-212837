@@ -1,0 +1,403 @@
+﻿"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export default function RewardsStorePage() {
+  // PARENT-ONLY REWARDS MANAGEMENT
+  useEffect(() => {
+    const userRole = sessionStorage.getItem("userRole") || "child";
+    
+    if (userRole !== "parent") {
+      alert("Parents only can manage rewards!");
+      router.push("/my-rewards"); // Redirect children to their view-only page
+      return;
+    }
+  }, [router]);
+  const [pendingApprovals, setPendingApprovals] = useState([
+    {
+      id: 1,
+      name: "Video Game Hour",
+      requestedBy: "Alex",
+      points: 50,
+      icon: "fas fa-gamepad",
+      iconBg: "#E0F7FA"
+    }
+  ]);
+
+  const [rewards, setRewards] = useState([
+    { id: 1, name: "New Book", description: "Pick out a brand new book from the bookstore", points: 120, icon: "fas fa-book" },
+    { id: 2, name: "Movie Night Pick", description: "You get to choose the movie for family movie night", points: 75, icon: "fas fa-film" },
+    { id: 3, name: "Ice Cream Trip", description: "A special trip to your favorite ice cream shop", points: 100, icon: "fas fa-ice-cream" },
+    { id: 4, name: "Video Game Hour", description: "One hour of extra video game time", points: 50, icon: "fas fa-gamepad" }
+  ]);
+
+  const [showNewRewardModal, setShowNewRewardModal] = useState(false);
+  const [newReward, setNewReward] = useState({ name: "", description: "", points: "", icon: "fas fa-gift" });
+
+  const pathname = usePathname();
+
+  const navItems = [
+    { href: "/", icon: "fas fa-home", label: "Home" },
+    { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard" },
+    { href: "/parent-dashboard", icon: "fas fa-child", label: "Child View" },
+    { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Management (Parents Only)", active: true },
+    { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
+    { href: "/profile", icon: "fas fa-user", label: "Profile" },
+  ];
+
+  const handleApprove = (approvalId: number) => {
+    setPendingApprovals(pendingApprovals.filter(approval => approval.id !== approvalId));
+    alert("Reward request approved!");
+  };
+
+  const handleReject = (approvalId: number) => {
+    setPendingApprovals(pendingApprovals.filter(approval => approval.id !== approvalId));
+    alert("Reward request rejected.");
+  };
+
+  const handleDeleteReward = (rewardId: number) => {
+    if (confirm("Are you sure you want to delete this reward?")) {
+      setRewards(rewards.filter(reward => reward.id !== rewardId));
+      alert("Reward deleted!");
+    }
+  };
+
+  const handleCreateReward = () => {
+    if (newReward.name && newReward.description && newReward.points) {
+      const newId = rewards.length > 0 ? Math.max(...rewards.map(r => r.id)) + 1 : 1;
+      setRewards([...rewards, {
+        id: newId,
+        name: newReward.name,
+        description: newReward.description,
+        points: parseInt(newReward.points),
+        icon: newReward.icon
+      }]);
+      setNewReward({ name: "", description: "", points: "", icon: "fas fa-gift" });
+      setShowNewRewardModal(false);
+      alert("New reward created!");
+    } else {
+      alert("Please fill in all fields.");
+    }
+  };
+
+  const iconOptions = [
+    { value: "fas fa-book", label: "Book" },
+    { value: "fas fa-film", label: "Movie" },
+    { value: "fas fa-ice-cream", label: "Ice Cream" },
+    { value: "fas fa-gamepad", label: "Game" },
+    { value: "fas fa-gift", label: "Gift" },
+    { value: "fas fa-pizza-slice", label: "Pizza" },
+    { value: "fas fa-tv", label: "TV" },
+    { value: "fas fa-bicycle", label: "Bike" },
+  ];
+
+  return (
+    <div className="dashboard-container flex min-h-screen bg-gray-50">
+      {/* Sidebar Navigation */}
+      <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+        <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
+          <i className="fas fa-smile text-3xl"></i>
+          <span>FamilyTask</span>
+        </div>
+
+        <nav className="space-y-2">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all ${
+                pathname === item.href || item.active
+                  ? "bg-white/20 text-white shadow-lg"
+                  : "text-white/80 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <i className={`${item.icon} w-5 text-center`}></i>
+              <span className="font-medium">{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Go Back Button */}
+        <div className="mt-auto pt-6 border-t border-white/20">
+          <button
+            onClick={() => window.history.back()}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+          >
+            <i className="fas fa-arrow-left"></i>
+            Go Back
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="main-content ml-64 flex-1 p-10">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-10">
+          <div>
+            <h1 className="text-3xl font-black text-[#00C2E0]">Rewards Management</h1>
+            <p className="text-gray-600 mt-2">Manage rewards and approve requests from children</p>
+          </div>
+          <button
+            onClick={() => setShowNewRewardModal(true)}
+            className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg hover:shadow-xl flex items-center gap-3"
+          >
+            <i className="fas fa-plus"></i> Create New Reward
+          </button>
+        </div>
+
+        {/* Reward Approval Section */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-10 border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
+                <i className="fas fa-clock-rotate-left text-white text-xl"></i>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Reward Approvals</h2>
+                <p className="text-gray-600 text-sm">Pending approval requests from children</p>
+              </div>
+            </div>
+            <div className="px-4 py-2 bg-cyan-50 text-cyan-700 rounded-full font-semibold">
+              {pendingApprovals.length} pending
+            </div>
+          </div>
+
+          {pendingApprovals.length > 0 ? (
+            <div className="space-y-4">
+              {pendingApprovals.map((approval) => (
+                <div key={approval.id} className="bg-gradient-to-r from-cyan-50 to-teal-50 border border-cyan-100 rounded-xl p-5 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-2xl"
+                      style={{ backgroundColor: approval.iconBg }}
+                    >
+                      <i className={approval.icon}></i>
+                    </div>
+                    <div>
+                      <div className="font-bold text-gray-800 text-lg">{approval.name}</div>
+                      <div className="text-gray-600">Requested by <span className="font-semibold">{approval.requestedBy}</span></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-5 py-2.5 rounded-full text-lg font-bold flex items-center gap-2">
+                      <i className="fas fa-star text-yellow-300"></i> {approval.points} points
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => handleApprove(approval.id)}
+                        className="w-12 h-12 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all flex items-center justify-center shadow-lg"
+                      >
+                        <i className="fas fa-check text-xl"></i>
+                      </button>
+                      <button
+                        onClick={() => handleReject(approval.id)}
+                        className="w-12 h-12 bg-red-500 text-white rounded-xl hover:bg-red-600 transition-all flex items-center justify-center shadow-lg"
+                      >
+                        <i className="fas fa-times text-xl"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-check-circle text-green-500 text-3xl"></i>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">All Caught Up!</h3>
+              <p className="text-gray-600">No pending reward approvals. Great job!</p>
+            </div>
+          )}
+        </div>
+
+        {/* Reward Store Section */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center">
+                <i className="fas fa-store text-white text-xl"></i>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800">Reward Store</h2>
+                <p className="text-gray-600 text-sm">{rewards.length} rewards available in the shop</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search rewards..."
+                  className="pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                />
+                <i className="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+              </div>
+              <select className="border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                <option>Sort by: Points</option>
+                <option>Sort by: Name</option>
+                <option>Sort by: Popularity</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rewards.map((reward) => (
+              <div key={reward.id} className="bg-gradient-to-br from-white to-gray-50 rounded-2xl border border-gray-200 p-6 hover:border-cyan-300 hover:shadow-xl transition-all duration-300">
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center ${
+                    reward.points <= 50 ? 'bg-green-100' : 
+                    reward.points <= 100 ? 'bg-cyan-100' : 'bg-purple-100'
+                  }`}>
+                    <i className={`${reward.icon} text-2xl ${
+                      reward.points <= 50 ? 'text-green-600' : 
+                      reward.points <= 100 ? 'text-cyan-600' : 'text-purple-600'
+                    }`}></i>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteReward(reward.id)}
+                    className="text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    <i className="fas fa-trash-alt"></i>
+                  </button>
+                </div>
+
+                <h3 className="font-bold text-gray-800 text-xl mb-2">{reward.name}</h3>
+                <p className="text-gray-600 mb-6">{reward.description}</p>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <i className="fas fa-star text-yellow-500"></i>
+                    <span className="font-bold text-gray-800 text-lg">{reward.points} points</span>
+                  </div>
+                  <div className="text-sm text-gray-500">
+                    {reward.points <= 50 ? 'Easy' : reward.points <= 100 ? 'Medium' : 'Premium'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Add Reward Button */}
+          <div className="mt-10 text-center">
+            <button
+              onClick={() => setShowNewRewardModal(true)}
+              className="inline-flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-8 py-4 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg hover:shadow-xl text-lg"
+            >
+              <i className="fas fa-plus-circle"></i>
+              Add More Rewards
+            </button>
+          </div>
+        </div>
+
+        {/* New Reward Modal */}
+        {showNewRewardModal && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
+                    <i className="fas fa-gift text-white text-xl"></i>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-800">Create New Reward</h2>
+                    <p className="text-gray-600">Add a new reward to the store</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowNewRewardModal(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Reward Name</label>
+                  <input
+                    type="text"
+                    value={newReward.name}
+                    onChange={(e) => setNewReward({...newReward, name: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    placeholder="e.g., Movie Night, Ice Cream Trip"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-medium mb-2">Points Cost</label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={newReward.points}
+                      onChange={(e) => setNewReward({...newReward, points: e.target.value})}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                      placeholder="e.g., 50, 100, 150"
+                      min="1"
+                    />
+                    <div className="absolute right-3 top-3 text-gray-500">
+                      <i className="fas fa-star text-yellow-500"></i>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-medium mb-2">Description</label>
+                  <textarea
+                    value={newReward.description}
+                    onChange={(e) => setNewReward({...newReward, description: e.target.value})}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent h-32"
+                    placeholder="Describe the reward in detail..."
+                  />
+                </div>
+
+                <div className="md:col-span-2">
+                  <label className="block text-gray-700 font-medium mb-2">Select Icon</label>
+                  <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                    {iconOptions.map((icon) => (
+                      <button
+                        key={icon.value}
+                        type="button"
+                        onClick={() => setNewReward({...newReward, icon: icon.value})}
+                        className={`p-4 rounded-xl border-2 flex flex-col items-center justify-center gap-2 ${
+                          newReward.icon === icon.value 
+                            ? 'border-cyan-500 bg-cyan-50' 
+                            : 'border-gray-200 hover:border-cyan-300'
+                        }`}
+                      >
+                        <i className={`${icon.value} text-2xl ${
+                          newReward.icon === icon.value ? 'text-cyan-600' : 'text-gray-500'
+                        }`}></i>
+                        <span className="text-xs text-gray-600">{icon.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 mt-10">
+                <button
+                  onClick={handleCreateReward}
+                  className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 text-white py-4 rounded-xl font-bold hover:opacity-90 transition-all text-lg"
+                >
+                  <i className="fas fa-plus-circle mr-2"></i>
+                  Create Reward
+                </button>
+                <button
+                  onClick={() => setShowNewRewardModal(false)}
+                  className="flex-1 bg-gray-100 text-gray-800 py-4 rounded-xl font-bold hover:bg-gray-200 transition-all text-lg"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
+
+
+

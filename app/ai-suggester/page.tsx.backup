@@ -1,18 +1,8 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useRef } from "react";
-
-
-// TODO: Add proper authentication check here
-// For now, this page is parent-only
-// In a real app, check user role/type before rendering
 import { useRouter } from "next/navigation";
 
-
-
-// TODO: Add proper authentication check here
-// For now, this page is parent-only
-// In a real app, check user role/type before rendering
 type Suggestion = {
   id: number;
   title: string;
@@ -143,7 +133,7 @@ export default function AlSuggestorPage() {
     try {
       const newSuggestions = await generateAISuggestions(prompt);
       setSuggestions(prev => [...newSuggestions, ...prev]);
-      showNotification(`?? Generated ${newSuggestions.length} new AI suggestions!`, 'success');
+      showNotification(`🎉 Generated ${newSuggestions.length} new AI suggestions!`, 'success');
       setPrompt("");
     } catch (error) {
       showNotification('Failed to generate suggestions. Please try again.', 'error');
@@ -227,10 +217,9 @@ export default function AlSuggestorPage() {
     
     const suggestion = suggestions.find(s => s.id === suggestionId);
     if (suggestion) {
-      const taskId = Date.now();
       const existingTasks = JSON.parse(localStorage.getItem('familytask-created-tasks') || '[]');
       const newTask = {
-        id: taskId,
+        id: Date.now(),
         title: suggestion.title,
         category: suggestion.category,
         points: suggestion.points,
@@ -240,26 +229,11 @@ export default function AlSuggestorPage() {
         createdAt: new Date().toISOString(),
         source: 'ai-suggester'
       };
-
+      
       existingTasks.push(newTask);
       localStorage.setItem('familytask-created-tasks', JSON.stringify(existingTasks));
-
-      // ALSO save to parent dashboard pending tasks
-      const pendingAITasks = JSON.parse(localStorage.getItem('pendingAITasks') || '[]');
-      const parentTask = {
-        id: taskId,
-        title: suggestion.title,
-        assignedTo: 'Unassigned',
-        points: suggestion.points,
-        dueDate: 'Tomorrow',
-        status: 'pending',
-        description: suggestion.description || 'AI suggested task'
-      };
-
-      localStorage.setItem('pendingAITasks', JSON.stringify([...pendingAITasks, parentTask]));
-      console.log('DEBUG: Task saved to pendingAITasks:', parentTask);
-
-      showNotification('? Task created and sent to parent for approval!', 'success');
+      
+      showNotification(`✅ Task "${suggestion.title}" created! Assign it from the dashboard.`, 'success');
     }
     
     setIsCreatingTask(null);
@@ -273,7 +247,7 @@ export default function AlSuggestorPage() {
       if (!savedSuggestions.some((s: Suggestion) => s.id === suggestionId)) {
         savedSuggestions.push(suggestion);
         localStorage.setItem('familytask-saved-suggestions', JSON.stringify(savedSuggestions));
-        showNotification(`?? "${suggestion.title}" saved to your favorites!`, 'success');
+        showNotification(`💾 "${suggestion.title}" saved to your favorites!`, 'success');
       } else {
         showNotification('This suggestion is already saved.', 'error');
       }
@@ -659,5 +633,3 @@ export default function AlSuggestorPage() {
     </div>
   );
 }
-
-

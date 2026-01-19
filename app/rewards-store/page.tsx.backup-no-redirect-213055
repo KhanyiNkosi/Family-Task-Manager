@@ -7,7 +7,16 @@ import { useRouter } from "next/navigation";
 export default function RewardsStorePage() {
   const router = useRouter();
   
-  // Note: In production, add proper authentication here
+  // PARENT-ONLY REWARDS MANAGEMENT
+  useEffect(() => {
+    const userRole = sessionStorage.getItem("userRole") || "child";
+
+    if (userRole !== "parent") {
+      alert("Parents only can manage rewards!");
+      router.push("/my-rewards"); // Redirect children to their view-only page
+      return;
+    }
+  }, [router]);
 
   const [pendingApprovals, setPendingApprovals] = useState([
     {
@@ -387,4 +396,3 @@ export default function RewardsStorePage() {
     </div>
   );
 }
-

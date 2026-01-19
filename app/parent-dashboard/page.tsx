@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -13,7 +13,7 @@ export default function ParentDashboardPage() {
     { id: "req-1", child: "C", name: "Video Game Hour", requester: "Child", points: 50 }
   ]);
   const [bulletinMessages, setBulletinMessages] = useState([
-    { id: 1, avatar: "C", message: "Can we get pizza for movie night? 🍕" },
+    { id: 1, avatar: "C", message: "Can we get pizza for movie night? ??" },
     { id: 2, avatar: "M", message: "Family movie night this Friday!" }
   ]);
   const [activeTasks, setActiveTasks] = useState([
@@ -52,9 +52,10 @@ export default function ParentDashboardPage() {
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard", active: true },
     { href: "/child-dashboard", icon: "fas fa-child", label: "Child View" },
+  { href: '/ai-tasks', icon: 'fas fa-robot', label: 'AI Tasks' },
     { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Store" },
     { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
-    { href: "/profile", icon: "fas fa-user", label: "Profile" },
+    { href: "/parent-profile", icon: "fas fa-user", label: "Profile" },
   ];
 
   // Task approval functions - ADDED
@@ -131,6 +132,51 @@ export default function ParentDashboardPage() {
       setTimeout(() => alert(`Task "${task.name}" completed! +${task.points} points`), 100);
     }
   };
+
+
+  // Load pending AI tasks from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingAITasks = JSON.parse(localStorage.getItem('pendingAITasks') || '[]');
+
+      console.log('DEBUG: Found pending AI tasks:', pendingAITasks);
+
+      if (pendingAITasks.length > 0) {
+        setPendingTasks(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const newTasks = pendingAITasks.filter((task: any) => !existingIds.has(task.id));
+
+          if (newTasks.length > 0) {
+            console.log('DEBUG: Adding new AI tasks:', newTasks);
+            return [...prev, ...newTasks];
+          }
+          return prev;
+        });
+      }
+    }
+  }, []);
+  // Load pending AI tasks from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingAITasks = JSON.parse(localStorage.getItem('pendingAITasks') || '[]');
+      
+      console.log('DEBUG: Found pending AI tasks:', pendingAITasks);
+      
+      if (pendingAITasks.length > 0) {
+        setPendingTasks(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const newTasks = pendingAITasks.filter((task: any) => !existingIds.has(task.id));
+          
+          if (newTasks.length > 0) {
+            console.log('DEBUG: Adding new AI tasks:', newTasks);
+            return [...prev, ...newTasks];
+          }
+          return prev;
+        });
+      }
+    }
+  }, []);
+
 
   return (
     <div className="dashboard-container flex min-h-screen bg-gray-50">
@@ -266,7 +312,7 @@ export default function ParentDashboardPage() {
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                           task.assignedTo === "Alex" ? "bg-blue-100" : "bg-pink-100"
                         }`}>
-                          <span className="text-xl">{task.assignedTo === "Alex" ? "👦" : "👧"}</span>
+                          <span className="text-xl">{task.assignedTo === "Alex" ? "??" : "??"}</span>
                         </div>
                         <div>
                           <div className="font-bold text-gray-800 text-lg">{task.assignedTo}</div>
@@ -503,4 +549,8 @@ export default function ParentDashboardPage() {
     </div>
   );
 }
+
+
+
+
 
