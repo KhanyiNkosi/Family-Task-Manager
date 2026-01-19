@@ -114,17 +114,17 @@ export default function ViewAITasksPage() {
           <div className="flex border-b border-gray-200">
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`px-6 py-3 font-medium text-lg ${activeTab === 'tasks' ? 'border-b-2 border-[#00C2E0] text-[#006372]' : 'text-gray-500 hover:text-gray-700'}`}
+              className={\px-6 py-3 font-medium text-lg \\}
             >
               <i className="fas fa-tasks mr-2"></i>
-              Created Tasks ({createdTasks.length})
+              Created Tasks (\)
             </button>
             <button
               onClick={() => setActiveTab('suggestions')}
-              className={`px-6 py-3 font-medium text-lg ${activeTab === 'suggestions' ? 'border-b-2 border-[#00C2E0] text-[#006372]' : 'text-gray-500 hover:text-gray-700'}`}
+              className={\px-6 py-3 font-medium text-lg \\}
             >
               <i className="fas fa-lightbulb mr-2"></i>
-              Saved Suggestions ({savedSuggestions.length})
+              Saved Suggestions (\)
             </button>
           </div>
         </div>
@@ -153,7 +153,7 @@ export default function ViewAITasksPage() {
                   <div key={task.id} className="bg-white rounded-xl shadow-lg p-6 border border-gray-100 hover:shadow-xl transition-shadow">
                     <div className="flex justify-between items-start mb-4">
                       <div>
-                        <span className={`inline-block text-sm font-medium px-3 py-1 rounded-full mb-3 ${task.category === 'Chores' ? 'bg-blue-100 text-blue-800' : task.category === 'Education' ? 'bg-green-100 text-green-800' : task.category === 'Family' ? 'bg-purple-100 text-purple-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                        <span className={\inline-block text-sm font-medium px-3 py-1 rounded-full mb-3 \\}>
                           {task.category}
                         </span>
                         <h3 className="text-xl font-bold text-gray-800 mb-2">{task.title}</h3>
@@ -168,7 +168,7 @@ export default function ViewAITasksPage() {
                     <div className="space-y-3 mb-6">
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500">Status:</span>
-                        <span className={`font-medium ${task.status === 'completed' ? 'text-green-600' : task.status === 'assigned' ? 'text-blue-600' : 'text-yellow-600'}`}>
+                        <span className={\ont-medium \\}>
                           {task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                         </span>
                       </div>
@@ -192,7 +192,7 @@ export default function ViewAITasksPage() {
                       <button
                         onClick={() => handleAssignTask(task.id)}
                         disabled={task.status === 'assigned' || task.status === 'completed'}
-                        className={`flex-1 py-2.5 rounded-lg font-medium transition ${task.status === 'assigned' || task.status === 'completed' ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : 'bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90'}`}
+                        className={\lex-1 py-2.5 rounded-lg font-medium transition \\}
                       >
                         {task.status === 'assigned' ? 'Already Assigned' : task.status === 'completed' ? 'Completed' : 'Assign Task'}
                       </button>
