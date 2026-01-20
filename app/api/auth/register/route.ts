@@ -1,51 +1,53 @@
-﻿// app/api/auth/register/route.ts
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcryptjs';
+import { NextResponse } from "next/server";
 
-const prisma = new PrismaClient();
+// Simple in-memory user storage for demo
+const demoUsers = [
+  { id: "1", email: "parent@example.com", name: "Parent User", role: "parent" }
+];
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { email, name, password, role } = await request.json();
-
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email }
-    });
-
-    if (existingUser) {
+    const { email, password, name, role = "parent" } = await request.json();
+    
+    // Basic validation
+    if (!email || !password) {
       return NextResponse.json(
-        { error: 'User already exists' },
+        { error: "Email and password are required" },
         { status: 400 }
       );
     }
-
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        name,
-        password: hashedPassword,
-        role: role || 'CHILD',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}&backgroundColor=00C2E0`
-      }
+    
+    // Check if user already exists (demo logic)
+    const existingUser = demoUsers.find(user => user.email === email);
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 409 }
+      );
+    }
+    
+    // Create new user (in real app, hash the password!)
+    const newUser = {
+      id: (demoUsers.length + 1).toString(),
+      email,
+      name: name || email.split('@')[0],
+      role,
+      createdAt: new Date().toISOString()
+    };
+    
+    // In demo, just add to array (in real app, save to database)
+    demoUsers.push(newUser);
+    
+    return NextResponse.json({ 
+      success: true, 
+      user: { id: newUser.id, email: newUser.email, name: newUser.name, role: newUser.role },
+      message: "Registration successful" 
     });
-
-    // Remove password from response
-    const { password: _, ...userWithoutPassword } = user;
-
-    return NextResponse.json(
-      { message: 'User created successfully', user: userWithoutPassword },
-      { status: 201 }
-    );
+    
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error("Registration error:", error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

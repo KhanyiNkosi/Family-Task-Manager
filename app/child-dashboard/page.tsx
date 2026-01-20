@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import LogoutButton from "@/app/components/LogoutButton";
 
 export default function ChildDashboardPage() {
   const router = useRouter();
@@ -155,27 +156,17 @@ export default function ChildDashboardPage() {
           ))}
         </nav>
         
-        <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
+                <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
           <button
             onClick={() => window.history.back()}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
           >
             <i className="fas fa-arrow-left"></i>
-            Go Back
+            <span>Go Back</span>
           </button>
           
-          <button
-            onClick={() => {
-              if (confirm("Are you sure you want to logout?")) {
-                localStorage.removeItem("userRole");
-                router.push("/login");
-              }
-            }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-            Logout
-          </button>
+          {/* Logout Button */}
+          <LogoutButton variant="sidebar" />
         </div>
       </aside>
 
@@ -383,4 +374,5 @@ export default function ChildDashboardPage() {
     </div>
   );
 }
+
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -13,21 +13,18 @@ export default function ParentDashboardPage() {
     { id: "req-1", child: "C", name: "Video Game Hour", requester: "Child", points: 50 }
   ]);
   const [bulletinMessages, setBulletinMessages] = useState([
-    { id: 1, avatar: "C", message: "Can we get pizza for movie night? 🍕" },
+    { id: 1, avatar: "C", message: "Can we get pizza for movie night? ??" },
     { id: 2, avatar: "M", message: "Family movie night this Friday!" }
   ]);
   const [activeTasks, setActiveTasks] = useState([
-    { id: 1, name: "Homework", points: 10, assignedTo: "Alex" },
-    { id: 2, name: "Clean Room", points: 15, assignedTo: "Sarah" }
+    { id: 1, name: "Homework", points: 10 }
   ]);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskPoints, setNewTaskPoints] = useState("");
   const [newBulletinMessage, setNewBulletinMessage] = useState("");
-  const [userRole, setUserRole] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // TASK APPROVAL STATE
+  // TASK APPROVAL STATE - ADDED
   const [pendingTasks, setPendingTasks] = useState([
     {
       id: 1,
@@ -39,7 +36,7 @@ export default function ParentDashboardPage() {
       description: "Finish the solar system model for science class"
     },
     {
-      id: 2,
+      id: 2, 
       title: "Practice Piano",
       assignedTo: "Sarah",
       points: 15,
@@ -50,31 +47,29 @@ export default function ParentDashboardPage() {
   ]);
 
   const pathname = usePathname();
+
   const router = useRouter();
 
-  // FIXED: Permission check with proper hydration handling
+  // PERMISSION CHECK - Parent Dashboard Access Only
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const role = sessionStorage.getItem('userRole');
-      setUserRole(role);
+      const userRole = sessionStorage.getItem('userRole') || 'child';
+      console.log('Parent Dashboard - User role:', userRole);
       
-      console.log('Parent Dashboard - User role:', role);
-
       // Only allow parent access
-      if (role !== 'parent') {
-        console.warn('Access denied to parent dashboard. User role:', role);
-
+      if (userRole !== 'parent') {
+        console.warn('Access denied to parent dashboard. User role:', userRole);
+        
         // Redirect based on role
-        if (role === 'child') {
+        if (userRole === 'child') {
           router.push('/child-dashboard');
         } else {
-          router.push('/login');
+          router.push('/');
         }
         return;
       }
-
+      
       console.log('Parent access granted to dashboard');
-      setIsLoading(false);
     }
   }, [router]);
 
@@ -82,21 +77,20 @@ export default function ParentDashboardPage() {
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard", active: true },
     { href: "/child-dashboard", icon: "fas fa-child", label: "Child View" },
-    { href: '/ai-tasks', icon: 'fas fa-robot', label: 'AI Tasks' },
+  { href: '/ai-tasks', icon: 'fas fa-robot', label: 'AI Tasks' },
     { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Store" },
     { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
     { href: "/parent-profile", icon: "fas fa-user", label: "Profile" },
   ];
 
-  // Task approval functions
+  // Task approval functions - ADDED
   const handleApproveTask = (taskId: number) => {
-    setPendingTasks(pendingTasks.map(task =>
+    setPendingTasks(pendingTasks.map(task => 
       task.id === taskId ? { ...task, status: "approved" } : task
     ));
     setTimeout(() => {
       setPendingTasks(pendingTasks.filter(task => task.id !== taskId));
-      setTotalPoints(prev => prev + (pendingTasks.find(t => t.id === taskId)?.points || 0));
-      alert("Task approved! Points awarded.");
+      alert("Task approved! Points awarded to child.");
     }, 300);
   };
 
@@ -116,9 +110,8 @@ export default function ParentDashboardPage() {
 
     const newMessage = {
       id: bulletinMessages.length + 1,
-      avatar: "P", // Parent
-      message: newBulletinMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      avatar: "M",
+      message: newBulletinMessage
     };
 
     setBulletinMessages([...bulletinMessages, newMessage]);
@@ -131,61 +124,47 @@ export default function ParentDashboardPage() {
     const newTask = {
       id: activeTasks.length + 1,
       name: newTaskName,
-      points: parseInt(newTaskPoints),
-      assignedTo: "Unassigned"
+      points: parseInt(newTaskPoints)
     };
 
     setActiveTasks([...activeTasks, newTask]);
-    setTasksPending(prev => prev + 1);
     setNewTaskName("");
     setNewTaskPoints("");
     setShowTaskModal(false);
-    alert(`Task "${newTaskName}" created for ${newTaskPoints} points!`);
   };
 
   const approveRequest = (requestId: string) => {
     const request = requests.find(req => req.id === requestId);
     if (request) {
-      setTotalPoints(prev => prev - request.points);
+      setTotalPoints(totalPoints - request.points);
       setRequests(requests.filter(req => req.id !== requestId));
-      alert(`Approved "${request.name}"! ${request.points} points deducted.`);
+      setTimeout(() => alert(`Approved "${request.name}"!`), 100);
     }
   };
 
   const rejectRequest = (requestId: string) => {
     setRequests(requests.filter(req => req.id !== requestId));
-    alert("Request rejected.");
+    setTimeout(() => alert("Request rejected."), 100);
   };
 
   const markTaskComplete = (taskId: number) => {
     const task = activeTasks.find(t => t.id === taskId);
     if (task) {
-      setTotalPoints(prev => prev + task.points);
-      setTasksCompleted(prev => prev + 1);
-      setTasksPending(prev => prev - 1);
+      setTotalPoints(totalPoints + task.points);
+      setTasksCompleted(tasksCompleted + 1);
+      setTasksPending(tasksPending - 1);
       setActiveTasks(activeTasks.filter(t => t.id !== taskId));
-      
-      // Add to pending tasks for approval
-      const pendingTask = {
-        id: Date.now(),
-        title: task.name,
-        assignedTo: task.assignedTo,
-        points: task.points,
-        dueDate: "Now",
-        status: "pending",
-        description: `Completed: ${task.name}`
-      };
-      
-      setPendingTasks(prev => [...prev, pendingTask]);
-      alert(`Task "${task.name}" marked complete! Awaiting approval for ${task.points} points.`);
+      setTimeout(() => alert(`Task "${task.name}" completed! +${task.points} points`), 100);
     }
   };
+
 
   // Load pending AI tasks from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const pendingAITasks = JSON.parse(localStorage.getItem('pendingAITasks') || '[]');
-      console.log('Loaded AI tasks:', pendingAITasks);
+
+      console.log('DEBUG: Found pending AI tasks:', pendingAITasks);
 
       if (pendingAITasks.length > 0) {
         setPendingTasks(prev => {
@@ -193,33 +172,40 @@ export default function ParentDashboardPage() {
           const newTasks = pendingAITasks.filter((task: any) => !existingIds.has(task.id));
 
           if (newTasks.length > 0) {
-            console.log('Adding new AI tasks:', newTasks);
+            console.log('DEBUG: Adding new AI tasks:', newTasks);
             return [...prev, ...newTasks];
           }
           return prev;
         });
-        
-        // Clear after loading
-        localStorage.removeItem('pendingAITasks');
+      }
+    }
+  }, []);
+  // Load pending AI tasks from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingAITasks = JSON.parse(localStorage.getItem('pendingAITasks') || '[]');
+      
+      console.log('DEBUG: Found pending AI tasks:', pendingAITasks);
+      
+      if (pendingAITasks.length > 0) {
+        setPendingTasks(prev => {
+          const existingIds = new Set(prev.map(t => t.id));
+          const newTasks = pendingAITasks.filter((task: any) => !existingIds.has(task.id));
+          
+          if (newTasks.length > 0) {
+            console.log('DEBUG: Adding new AI tasks:', newTests);
+            return [...prev, ...newTasks];
+          }
+          return prev;
+        });
       }
     }
   }, []);
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading parent dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="dashboard-container flex min-h-screen bg-gray-50">
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation - CONSISTENT WITH OTHER PAGES */}
       <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
         <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
           <i className="fas fa-smile text-3xl"></i>
@@ -243,53 +229,37 @@ export default function ParentDashboardPage() {
           ))}
         </nav>
 
-        {/* Sidebar Footer */}
+        {/* Go Back Button */}
         <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
-          <div className="p-3 bg-white/10 rounded-xl">
-            <p className="text-sm text-white/80">Logged in as:</p>
-            <p className="font-bold text-white">Parent</p>
-          </div>
-          
-          <button
-            onClick={() => window.history.back()}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
-          >
-            <i className="fas fa-arrow-left"></i>
-            Go Back
-          </button>
-
-          <button
-            onClick={() => {
-              if (confirm("Are you sure you want to logout?")) {
-                sessionStorage.removeItem('userRole');
-                sessionStorage.removeItem('userEmail');
-                sessionStorage.removeItem('userName');
-                router.push('/login');
-              }
-            }}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
-          >
-            <i className="fas fa-sign-out-alt"></i>
-            Logout
-          </button>
-        </div>
+  <button
+    onClick={() => window.history.back()}
+    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+  >
+    <i className="fas fa-arrow-left"></i>
+    Go Back
+  </button>
+  
+  <button
+    onClick={() => {
+      if (confirm("Are you sure you want to logout?")) {
+        alert("Logging out..."); // In real app: router.push("/login");
+      }
+    }}
+    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
+  >
+    <i className="fas fa-sign-out-alt"></i>
+    Logout
+  </button>
+</div>
       </aside>
 
       {/* Main Content */}
-      <main className="main-content ml-64 flex-1 p-8">
+      <main className="main-content ml-64 flex-1 p-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
           <div>
             <h1 className="text-3xl font-bold text-[#006372]">Parent Dashboard</h1>
-            <p className="text-gray-600 mt-1">Manage your family tasks and rewards</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                Role: {userRole || 'Not set'}
-              </span>
-              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                {pendingTasks.length} tasks pending approval
-              </span>
-            </div>
+            <p className="text-gray-600 mt-2">Manage your family tasks and rewards</p>
           </div>
           <div className="mt-4 md:mt-0 flex items-center gap-4">
             <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg">
@@ -302,8 +272,8 @@ export default function ParentDashboardPage() {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-gray-500 text-sm font-medium">Tasks Completed</div>
@@ -314,8 +284,8 @@ export default function ParentDashboardPage() {
               </div>
             </div>
           </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition">
+          
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-gray-500 text-sm font-medium">Tasks Pending</div>
@@ -326,8 +296,8 @@ export default function ParentDashboardPage() {
               </div>
             </div>
           </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100 hover:shadow-lg transition">
+          
+          <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-gray-500 text-sm font-medium">Active Tasks</div>
@@ -340,8 +310,8 @@ export default function ParentDashboardPage() {
           </div>
         </div>
 
-        {/* Task Approval Section */}
-        <div className="mb-8 bg-white rounded-2xl shadow-xl p-6 border border-gray-100">
+        {/* TASK APPROVAL SECTION - ADDED BELOW STATS CARDS */}
+        <div className="mb-10 bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl flex items-center justify-center">
@@ -367,7 +337,7 @@ export default function ParentDashboardPage() {
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                           task.assignedTo === "Alex" ? "bg-blue-100" : "bg-pink-100"
                         }`}>
-                          <span className="text-xl">{task.assignedTo.charAt(0)}</span>
+                          <span className="text-xl">{task.assignedTo === "Alex" ? "??" : "??"}</span>
                         </div>
                         <div>
                           <div className="font-bold text-gray-800 text-lg">{task.assignedTo}</div>
@@ -376,7 +346,7 @@ export default function ParentDashboardPage() {
                       </div>
                       <h3 className="font-bold text-gray-800 text-xl mb-2">{task.title}</h3>
                       <p className="text-gray-600 mb-4">{task.description}</p>
-
+                      
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2">
@@ -387,7 +357,7 @@ export default function ParentDashboardPage() {
                             Due: <span className="font-medium">{task.dueDate}</span>
                           </div>
                         </div>
-
+                        
                         <div className="flex gap-3">
                           <button
                             onClick={() => handleApproveTask(task.id)}
@@ -437,19 +407,15 @@ export default function ParentDashboardPage() {
 
             <div className="space-y-4">
               {activeTasks.map(task => (
-                <div key={task.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between hover:bg-gray-100 transition">
+                <div key={task.id} className="bg-gray-50 p-4 rounded-xl border border-gray-200 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-cyan-100 rounded-lg flex items-center justify-center">
                       <i className="fas fa-tasks text-cyan-600"></i>
                     </div>
                     <div>
                       <div className="font-medium">{task.name}</div>
-                      <div className="text-sm text-gray-600 flex items-center gap-2">
-                        <span className="flex items-center gap-1">
-                          <i className="fas fa-star text-yellow-500"></i> {task.points} points
-                        </span>
-                        <span>•</span>
-                        <span>Assigned to: {task.assignedTo}</span>
+                      <div className="text-sm text-gray-600 flex items-center gap-1">
+                        <i className="fas fa-star text-yellow-500"></i> {task.points} points
                       </div>
                     </div>
                   </div>
@@ -468,30 +434,29 @@ export default function ParentDashboardPage() {
               <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <i className="fas fa-bullhorn text-purple-500"></i> Family Bulletin
               </h3>
-              <div className="space-y-4 mb-4">
+              <div className="space-y-4">
                 {bulletinMessages.map(msg => (
-                  <div key={msg.id} className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition">
+                  <div key={msg.id} className="bg-white border border-gray-200 rounded-xl p-4">
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center font-bold">
                         {msg.avatar}
                       </div>
                       <div className="flex-1">
                         <p className="text-gray-800">{msg.message}</p>
-                        <p className="text-sm text-gray-500 mt-1">{msg.timestamp || "Just now"}</p>
+                        <p className="text-sm text-gray-500 mt-1">Just now</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-
-              <div className="flex gap-2">
+              
+              <div className="mt-4 flex gap-2">
                 <input
                   type="text"
                   value={newBulletinMessage}
                   onChange={(e) => setNewBulletinMessage(e.target.value)}
                   placeholder="Post a message to the family..."
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                  onKeyPress={(e) => e.key === 'Enter' && postBulletin()}
                 />
                 <button
                   onClick={postBulletin}
@@ -505,17 +470,12 @@ export default function ParentDashboardPage() {
 
           {/* Right column - Reward Requests */}
           <div className="bg-white rounded-2xl shadow-lg p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Reward Requests</h2>
-              <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                {requests.length} pending
-              </span>
-            </div>
-
+            <h2 className="text-xl font-bold text-gray-800 mb-6">Reward Requests</h2>
+            
             {requests.length > 0 ? (
               <div className="space-y-4">
                 {requests.map(req => (
-                  <div key={req.id} className="border border-gray-200 rounded-xl p-5 hover:shadow-sm transition">
+                  <div key={req.id} className="border border-gray-200 rounded-xl p-5">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center">
@@ -533,7 +493,7 @@ export default function ParentDashboardPage() {
                         </div>
                       </div>
                     </div>
-
+                    
                     <div className="flex gap-3 mt-4">
                       <button
                         onClick={() => approveRequest(req.id)}
@@ -567,7 +527,7 @@ export default function ParentDashboardPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
             <div className="bg-white rounded-2xl p-8 w-full max-w-md">
               <h2 className="text-2xl font-bold text-gray-800 mb-6">Create New Task</h2>
-
+              
               <div className="space-y-4">
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Task Name</label>
@@ -579,7 +539,7 @@ export default function ParentDashboardPage() {
                     placeholder="e.g., Clean room, Homework"
                   />
                 </div>
-
+                
                 <div>
                   <label className="block text-gray-700 font-medium mb-1">Points Value</label>
                   <input
@@ -614,3 +574,4 @@ export default function ParentDashboardPage() {
     </div>
   );
 }
+

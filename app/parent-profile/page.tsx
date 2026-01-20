@@ -11,25 +11,40 @@ export default function ParentProfilePage() {
   const [taskApproval, setTaskApproval] = useState(true);
   const [aiSuggestions, setAiSuggestions] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [userRole, setUserRole] = useState<string>("loading");
   const router = useRouter();
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-    // PERMISSION CHECK - PARENT ONLY ACCESS (MONITOR ONLY)
+  // FIXED PERMISSION CHECK - Only parents can access
   useEffect(() => {
-    const userRole = sessionStorage.getItem("userRole") || "child";
-    
-    if (userRole !== "parent") {
-      console.warn("Access denied: Parent-only monitoring area");
-      router.push("/child-dashboard");
-      return;
+    if (isClient) {
+      const userRole = sessionStorage.getItem("userRole"); const role = userRole === null || userRole === undefined ? null : userRole;
+      setUserRole(role);
+      
+      console.log("Current user role:", role);
+      
+      // ONLY allow "parent" role to access parent-profile
+      // If not parent, redirect to appropriate page
+      if (role !== "parent") {
+        console.warn("Access denied: Parent-only area. User role:", role);
+        
+        // If child, redirect to child dashboard
+        if (role === "child") {
+          router.push("/child-dashboard");
+        } 
+        // If no role or other role, redirect to home
+        else {
+          router.push("/");
+        }
+        return;
+      }
+      
+      console.log("Parent access granted to parent-profile");
     }
-    
-    // Parents can only monitor, not act as children
-    console.log("Parent in monitoring mode - read only access to child data");
-  }, [router]);
+  }, [isClient, router]);
 
   const avatars = [
     { id: "parent", emoji: "👨‍👩‍👧‍👦", label: "Family" },
@@ -38,19 +53,77 @@ export default function ParentProfilePage() {
     { id: "leader", emoji: "👑", label: "Leader" },
   ];
 
+  // Add avatar selection handler with logging
+  const handleAvatarSelect = (avatarId: string) => {
+    console.log("Avatar selected:", avatarId);
+    setSelectedAvatar(avatarId);
+    
+    // Optional: Save to localStorage
+    if (isClient) {
+      localStorage.setItem("parentAvatar", avatarId);
+    }
+  };
+
   const navItems = [
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/parent-dashboard", icon: "fas fa-th-large", label: "My Dashboard" },
     { href: "/rewards-store", icon: "fas fa-gift", label: "Rewards Store" },
-    
   ];
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
-      alert("Logged out! (In a real app, this would clear session)");
+      // Clear session data
+      if (isClient) {
+        sessionStorage.removeItem("userRole");
+        localStorage.removeItem("parentAvatar");
+      }
+      alert("Logged out!");
       router.push("/");
     }
   };
+
+  // Show loading while checking permissions
+  if (userRole === "loading") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-[#00C2E0] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking permissions...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show access denied message if not parent
+  if (userRole !== "parent") {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-2xl shadow-lg">
+          <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i className="fas fa-lock text-red-500 text-3xl"></i>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">Access Denied</h2>
+          <p className="text-gray-600 mb-6">
+            This area is for parents only. Please log in with a parent account.
+          </p>
+          <div className="space-y-3">
+            <Link
+              href="/"
+              className="block w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold text-center"
+            >
+              Go to Home
+            </Link>
+            <button
+              onClick={handleLogout}
+              className="block w-full bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 transition font-bold"
+            >
+              Switch Account
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -104,7 +177,7 @@ export default function ParentProfilePage() {
             </div>
             <div className="user-avatar-small w-10 h-10 rounded-full bg-[#E0F7FA] text-[#00C2E0] flex items-center justify-center font-bold border border-[#B2EBF2]">
               {/* Only render emoji on client side */}
-              {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji.charAt(0) || "👨") : "P"}
+              {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji || "👨") : "P"}
             </div>
           </div>
         </header>
@@ -167,7 +240,7 @@ export default function ParentProfilePage() {
                         {avatars.map((avatar) => (
                           <button
                             key={avatar.id}
-                            onClick={() => setSelectedAvatar(avatar.id)}
+                            onClick={() => handleAvatarSelect(avatar.id)}
                             className={`avatar-option w-16 h-16 rounded-xl flex items-center justify-center text-3xl transition-all ${
                               selectedAvatar === avatar.id
                                 ? "ring-4 ring-[#00C2E0] bg-[#E0F7FA] shadow-md"
@@ -183,7 +256,7 @@ export default function ParentProfilePage() {
                     </div>
                   </div>
 
-                  {/* Stats Section - Remaining code stays the same */}
+                  {/* Stats Section */}
                   <div className="flex-1">
                     <h2 className="text-2xl font-black text-gray-800 mb-6">Family Overview</h2>
                     
@@ -249,7 +322,7 @@ export default function ParentProfilePage() {
             </div>
           )}
 
-          {/* Family Tab Content - Remaining code stays the same */}
+          {/* Family Tab Content */}
           {activeTab === "family" && (
             <div className="family-content">
               <div className="family-card bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8">
@@ -288,7 +361,7 @@ export default function ParentProfilePage() {
             </div>
           )}
 
-          {/* Settings Tab Content - Remaining code stays the same */}
+          {/* Settings Tab Content */}
           {activeTab === "settings" && (
             <div className="settings-content">
               <div className="settings-card bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8">
@@ -351,8 +424,4 @@ export default function ParentProfilePage() {
     </div>
   );
 }
-
-
-
-
 
