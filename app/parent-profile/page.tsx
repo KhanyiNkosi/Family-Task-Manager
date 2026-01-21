@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -22,7 +22,7 @@ export default function ParentProfilePage() {
   useEffect(() => {
     if (isClient) {
       const userRole = sessionStorage.getItem("userRole"); const role = userRole === null || userRole === undefined ? null : userRole;
-      setUserRole(role);
+      setUserRole(role || "");
       
       console.log("Current user role:", role);
       
@@ -47,10 +47,10 @@ export default function ParentProfilePage() {
   }, [isClient, router]);
 
   const avatars = [
-    { id: "parent", emoji: "👨‍👩‍👧‍👦", label: "Family" },
-    { id: "manager", emoji: "👔", label: "Manager" },
-    { id: "teacher", emoji: "👨‍🏫", label: "Teacher" },
-    { id: "leader", emoji: "👑", label: "Leader" },
+    { id: "parent", emoji: "???????????", label: "Family" },
+    { id: "manager", emoji: "??", label: "Manager" },
+    { id: "teacher", emoji: "?????", label: "Teacher" },
+    { id: "leader", emoji: "??", label: "Leader" },
   ];
 
   // Add avatar selection handler with logging
@@ -177,7 +177,7 @@ export default function ParentProfilePage() {
             </div>
             <div className="user-avatar-small w-10 h-10 rounded-full bg-[#E0F7FA] text-[#00C2E0] flex items-center justify-center font-bold border border-[#B2EBF2]">
               {/* Only render emoji on client side */}
-              {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji || "👨") : "P"}
+              {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji || "??") : "P"}
             </div>
           </div>
         </header>
@@ -223,7 +223,7 @@ export default function ParentProfilePage() {
                     <div className="relative mb-6">
                       <div className="w-48 h-48 bg-gradient-to-br from-[#006372] to-[#004955] rounded-2xl flex items-center justify-center text-9xl text-white mb-4 mx-auto">
                         {/* Only render emoji on client side */}
-                        {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji || "👨‍👩‍👧‍👦") : "F"}
+                        {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji || "???????????") : "F"}
                       </div>
                       <button className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-lg hover:bg-gray-50 transition">
                         <i className="fas fa-camera text-[#00C2E0]"></i>
@@ -330,9 +330,9 @@ export default function ParentProfilePage() {
                 
                 <div className="space-y-4">
                   {[
-                    { name: "Alex (Child)", role: "Task Master", points: "1,250", tasks: "47", avatar: "👦" },
-                    { name: "Emma (Child)", role: "Reward Hunter", points: "980", tasks: "32", avatar: "👧" },
-                    { name: "Parent Assistant", role: "Helper", points: "500", tasks: "15", avatar: "👨‍🏫" },
+                    { name: "Alex (Child)", role: "Task Master", points: "1,250", tasks: "47", avatar: "??" },
+                    { name: "Emma (Child)", role: "Reward Hunter", points: "980", tasks: "32", avatar: "??" },
+                    { name: "Parent Assistant", role: "Helper", points: "500", tasks: "15", avatar: "?????" },
                   ].map((member, index) => (
                     <div key={index} className="family-member flex items-center gap-4 p-4 border border-[#e2e8f0] rounded-xl hover:bg-[#f8fafc] transition">
                       <div className="member-avatar w-16 h-16 bg-[#E0F7FA] rounded-full flex items-center justify-center text-3xl">

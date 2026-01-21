@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -193,7 +193,7 @@ export default function ParentDashboardPage() {
           const newTasks = pendingAITasks.filter((task: any) => !existingIds.has(task.id));
           
           if (newTasks.length > 0) {
-            console.log('DEBUG: Adding new AI tasks:', newTests);
+            console.log('DEBUG: Adding new AI tasks:', newTasks);
             return [...prev, ...newTasks];
           }
           return prev;
@@ -574,4 +574,5 @@ export default function ParentDashboardPage() {
     </div>
   );
 }
+
 

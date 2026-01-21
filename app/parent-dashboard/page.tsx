@@ -4,22 +4,58 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+// Define interfaces
+interface BulletinMessage {
+  id: number;
+  avatar: string;
+  message: string;
+  timestamp: string;
+}
+
+interface Task {
+  id: number;
+  name: string;
+  points: number;
+  assignedTo: string;
+}
+
+interface PendingTask {
+  id: number;
+  title: string;
+  assignedTo: string;
+  points: number;
+  dueDate: string;
+  status: "pending" | "approved";
+  description: string;
+}
+
+interface RewardRequest {
+  id: string;
+  child: string;
+  name: string;
+  requester: string;
+  points: number;
+}
+
 export default function ParentDashboardPage() {
-  const [activeView, setActiveView] = useState("dashboard");
   const [tasksCompleted, setTasksCompleted] = useState(3);
   const [tasksPending, setTasksPending] = useState(1);
   const [totalPoints, setTotalPoints] = useState(212);
-  const [requests, setRequests] = useState([
+  const [requests, setRequests] = useState<RewardRequest[]>([
     { id: "req-1", child: "C", name: "Video Game Hour", requester: "Child", points: 50 }
   ]);
-  const [bulletinMessages, setBulletinMessages] = useState([
-    { id: 1, avatar: "C", message: "Can we get pizza for movie night? 🍕" },
-    { id: 2, avatar: "M", message: "Family movie night this Friday!" }
+  
+  // FIXED: Added timestamp property
+  const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([
+    { id: 1, avatar: "C", message: "Can we get pizza for movie night? 🍕", timestamp: "2:30 PM" },
+    { id: 2, avatar: "M", message: "Family movie night this Friday!", timestamp: "1:45 PM" }
   ]);
-  const [activeTasks, setActiveTasks] = useState([
+  
+  const [activeTasks, setActiveTasks] = useState<Task[]>([
     { id: 1, name: "Homework", points: 10, assignedTo: "Alex" },
     { id: 2, name: "Clean Room", points: 15, assignedTo: "Sarah" }
   ]);
+  
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskPoints, setNewTaskPoints] = useState("");
@@ -28,7 +64,7 @@ export default function ParentDashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   // TASK APPROVAL STATE
-  const [pendingTasks, setPendingTasks] = useState([
+  const [pendingTasks, setPendingTasks] = useState<PendingTask[]>([
     {
       id: 1,
       title: "Complete Science Project",
@@ -107,14 +143,10 @@ export default function ParentDashboardPage() {
     }
   };
 
-  const switchView = (viewName: string) => {
-    setActiveView(viewName);
-  };
-
   const postBulletin = () => {
     if (!newBulletinMessage.trim()) return;
 
-    const newMessage = {
+    const newMessage: BulletinMessage = {
       id: bulletinMessages.length + 1,
       avatar: "P", // Parent
       message: newBulletinMessage,
@@ -128,7 +160,7 @@ export default function ParentDashboardPage() {
   const saveNewTask = () => {
     if (!newTaskName.trim() || !newTaskPoints.trim()) return;
 
-    const newTask = {
+    const newTask: Task = {
       id: activeTasks.length + 1,
       name: newTaskName,
       points: parseInt(newTaskPoints),
@@ -166,7 +198,7 @@ export default function ParentDashboardPage() {
       setActiveTasks(activeTasks.filter(t => t.id !== taskId));
       
       // Add to pending tasks for approval
-      const pendingTask = {
+      const pendingTask: PendingTask = {
         id: Date.now(),
         title: task.name,
         assignedTo: task.assignedTo,
@@ -477,7 +509,7 @@ export default function ParentDashboardPage() {
                       </div>
                       <div className="flex-1">
                         <p className="text-gray-800">{msg.message}</p>
-                        <p className="text-sm text-gray-500 mt-1">{msg.timestamp || "Just now"}</p>
+                        <p className="text-sm text-gray-500 mt-1">{msg.timestamp}</p>
                       </div>
                     </div>
                   </div>
