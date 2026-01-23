@@ -49,3 +49,7 @@ coverage/
 
 # Project specific
 test-role.html
+.json.backup
+.json.corrupted-backup
+*.config.ts.backup
+*.config.js.backup

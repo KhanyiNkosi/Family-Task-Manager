@@ -9,7 +9,7 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-console.log('✅ Database URL loaded successfully');
+console.log('✅ Database URLs loaded successfully');
 
 module.exports = {
   datasource: {
