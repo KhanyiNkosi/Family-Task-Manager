@@ -8,15 +8,9 @@ export default function Header() {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleLoginClick = () => {
-    alert('Login form would appear here.');
-    // In real app: openLoginModal();
-  };
+  const handleLoginClick = () => { router.push(`/login`); };
 
-  const handleGetStartedClick = () => {
-    alert('Welcome to FamilyTask! Redirecting to signup...');
-    // In real app: router.push('/signup');
-  };
+  const handleGetStartedClick = () => { router.push(`/register`); };
 
   const scrollToFeatures = () => {
     const featuresSection = document.querySelector('.features');
@@ -83,3 +77,5 @@ export default function Header() {
     </header>
   );
 }
+
+
