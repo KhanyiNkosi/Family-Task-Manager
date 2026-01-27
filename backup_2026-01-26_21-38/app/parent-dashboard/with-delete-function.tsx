@@ -1,0 +1,546 @@
+﻿"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
+
+interface Task {
+  id: number;
+  title: string;
+  assignedTo: string;
+  points: number;
+  dueDate: string;
+  status: "pending" | "completed";
+  description?: string;
+}
+
+interface Child {
+  id: number;
+  name: string;
+  points: number;
+  avatar: string;
+  tasksCompleted: number;
+}
+
+interface BulletinMessage {
+  id: number;
+  avatar: string;
+  message: string;
+  timestamp: string;
+}
+
+interface RewardRequest {
+  id: number;
+  child: string;
+  name: string;
+  requester: string;
+  points: number;
+  status: "pending" | "approved" | "rejected";
+}
+
+export default function ParentDashboardPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Navigation items
+  const navItems = [
+    { href: "/", icon: "fas fa-home", label: "Home" },
+    { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard", active: true },
+    { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
+    { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Store" },
+    { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
+    { href: "/parent-profile", icon: "fas fa-user", label: "Profile" },
+  ];
+
+  // State for tasks
+  const [activeTasks, setActiveTasks] = useState<Task[]>([
+    { id: 1, title: "Complete Science Project", assignedTo: "Alex", points: 25, dueDate: "Tomorrow", status: "pending", description: "Finish the solar system model for science class" },
+    { id: 2, title: "Practice Piano", assignedTo: "Sam", points: 15, dueDate: "Friday", status: "pending" },
+    { id: 3, title: "Math Homework", assignedTo: "Alex", points: 10, dueDate: "Today", status: "pending" },
+    { id: 4, title: "Clean Room", assignedTo: "Sam", points: 20, dueDate: "Weekend", status: "pending" },
+  ]);
+
+  // State for children
+  const [children, setChildren] = useState<Child[]>([
+    { id: 1, name: "Alex Johnson", points: 320, avatar: "A", tasksCompleted: 24 },
+    { id: 2, name: "Sam Wilson", points: 280, avatar: "S", tasksCompleted: 18 },
+  ]);
+
+  // State for bulletin messages
+  const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([
+    { id: 1, avatar: "C", message: "Can we get pizza for movie night? 🍕", timestamp: "2:30 PM" },
+    { id: 2, avatar: "M", message: "Family movie night this Friday!", timestamp: "1:45 PM" },
+    { id: 3, avatar: "A", message: "I finished my science project early! 🎉", timestamp: "11:20 AM" },
+  ]);
+
+  // State for reward requests
+  const [rewardRequests, setRewardRequests] = useState<RewardRequest[]>([
+    { id: 1, child: "C", name: "Video Game Hour", requester: "Child", points: 50, status: "pending" },
+    { id: 2, child: "M", name: "Ice Cream Party", requester: "Mom", points: 75, status: "pending" },
+  ]);
+
+  // New task form state
+  const [newTaskName, setNewTaskName] = useState("");
+  const [newTaskPoints, setNewTaskPoints] = useState("10");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("Alex");
+
+  // New bulletin message
+  const [newBulletinMessage, setNewBulletinMessage] = useState("");
+
+  // New task description state
+  const [newTaskDescription, setNewTaskDescription] = useState("");
+
+  // Permission check for child modifications
+  const canModifyChild = false; // Parents cannot modify child data
+  const canViewChild = true;    // Parents can only view
+
+  const handleChildAction = (action: string) => {
+    if (!canModifyChild) {
+      alert("Parents have view-only access to child profiles. Please contact an administrator for modifications.");
+      return;
+    }
+    // Child modification logic would go here
+  };
+
+  // Add new task
+  const handleAddTask = () => {
+    if (!newTaskName.trim()) return;
+
+    const newTask: Task = {
+      id: activeTasks.length + 1,
+      title: newTaskName,
+      description: newTaskDescription.trim() || undefined, // Add description
+      assignedTo: newTaskAssignee,
+      points: parseInt(newTaskPoints) || 10,
+      dueDate: "Tomorrow",
+      status: "pending"
+    };
+
+    setActiveTasks([...activeTasks, newTask]);
+    setNewTaskName("");
+    setNewTaskDescription(""); // Reset description
+    setNewTaskPoints("10");
+    alert("New task added successfully!");
+  };
+
+  // Complete task
+  const handleCompleteTask = (taskId: number) => {
+    const updatedTasks = activeTasks.map(task =>
+      task.id === taskId ? { ...task, status: "completed" as const } : task
+    );
+    setActiveTasks(updatedTasks);
+    alert("Task marked as completed!");
+  };
+
+  // Delete task
+  const handleDeleteTask = (taskId: number) => {
+    if (confirm("Are you sure you want to delete this task?")) {
+      const updatedTasks = activeTasks.filter(task => task.id !== taskId);
+      setActiveTasks(updatedTasks);
+      alert("Task deleted successfully!");
+    }
+  };
+
+  // Add bulletin message
+  const handleAddBulletinMessage = () => {
+    if (!newBulletinMessage.trim()) return;
+
+    const newMessage: BulletinMessage = {
+      id: bulletinMessages.length + 1,
+      avatar: "P", // Parent
+      message: newBulletinMessage,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+
+  // Delete bulletin message
+  const handleDeleteBulletinMessage = (messageId: number) => {
+    if (confirm("Are you sure you want to delete this message?")) {
+      const updatedMessages = bulletinMessages.filter(msg => msg.id !== messageId);
+      setBulletinMessages(updatedMessages);
+    }
+  };
+
+    setBulletinMessages([newMessage, ...bulletinMessages]);
+    setNewBulletinMessage("");
+  };
+
+  // Handle reward request
+  const handleRewardRequest = (requestId: number, status: "approved" | "rejected") => {
+    const updatedRequests = rewardRequests.map(request =>
+      request.id === requestId ? { ...request, status } : request
+    );
+    setRewardRequests(updatedRequests);
+    alert(`Reward request ${status === "approved" ? "approved" : "rejected"}!`);
+  };
+
+  // Calculate totals
+  const totalPoints = children.reduce((sum, child) => sum + child.points, 0);
+  const pendingTasks = activeTasks.filter(task => task.status === "pending").length;
+  const completedTasks = activeTasks.filter(task => task.status === "completed").length;
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE]">
+      <div className="flex">
+        {/* SIDEBAR - Matches your theme */}
+        <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+          {/* Logo */}
+          <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
+            <i className="fas fa-smile text-3xl"></i>
+            <span>FamilyTask</span>
+          </div>
+
+          {/* Navigation */}
+          <nav className="space-y-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all ${
+                  pathname === item.href || item.active
+                    ? "bg-white/20 text-white shadow-lg"
+                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <i className={`${item.icon} w-5 text-center`}></i>
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            ))}
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
+            <div className="p-3 bg-white/10 rounded-xl">
+              <p className="text-sm text-white/80">Logged in as:</p>
+              <p className="font-bold text-white">Parent</p>
+            </div>
+
+            <button
+              onClick={() => window.history.back()}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+            >
+              <i className="fas fa-arrow-left"></i>
+              Go Back
+            </button>
+
+            <button
+              onClick={() => {
+                if (confirm("Are you sure you want to logout?")) {
+                  sessionStorage.removeItem('userRole');
+                  sessionStorage.removeItem('userEmail');
+                  sessionStorage.removeItem('userName');
+                  router.push('/login');
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
+            >
+              <i className="fas fa-sign-out-alt"></i>
+              Logout
+            </button>
+          </div>
+        </aside>
+
+        {/* MAIN CONTENT */}
+        <div className="ml-64 flex-1 p-8">
+          {/* Header */}
+          <header className="mb-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-[#006372]">Family Dashboard</h1>
+                <p className="text-gray-600 mt-2">Monitor your family's tasks, rewards, and activities</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center">
+                    <i className="fas fa-user text-white text-sm"></i>
+                  </div>
+                  <span className="font-medium text-gray-700">Parent Dashboard</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats Overview */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
+              <div className="bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] text-white p-5 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Total Points</p>
+                    <p className="text-2xl font-bold mt-1">{totalPoints}</p>
+                  </div>
+                  <i className="fas fa-star text-2xl opacity-80"></i>
+                </div>
+              </div>
+              <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-5 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Pending Tasks</p>
+                    <p className="text-2xl font-bold mt-1">{pendingTasks}</p>
+                  </div>
+                  <i className="fas fa-tasks text-2xl opacity-80"></i>
+                </div>
+              </div>
+              <div className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-5 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Completed Tasks</p>
+                    <p className="text-2xl font-bold mt-1">{completedTasks}</p>
+                  </div>
+                  <i className="fas fa-check-circle text-2xl opacity-80"></i>
+                </div>
+              </div>
+              <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm opacity-90">Active Children</p>
+                    <p className="text-2xl font-bold mt-1">{children.length}</p>
+                  </div>
+                  <i className="fas fa-users text-2xl opacity-80"></i>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Column */}
+            <div className="space-y-8">
+              {/* Active Tasks Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-[#006372]">Active Family Tasks</h2>
+                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                    {activeTasks.length} tasks
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {activeTasks.map((task) => (
+                    <div key={task.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">{task.title}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Assigned to: <span className="font-medium">{task.assignedTo}</span> • 
+                            Due: <span className="font-medium">{task.dueDate}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                            {task.points} pts
+                          </span>
+                          {task.status === "pending" && (
+                            <>
+                              <button
+                                onClick={() => handleCompleteTask(task.id)}
+                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                              >
+                                Complete
+                              </button>
+                              <button
+                                onClick={() => handleDeleteTask(task.id)}
+                                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                                title="Delete task"
+                              >
+                                <i className="fas fa-trash"></i>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      {task.description && (
+                        <p className="text-gray-600 text-sm mt-3">{task.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add New Task Form */}
+                <div className="mt-6 p-4 bg-gray-50 rounded-xl">
+                  <h3 className="font-medium text-gray-800 mb-3">Add New Task</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      value={newTaskName}
+                      onChange={(e) => setNewTaskName(e.target.value)}
+                      placeholder="Task name"
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
+                    />
+                    <input
+                      type="number"
+                      value={newTaskPoints}
+                      onChange={(e) => setNewTaskPoints(e.target.value)}
+                      placeholder="Points"
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
+                    />
+                    <select
+                      value={newTaskAssignee}
+                      onChange={(e) => setNewTaskAssignee(e.target.value)}
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
+                    >
+                      <option value="Alex">Alex</option>
+                      <option value="Sam">Sam</option>
+                      <option value="Both">Both</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleAddTask}
+                    className="mt-3 w-full py-2.5 bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] text-white rounded-lg font-medium hover:opacity-90"
+                  >
+                    <i className="fas fa-plus mr-2"></i>
+                    Add Task
+                  </button>
+                </div>
+              </div>
+
+              {/* Children Progress Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-[#006372]">Children Progress</h2>
+                  <div className="text-sm text-gray-600">
+                    <span className="text-[#00C2E0] font-medium">View Only</span> • Parent Access
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {children.map((child) => (
+                    <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white font-bold text-lg">
+                          {child.avatar}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-800">{child.name}</h3>
+                          <div className="flex items-center gap-4 mt-2">
+                            <span className="text-sm text-gray-600">
+                              <i className="fas fa-star text-amber-500 mr-1"></i>
+                              {child.points} points
+                            </span>
+                            <span className="text-sm text-gray-600">
+                              <i className="fas fa-check-circle text-green-500 mr-1"></i>
+                              {child.tasksCompleted} tasks
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleChildAction("view")}
+                          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+                          title="Parents have view-only access"
+                        >
+                          <i className="fas fa-eye mr-2"></i>
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-8">
+              {/* Bulletin Board Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-[#006372]">Family Bulletin</h2>
+                  <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                    {bulletinMessages.length} messages
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {bulletinMessages.map((message) => (
+                    <div key={message.id} className="p-4 bg-gradient-to-br from-purple-50/30 to-white rounded-xl border border-purple-100/50">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                          {message.avatar}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-gray-800">{message.message}</p>
+                          <p className="text-sm text-gray-500 mt-2">{message.timestamp}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add Message Form */}
+                <div className="mt-6">
+                  <textarea
+                    value={newBulletinMessage}
+                    onChange={(e) => setNewBulletinMessage(e.target.value)}
+                    placeholder="Post a message to the family..."
+                    className="w-full p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0] h-20"
+                  />
+                  <button
+                    onClick={handleAddBulletinMessage}
+                    className="mt-3 w-full py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg font-medium hover:opacity-90"
+                  >
+                    <i className="fas fa-paper-plane mr-2"></i>
+                    Post Message
+                  </button>
+                </div>
+              </div>
+
+              {/* Reward Requests Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-[#006372]">Reward Requests</h2>
+                  <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                    {rewardRequests.filter(r => r.status === "pending").length} pending
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {rewardRequests.map((request) => (
+                    <div key={request.id} className="p-4 bg-gradient-to-br from-amber-50/30 to-white rounded-xl border border-amber-100/50">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold text-gray-800">{request.name}</h3>
+                          <p className="text-sm text-gray-600 mt-1">
+                            Requested by: <span className="font-medium">{request.requester}</span> • 
+                            Points: <span className="font-medium">{request.points}</span>
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {request.status === "pending" ? (
+                            <>
+                              <button
+                                onClick={() => handleRewardRequest(request.id, "approved")}
+                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRewardRequest(request.id, "rejected")}
+                                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : (
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              request.status === "approved" 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+
+
+
+
