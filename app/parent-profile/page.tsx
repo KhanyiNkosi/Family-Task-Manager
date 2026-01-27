@@ -48,6 +48,15 @@ export default function ParentProfilePage() {
   });
 
   const [editedProfile, setEditedProfile] = useState<ParentProfile>({ ...profile });
+  
+  // Load profile image from localStorage on component mount
+  useEffect(() => {
+    const savedImage = localStorage.getItem("parentProfileImage") || "";
+    if (savedImage) {
+      setProfile(prev => ({ ...prev, profileImage: savedImage }));
+      setEditedProfile(prev => ({ ...prev, profileImage: savedImage }));
+    }
+  }, []);
 
   // Navigation items - Custom for parent-profile
   const navItems: NavItem[] = [
@@ -97,8 +106,10 @@ export default function ParentProfilePage() {
       reader.onload = (e) => {
         const imageUrl = e.target?.result as string;
         setEditedProfile(prev => ({ ...prev, profileImage: imageUrl }));
+        localStorage.setItem("parentProfileImage", imageUrl);
         if (!isEditing) {
           setProfile(prev => ({ ...prev, profileImage: imageUrl }));
+          localStorage.setItem("parentProfileImage", imageUrl);
         }
       };
       reader.readAsDataURL(file);
@@ -190,9 +201,11 @@ export default function ParentProfilePage() {
                   </div>
                   <span className="font-medium text-gray-700">Parent Account</span>
                 </div>
+                <Link href="/settings">
                 <button className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
                   <i className="fas fa-cog text-gray-600"></i>
                 </button>
+                </Link>
               </div>
             </div>
             
@@ -479,7 +492,3 @@ export default function ParentProfilePage() {
     </div>
   );
 }
-
-
-
-

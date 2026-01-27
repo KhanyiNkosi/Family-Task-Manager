@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import NotificationAlert, { Notification, NotificationType } from '@/components/NotificationAlert';
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import LogoutButton from "@/app/components/LogoutButton";
@@ -8,32 +9,32 @@ import LogoutButton from "@/app/components/LogoutButton";
 export default function ChildDashboardPage() {
   // Child avatar state
   const [childAvatar, setChildAvatar] = useState("child");
-  const [profileImage, setProfileImage] = useState(""); // Profile picture state
+  const [profileImage, setProfileImage] = useState(""); // NEW: Profile picture state
   const [isClient, setIsClient] = useState(false);
 
   // Load avatar from localStorage
- useEffect(() => {
-  setIsClient(true);
-  const savedAvatar = localStorage.getItem("childAvatar") || "child";
-  console.log("Dashboard loading child avatar:", savedAvatar);
-  setChildAvatar(savedAvatar);
-  
-  // Load profile picture from localStorage
-  const savedProfileImage = localStorage.getItem("childProfileImage") || "";
-  console.log("Dashboard loading child profile image:", savedProfileImage ? "Image found" : "No image");
-  setProfileImage(savedProfileImage);
-}, []);
+  useEffect(() => {
+    setIsClient(true);
+    const savedAvatar = localStorage.getItem("childAvatar") || "child";
+    console.log("Dashboard loading child avatar:", savedAvatar);
+    setChildAvatar(savedAvatar);
+    
+    // NEW: Load profile picture from localStorage
+    const savedProfileImage = localStorage.getItem("childProfileImage") || "";
+    console.log("Dashboard loading child profile image:", savedProfileImage ? "Image found" : "No image");
+    setProfileImage(savedProfileImage);
+  }, []);
 
   // Avatar options (same as child-profile)
   const avatars = [
-    { id: "child", emoji: "👦", label: "Boy" },
-    { id: "girl", emoji: "👧", label: "Girl" },
-    { id: "robot", emoji: "🤖", label: "Robot" },
-    { id: "superhero", emoji: "🦸", label: "Superhero" },
-    { id: "astronaut", emoji: "🧑‍🚀", label: "Astronaut" },
-    { id: "alien", emoji: "👽", label: "Alien" },
-    { id: "ninja", emoji: "🥷", label: "Ninja" },
-    { id: "wizard", emoji: "🧙", label: "Wizard" },
+    { id: "child", emoji: "??", label: "Boy" },
+    { id: "girl", emoji: "??", label: "Girl" },
+    { id: "robot", emoji: "??", label: "Robot" },
+    { id: "superhero", emoji: "??", label: "Superhero" },
+    { id: "astronaut", emoji: "?????", label: "Astronaut" },
+    { id: "alien", emoji: "??", label: "Alien" },
+    { id: "ninja", emoji: "??", label: "Ninja" },
+    { id: "wizard", emoji: "??", label: "Wizard" },
   ];
   const router = useRouter();
   const pathname = usePathname();
@@ -51,6 +52,83 @@ export default function ChildDashboardPage() {
     { id: 4, name: "New Book", description: "Choose a new book from the store", points: 40, redeemed: false },
   ]);
   const [toast, setToast] = useState({ show: false, message: "" });
+
+  // Notification State - Child-specific
+  const [notifications, setNotifications] = useState<Notification[]>([
+    {
+      id: '1',
+      title: 'New Task',
+      message: 'Parent assigned "Hockey practice" to you',
+      type: 'task',
+      timestamp: new Date(Date.now() - 3600000),
+      read: false,
+      actionUrl: '/child-dashboard',
+      actionText: 'View Task'
+    },
+    {
+      id: '2',
+      title: 'Reward Available!',
+      message: 'You earned "Ice Cream Trip" for 50 points',
+      type: 'reward',
+      timestamp: new Date(Date.now() - 7200000),
+      read: false,
+      actionUrl: '/my-rewards',
+      actionText: 'Claim Reward'
+    },
+    {
+      id: '3',
+      title: 'Task Completed!',
+      message: 'Great job finishing your homework!',
+      type: 'success',
+      timestamp: new Date(Date.now() - 86400000),
+      read: true
+    },
+    {
+      id: '4',
+      title: 'Task Due Tomorrow',
+      message: '"Walk the dog" is due tomorrow',
+      type: 'warning',
+      timestamp: new Date(Date.now() - 172800000),
+      read: false,
+      actionUrl: '/child-dashboard',
+      actionText: 'View Details'
+    },
+    {
+      id: '5',
+      title: 'Level Up!',
+      message: 'You reached Bronze level in chores',
+      type: 'success',
+      timestamp: new Date(Date.now() - 259200000),
+      read: true,
+      actionUrl: '/child-profile',
+      actionText: 'View Profile'
+    }
+  ]);
+
+  const handleDismissNotification = (id: string) => {
+    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  };
+
+  const handleMarkAsRead = (id: string) => {
+    setNotifications(prev => 
+      prev.map(notif => 
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  };
+
+  // Function to add test notification
+  const addSampleNotification = () => {
+    const newNotification: Notification = {
+      id: Date.now().toString(),
+      title: 'New Message',
+      message: 'You have a new message from Parent',
+      type: 'info' as NotificationType,
+      timestamp: new Date(),
+      read: false
+    };
+    setNotifications(prev => [newNotification, ...prev]);
+  };
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
   useEffect(() => {
@@ -135,14 +213,46 @@ export default function ChildDashboardPage() {
     }
   };
 
-  const getPepTalk = () => {
-    const pepTalks = [
-      "You're doing amazing! Keep up the great work!",
-      "Every task you complete brings you closer to awesome rewards!",
-      "Your consistency is inspiring!",
-      "Keep going, superstar! You've got this!"
-    ];
-    alert(pepTalks[Math.floor(Math.random() * pepTalks.length)]);
+    // Parent messages with encouragement system
+  const [parentMessages, setParentMessages] = useState([
+    { id: 1, message: "Great job on your homework today! ??", from: "Mom", time: "2 hours ago", read: false },
+    { id: 2, message: "Remember to walk the dog after school! ??", from: "Dad", time: "Yesterday", read: true },
+    { id: 3, message: "I'm proud of how responsible you're becoming! ??", from: "Mom", time: "2 days ago", read: true }
+  ]);
+
+    const showEncouragement = () => {
+    // Check for unread messages
+    const unread = parentMessages.filter(msg => !msg.read);
+    
+    if (unread.length > 0) {
+      const latest = unread[0];
+      setToast({
+        show: true,
+        message: `📩 New from ${latest.from}: ${latest.message}`
+      });
+      
+      // Mark as read
+      setParentMessages(prev =>
+        prev.map(msg =>
+          msg.id === latest.id ? { ...msg, read: true } : msg
+        )
+      );
+    } else {
+      // Show random encouragement
+      const messages = [
+        "You're doing amazing! Keep it up! 🌟",
+        "Every task brings you closer to rewards! 🏆",
+        "Superstar alert! You're crushing it! ⭐",
+        "Progress over perfection! Growing every day! 🌱"
+      ];
+      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+      setToast({
+        show: true,
+        message: `💫 ${randomMsg}`
+      });
+    }
+    
+    setTimeout(() => setToast({ show: false, message: "" }), 3000);
   };
 
   const stats = {
@@ -156,6 +266,14 @@ export default function ChildDashboardPage() {
 
   return (
     <div className="dashboard-container flex min-h-screen bg-gray-50">
+      <NotificationAlert
+        notifications={notifications}
+        onDismiss={handleDismissNotification}
+        onMarkAsRead={handleMarkAsRead}
+        maxNotifications={3}
+        autoClose={8000}
+      />
+      
       {/* Sidebar Navigation - CHILD-ONLY VERSION */}
       <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
         <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
@@ -185,7 +303,7 @@ export default function ChildDashboardPage() {
           ))}
         </nav>
         
-                <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
+        <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
           <button
             onClick={() => window.history.back()}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
@@ -201,7 +319,22 @@ export default function ChildDashboardPage() {
 
       <main className="main-content ml-64 flex-1 p-10">
         {/* Header with permission badge */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
+                {/* Floating child icon in corner */}
+        <div className="absolute top-4 right-4 z-10">
+          <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden bg-gradient-to-r from-cyan-500 to-teal-500 shadow-lg border-2 border-white">
+            {isClient && profileImage ? (
+              <img 
+                src={profileImage} 
+                alt="Child" 
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <i className="fas fa-child text-white text-lg"></i>
+            )}
+          </div>
+        </div>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 relative relative">
           <div>
             <div className="flex items-center gap-3 mb-2">
               <h1 className="text-3xl font-bold text-[#006372]">Child Dashboard</h1>
@@ -212,42 +345,52 @@ export default function ChildDashboardPage() {
             <p className="text-gray-600">Complete tasks, earn points, and get rewards!</p>
           </div>
           
-                      <div className="mt-4 md:mt-0 flex items-center gap-4">
-              
-              <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg">
-              <div className="text-sm font-medium">My Points</div>
-              <div className="text-2xl font-bold flex items-center gap-2">
+                    <div className="mt-4 md:mt-0 flex items-center gap-3">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center overflow-hidden">
+                {isClient && profileImage ? (
+                  <img 
+                    src={profileImage} 
+                    alt="Profile" 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-r from-cyan-500 to-teal-500 flex items-center justify-center text-white text-sm font-bold">
+                    C
+                  </div>
+                )}
+              </div>
+              <span className="font-medium text-gray-700 text-sm">Child</span>
+            </div>
+            
+            <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-4 py-2 rounded-xl shadow">
+              <div className="text-xs font-medium">My Points</div>
+              <div className="text-lg font-bold flex items-center gap-1">
                 <i className="fas fa-star text-yellow-300"></i> {points.toLocaleString()}
               </div>
             </div>
+
+            <button
+              onClick={addSampleNotification}
+              className="px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium text-sm shadow hover:shadow-md transition-all"
+              title="Add test notification"
+            >
+              <i className="fas fa-bell mr-1"></i>
+              Test
+            </button>
             
             <button
-              onClick={getPepTalk}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
+              onClick={showEncouragement}
+              className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg font-bold text-sm hover:opacity-90 transition-all shadow relative"
             >
-              <i className="fas fa-sparkles mr-2"></i>
-              Pep Talk!
+              <i className="fas fa-heart mr-1"></i>
+              Encouragement
+              {parentMessages.filter(msg => !msg.read).length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {parentMessages.filter(msg => !msg.read).length}
+                </span>
+              )}
             </button>
-              {/* Child Avatar Badge */}
-              <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gradient-to-r from-cyan-500 to-teal-500">
-  {isClient && profileImage ? (
-    <img 
-      src={profileImage} 
-      alt="Child Profile" 
-      className="w-full h-full object-cover"
-    />
-  ) : (
-    <div className="w-full h-full flex items-center justify-center text-white font-bold">
-      <i className="fas fa-child"></i>
-    </div>
-  )}
-</div>
-
-               
-                <span className="font-medium text-gray-700">Child Dashboard</span>
-              </div>
-              
           </div>
         </div>
 
@@ -417,13 +560,14 @@ export default function ChildDashboardPage() {
       {/* Toast Notification */}
       {toast.show && (
         <div className="fixed bottom-6 right-6 bg-white p-4 rounded-xl shadow-2xl border-l-4 border-[#00C2E0] animate-slideIn">
-          <div className="font-bold text-gray-800 mb-1">Great Job! 🎉</div>
+          <div className="font-bold text-gray-800 mb-1">Great Job! ??</div>
           <div className="text-sm text-gray-600">{toast.message}</div>
         </div>
       )}
     </div>
   );
 }
+
 
 
 

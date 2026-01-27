@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -112,8 +113,44 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE] pt-20 pb-10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50">
+      {/* AI SUGGESTER HEADER - MOVED TO SETTINGS PAGE AS REQUESTED */}
+      <header className="bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white p-6 shadow-lg">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* FAMILYTASK LOGO */}
+            <div className="flex items-center gap-4">
+              <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                  <i className="fas fa-smile text-2xl"></i>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-extrabold">FamilyTask</h1>
+                  <p className="text-white/80 text-sm">Settings</p>
+                </div>
+              </Link>
+            </div>
+
+            {/* NAVIGATION */}
+            <div className="flex items-center gap-4">
+              <Link href="/parent-dashboard">
+                <button className="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg font-medium transition">
+                  <i className="fas fa-chart-bar mr-2"></i>
+                  Dashboard
+                </button>
+              </Link>
+              <Link href="/ai-suggester">
+                <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition">
+                  <i className="fas fa-robot mr-2"></i>
+                  AI Assistant
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* LOGO SECTION - ADDED AS REQUESTED */}
         <div className="text-center mb-12">
           <div className="flex justify-center items-center gap-4 mb-6">
@@ -420,3 +457,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

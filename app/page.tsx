@@ -41,7 +41,7 @@ export default function HomePage() {
           {/* Hero Section */}
           <section className="hero text-center py-[80px] pb-[120px] max-w-[800px] mx-auto">
             <h1 className="text-[64px] font-black leading-tight text-[#00C2E0] mb-6 tracking-tight">
-              Organize Your Family's Life
+              Organize Your Family&apos;s Life
             </h1>
             <p className="hero-subtitle text-xl text-[#4A5568] leading-relaxed mb-12 max-w-[600px] mx-auto">
               The fun and easy way to manage tasks, rewards, and family cooperation.
@@ -52,6 +52,81 @@ export default function HomePage() {
             >
               Get Started
             </button>
+          </section>
+
+          {/* Features Section - 3 Cards */}
+          <section className="features py-[60px] pb-[100px]">
+            <div className="features-grid grid grid-cols-1 md:grid-cols-3 gap-8 mb-[60px]">
+              {/* Card 1: Manage Tasks */}
+              <div 
+                onClick={() => handleFeatureClick(0)}
+                className={`feature-card bg-white/70 p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
+                  activeFeature === 0 
+                    ? "ring-2 ring-[#00C2E0] ring-opacity-50 transform scale-[1.02]" 
+                    : "hover:translate-y-[-5px] hover:shadow-lg"
+                }`}
+              >
+                <div className="feature-icon w-15 h-15 bg-[#00C2E0]/10 rounded-2xl flex items-center justify-center text-3xl font-bold text-[#00C2E0] mb-6">
+                  ✓
+                </div>
+                <h2 className="feature-title text-3xl font-bold text-[#00C2E0] mb-4 leading-tight">
+                  Manage Tasks
+                </h2>
+                <p className="feature-description text-[#4A5568] text-base leading-relaxed">
+                  Easily create and assign tasks to family members. Keep track of what needs to be done.
+                </p>
+              </div>
+
+              {/* Card 2: Motivate with Rewards */}
+              <div 
+                onClick={() => handleFeatureClick(1)}
+                className={`feature-card bg-white/70 p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
+                  activeFeature === 1 
+                    ? "ring-2 ring-[#00C2E0] ring-opacity-50 transform scale-[1.02]" 
+                    : "hover:translate-y-[-5px] hover:shadow-lg"
+                }`}
+              >
+                <div className="feature-icon w-15 h-15 bg-[#00C2E0]/10 rounded-2xl flex items-center justify-center text-3xl font-bold text-[#00C2E0] mb-6">
+                  ★
+                </div>
+                <h2 className="feature-title text-3xl font-bold text-[#00C2E0] mb-4 leading-tight">
+                  Motivate with Rewards
+                </h2>
+                <p className="feature-description text-[#4A5568] text-base leading-relaxed">
+                  Set up a points system for completed tasks. Let your kids earn exciting rewards.
+                </p>
+              </div>
+
+              {/* Card 3: Stay Connected */}
+              <div 
+                onClick={() => handleFeatureClick(2)}
+                className={`feature-card bg-white/70 p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
+                  activeFeature === 2 
+                    ? "ring-2 ring-[#00C2E0] ring-opacity-50 transform scale-[1.02]" 
+                    : "hover:translate-y-[-5px] hover:shadow-lg"
+                }`}
+              >
+                <div className="feature-icon w-15 h-15 bg-[#00C2E0]/10 rounded-2xl flex items-center justify-center text-3xl font-bold text-[#00C2E0] mb-6">
+                  ❤
+                </div>
+                <h2 className="feature-title text-3xl font-bold text-[#00C2E0] mb-4 leading-tight">
+                  Stay Connected
+                </h2>
+                <p className="feature-description text-[#4A5568] text-base leading-relaxed">
+                  Improve communication and teamwork within the family. Achieve your goals together.
+                </p>
+              </div>
+            </div>
+            
+            {/* Divider */}
+            <div className="divider h-px bg-gradient-to-r from-transparent via-[#00C2E0]/20 to-transparent my-10"></div>
+            
+            {/* Footer */}
+            <footer className="footer text-center py-10">
+              <p className="copyright text-[#4A5568] text-sm font-medium">
+                © {new Date().getFullYear()} FamilyTask. All rights reserved.
+              </p>
+            </footer>
           </section>
         </div>
       </div>

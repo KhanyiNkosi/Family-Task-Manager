@@ -52,6 +52,10 @@ export default function LoginPage() {
     setIsLoading(false);
   };
 
+
+  const handleReturnHome = () => {
+    router.push("/");
+  };
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-cyan-50 p-6">
       <div className="max-w-md w-full">
@@ -70,7 +74,27 @@ export default function LoginPage() {
         {/* Login Form */}
         <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
+                    {/* Return to Home Button - Above Login Form */}
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={handleReturnHome}
+            className="w-full flex items-center justify-center gap-3 px-4 py-3.5 bg-gradient-to-r from-gray-100 to-gray-50 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-100 transition-all duration-300 font-medium border border-gray-200 hover:border-gray-300 shadow-sm"
+          >
+            <i className="fas fa-arrow-left text-gray-500"></i>
+            Return to Home Page
+          </button>
+          
+          {/* Divider */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-4 bg-white text-gray-500">Or continue with login</span>
+            </div>
+          </div>
+        </div>{error && (
               <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
                 {error}
               </div>
@@ -193,3 +217,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
+
+
+

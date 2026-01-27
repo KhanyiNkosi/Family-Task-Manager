@@ -1,27 +1,54 @@
 ﻿"use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function ChildProfilePage() {
   const [activeTab, setActiveTab] = useState<"profile" | "activity">("profile");
-  const [selectedAvatar, setSelectedAvatar] = useState("child");
+  const [profileImage, setProfileImage] = useState("");
+  const [tempImage, setTempImage] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
   useEffect(() => {
+    const savedImage = localStorage.getItem("childProfileImage") || "";
+    setProfileImage(savedImage);
     setIsClient(true);
   }, []);
 
-  const avatars = [
-    { id: "child", emoji: "👦", label: "Boy" },
-    { id: "girl", emoji: "👧", label: "Girl" },
-    { id: "robot", emoji: "🤖", label: "Robot" },
-    { id: "superhero", emoji: "🦸", label: "Superhero" },
-    { id: "astronaut", emoji: "🧑‍🚀", label: "Astronaut" },
-    { id: "princess", emoji: "👸", label: "Princess" },
-  ];
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const result = e.target?.result as string;
+        setTempImage(result);
+        setIsEditing(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSave = () => {
+    setProfileImage(tempImage);
+    localStorage.setItem("childProfileImage", tempImage);
+    setIsEditing(false);
+    alert("Profile picture saved!");
+  };
+
+  const handleCancel = () => {
+    setTempImage("");
+    setIsEditing(false);
+  };
+
+  const handleRemove = () => {
+    setProfileImage("");
+    localStorage.removeItem("childProfileImage");
+    alert("Profile picture removed!");
+  };
 
   const navItems = [
     { href: "/", icon: "fas fa-home", label: "Home" },
@@ -87,9 +114,16 @@ export default function ChildProfilePage() {
             <div className="notif-badge w-10 h-10 rounded-full border border-[#00C2E0] text-[#00C2E0] flex items-center justify-center bg-white cursor-pointer">
               <i className="far fa-bell"></i>
             </div>
-            <div className="user-avatar-small w-10 h-10 rounded-full bg-[#E0F7FA] text-[#00C2E0] flex items-center justify-center font-bold border border-[#B2EBF2]">
-              {/* Only render emoji on client side */}
-              {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji.charAt(0) || "👦") : "C"}
+            <div className="user-avatar-small w-10 h-10 rounded-full bg-[#E0F7FA] text-[#00C2E0] flex items-center justify-center font-bold border border-[#B2EBF2] overflow-hidden">
+              {isClient && profileImage ? (
+                <img 
+                  src={profileImage} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <i className="fas fa-user"></i>
+              )}
             </div>
           </div>
         </header>
@@ -100,7 +134,7 @@ export default function ChildProfilePage() {
             <i className="far fa-user"></i> My Profile
           </h1>
           <p className="view-subtitle text-[#64748b] text-base mb-8">
-            Manage your avatar and view your progress.
+            Manage your profile picture and view your progress.
           </p>
 
           {/* Tabs */}
@@ -124,50 +158,99 @@ export default function ChildProfilePage() {
             <div className="profile-content">
               <div className="profile-card bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8 mb-8">
                 <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
-                  {/* Avatar Section */}
+                  {/* Profile Picture Section */}
                   <div className="flex-shrink-0 text-center">
                     <div className="relative mb-6">
-                      <div className="w-48 h-48 bg-gradient-to-br from-[#00C2E0] to-[#00A8C2] rounded-2xl flex items-center justify-center text-9xl text-white mb-4 mx-auto">
-                        {/* Only render emoji on client side */}
-                        {isClient ? (avatars.find(a => a.id === selectedAvatar)?.emoji || "👦") : "👦"}
+                      <div className="w-48 h-48 rounded-2xl flex items-center justify-center mb-4 mx-auto overflow-hidden relative border-4 border-[#E0F7FA] bg-gradient-to-br from-[#00C2E0] to-[#00A8C2]">
+                        {isClient ? (
+                          <div className="w-full h-full">
+                            {isEditing && tempImage ? (
+                              <img 
+                                src={tempImage} 
+                                alt="Preview" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : profileImage ? (
+                              <img 
+                                src={profileImage} 
+                                alt="Profile" 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <i className="fas fa-user text-white text-8xl"></i>
+                              </div>
+                            )}
+                            
+                            <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all flex items-end justify-end p-4">
+                              <button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-white p-3 rounded-full shadow-lg hover:shadow-xl transition-shadow hover:scale-105"
+                                title="Change photo"
+                              >
+                                <i className="fas fa-camera text-[#00C2E0] text-lg"></i>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <i className="fas fa-user text-white text-8xl"></i>
+                          </div>
+                        )}
                       </div>
-                      <button className="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-lg hover:bg-gray-50 transition">
-                        <i className="fas fa-camera text-[#00C2E0]"></i>
-                      </button>
+                      
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                      />
                     </div>
                     
                     <h3 className="text-2xl font-black text-gray-800 mb-1">Super Kid</h3>
-                    <p className="text-[#64748b] text-base">Task Master</p>
+                    <p className="text-[#64748b] text-base mb-6">Task Master</p>
                     
-                    {/* Avatar Selection */}
-                    <div className="mt-8">
-                      <h4 className="text-lg font-bold text-gray-800 mb-4">Choose Your Avatar</h4>
-                      <div className="flex flex-wrap gap-4 justify-center">
-                        {avatars.map((avatar) => (
-                          <button
-                            key={avatar.id}
-                            onClick={() => setSelectedAvatar(avatar.id)}
-                            className={`avatar-option w-16 h-16 rounded-xl flex items-center justify-center text-3xl transition-all ${
-                              selectedAvatar === avatar.id
-                                ? "ring-4 ring-[#00C2E0] bg-[#E0F7FA] shadow-md"
-                                : "bg-gray-100 hover:bg-gray-200 hover:scale-105"
-                            }`}
-                            title={avatar.label}
-                          >
-                            {/* Only render emoji on client side */}
-                            {isClient ? avatar.emoji : avatar.label.charAt(0)}
-                          </button>
-                        ))}
+                    {isEditing && (
+                      <div className="space-y-3 mb-6">
+                        <button
+                          onClick={handleSave}
+                          className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-3"
+                        >
+                          <i className="fas fa-save"></i>
+                          Save Profile Picture
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-300 transition-all flex items-center justify-center gap-2 border border-gray-300"
+                        >
+                          <i className="fas fa-times"></i>
+                          Cancel
+                        </button>
                       </div>
-                    </div>
+                    )}
+                    
+                    {!isEditing && profileImage && (
+                      <button
+                        onClick={handleRemove}
+                        className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-3 mb-6"
+                      >
+                        <i className="fas fa-trash"></i>
+                        Remove Profile Picture
+                      </button>
+                    )}
+                    
+                    <p className="text-sm text-gray-500 max-w-xs">
+                      Click the camera icon to upload a new profile picture.
+                      {isEditing && " Click 'Save' to confirm your selection."}
+                    </p>
                   </div>
 
-                  {/* Stats Section - Remaining code stays the same */}
+                  {/* Stats Section */}
                   <div className="flex-1">
                     <h2 className="text-2xl font-black text-gray-800 mb-6">My Progress</h2>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                      {/* Total Points */}
                       <div className="stat-card bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] p-6 rounded-xl border border-[#B2EBF2]">
                         <div className="flex items-center justify-between mb-4">
                           <div>
@@ -181,7 +264,6 @@ export default function ChildProfilePage() {
                         </button>
                       </div>
 
-                      {/* Tasks Completed */}
                       <div className="stat-card bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] p-6 rounded-xl border border-[#B2EBF2]">
                         <div className="flex items-center justify-between mb-4">
                           <div>
@@ -195,7 +277,6 @@ export default function ChildProfilePage() {
                         </button>
                       </div>
 
-                      {/* Level Progress */}
                       <div className="stat-card bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] p-6 rounded-xl border border-[#B2EBF2] md:col-span-2">
                         <div className="flex items-center justify-between mb-4">
                           <div>
@@ -224,7 +305,7 @@ export default function ChildProfilePage() {
             </div>
           )}
 
-          {/* Activity Tab Content - Remaining code stays the same */}
+          {/* Activity Tab Content */}
           {activeTab === "activity" && (
             <div className="activity-content">
               <div className="activity-card bg-white rounded-2xl shadow-sm border border-[#e2e8f0] p-8">
@@ -268,7 +349,3 @@ export default function ChildProfilePage() {
     </div>
   );
 }
-
-
-
-
