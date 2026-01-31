@@ -1,0 +1,10 @@
+﻿# .env.local - CORRECT FORMAT
+NEXT_PUBLIC_SUPABASE_URL=https://eailwpyubcopzikpblep.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # Get this from Supabase Dashboard
+
+# Optional for server-side operations
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # Get from Supabase Dashboard
+
+# Database URLs (NOT for frontend auth!)
+DATABASE_URL=postgresql://postgres.eailwpyubcopzikpblep:password@aws-1-eu-north-1.pooler.supabase.com:6543/postgres
+DIRECT_DATABASE_URL=postgresql://postgres:password@db.eailwpyubcopzikpblep.supabase.co:5432/postgres

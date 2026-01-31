@@ -1,0 +1,50 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]: 
+        - heading "FamilyTask" [level=1] [ref=e8]
+      - heading "Welcome Back!" [level=2] [ref=e9]
+      - paragraph [ref=e10]: Sign in to manage your family tasks
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]:
+          - button " Return to Home Page" [ref=e14] [cursor=pointer]:
+            - generic [ref=e15]: 
+            - text: Return to Home Page
+          - generic [ref=e20]: Or continue with login
+        - generic [ref=e21]:
+          - generic [ref=e22]: Email Address
+          - textbox "your@email.com" [ref=e23]
+        - generic [ref=e24]:
+          - generic [ref=e25]: Password
+          - textbox "••••••••" [ref=e26]
+        - generic [ref=e27]:
+          - generic [ref=e28]: I am a...
+          - generic [ref=e29]:
+            - button " Parent" [ref=e30] [cursor=pointer]:
+              - generic [ref=e31]: 
+              - text: Parent
+            - button " Child" [ref=e32] [cursor=pointer]:
+              - generic [ref=e33]: 
+              - text: Child
+        - button "Sign In" [ref=e34] [cursor=pointer]
+      - generic [ref=e35]:
+        - paragraph [ref=e36]: Quick Demo Access
+        - generic [ref=e37]:
+          - button " Demo Parent" [ref=e38] [cursor=pointer]:
+            - generic [ref=e39]: 
+            - text: Demo Parent
+          - button " Demo Child" [ref=e40] [cursor=pointer]:
+            - generic [ref=e41]: 
+            - text: Demo Child
+      - paragraph [ref=e43]: For now, any email/password works. Real auth coming soon!
+    - paragraph [ref=e45]:
+      - text: Need help?
+      - link "Contact support" [ref=e46]:
+        - /url: /
+  - alert [ref=e47]
+```

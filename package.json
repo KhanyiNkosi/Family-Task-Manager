@@ -1,45 +1,37 @@
 {
-  "name": "family-task-manager",
+  "name": "familytask-next",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "dev:env": "powershell -File load-env.ps1 && next dev",
+    "build:env": "powershell -File load-env.ps1 && next build",
+    "start:env": "powershell -File load-env.ps1 && next start"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^7.1.0",
-    "@fortawesome/free-solid-svg-icons": "^7.1.0",
-    "@fortawesome/react-fontawesome": "^3.1.1",
     "@heroicons/react": "^2.2.0",
-    "@prisma/client": "^5.0.0",
-    "bcryptjs": "^2.4.3",
-    "dotenv": "^16.0.0",
-    "effect": "^3.19.15",
-    "jsonwebtoken": "^9.0.0",
-    "lucide-react": "^0.263.1",
-    "next": "14.2.35",
-    "pg": "^8.11.0",
-    "prisma": "^7.3.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@hookform/resolvers": "^5.2.2",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.93.3",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.563.0",
+    "next": "^14.0.0",
+    "react": "^18",
+    "react-dom": "^18",
+    "react-hook-form": "^7.71.1",
+    "react-hot-toast": "^2.6.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.2",
-    "@types/jsonwebtoken": "^9.0.0",
-    "@types/node": "^20.0.0",
-    "@types/pg": "^8.10.0",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "autoprefixer": "^10.4.0",
-    "eslint": "^8.0.0",
-    "eslint-config-next": "14.2.35",
-    "postcss": "^8.4.0",
-    "tailwindcss": "^3.0.0",
-    "typescript": "^5.0.0"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^20.19.30",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.0",
+    "typescript": "^5"
   }
 }

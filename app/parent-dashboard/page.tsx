@@ -46,44 +46,7 @@ export default function ParentDashboard() {
   const [parentProfileImage, setParentProfileImage] = useState("");
 
   // Notification State
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      title: 'New Task Assigned',
-      message: 'You assigned "Clean Room" to Alex',
-      type: 'task',
-      timestamp: new Date(Date.now() - 3600000),
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Reward Claimed',
-      message: 'Alex claimed 30 minutes of game time',
-      type: 'reward',
-      timestamp: new Date(Date.now() - 7200000),
-      read: false,
-      actionUrl: '/parent-dashboard/rewards',
-      actionText: 'View Rewards'
-    },
-    {
-      id: '3',
-      title: 'Weekly Report Ready',
-      message: 'Family productivity report is available',
-      type: 'info',
-      timestamp: new Date(Date.now() - 86400000),
-      read: true
-    },
-    {
-      id: '4',
-      title: 'Task Overdue',
-      message: '"Homework" was due yesterday',
-      type: 'warning',
-      timestamp: new Date(Date.now() - 172800000),
-      read: false,
-      actionUrl: '/parent-dashboard/tasks',
-      actionText: 'View Tasks'
-    }
-  ]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const handleDismissNotification = (id: string) => {
     setNotifications(prev => prev.filter(notif => notif.id !== id));
@@ -97,18 +60,8 @@ export default function ParentDashboard() {
     );
   };
 
-  // Function to add test notification
-  const addSampleNotification = () => {
-    const newNotification: Notification = {
-      id: Date.now().toString(),
-      title: 'Test Notification',
-      message: 'This is a test notification from the parent dashboard',
-      type: 'info' as NotificationType,
-      timestamp: new Date(),
-      read: false
-    };
-    setNotifications(prev => [newNotification, ...prev]);
-  };
+  
+
 
   // Load profile image from localStorage
   useEffect(() => {
@@ -129,31 +82,16 @@ export default function ParentDashboard() {
   ];
 
   // State for tasks
-  const [activeTasks, setActiveTasks] = useState<Task[]>([
-    { id: 1, title: "Complete Science Project", assignedTo: "Alex", points: 25, dueDate: "Tomorrow", status: "pending", description: "Finish the solar system model for science class" },
-    { id: 2, title: "Practice Piano", assignedTo: "Sam", points: 15, dueDate: "Friday", status: "pending" },
-    { id: 3, title: "Math Homework", assignedTo: "Alex", points: 10, dueDate: "Today", status: "pending" },
-    { id: 4, title: "Clean Room", assignedTo: "Sam", points: 20, dueDate: "Weekend", status: "pending" },
-  ]);
+  const [activeTasks, setActiveTasks] = useState<Task[]>([]);
 
   // State for children
-  const [children, setChildren] = useState<Child[]>([
-    { id: 1, name: "Alex Johnson", points: 320, avatar: "A", tasksCompleted: 24 },
-    { id: 2, name: "Sam Wilson", points: 280, avatar: "S", tasksCompleted: 18 },
-  ]);
+  const [children, setChildren] = useState<Child[]>([]);
 
   // State for bulletin messages
-  const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([
-    { id: 1, avatar: "C", message: "Can we get pizza for movie night? ??", timestamp: "2:30 PM" },
-    { id: 2, avatar: "M", message: "Family movie night this Friday!", timestamp: "1:45 PM" },
-    { id: 3, avatar: "A", message: "I finished my science project early! ??", timestamp: "11:20 AM" },
-  ]);
+  const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
 
   // State for reward requests
-  const [rewardRequests, setRewardRequests] = useState<RewardRequest[]>([
-    { id: 1, child: "C", name: "Video Game Hour", requester: "Child", points: 50, status: "pending" },
-    { id: 2, child: "M", name: "Ice Cream Party", requester: "Mom", points: 75, status: "pending" },
-  ]);
+  const [rewardRequests, setRewardRequests] = useState<RewardRequest[]>([]);
 
   // New task form state
   const [newTaskName, setNewTaskName] = useState("");
@@ -177,7 +115,7 @@ export default function ParentDashboard() {
     if (!newTaskName.trim()) return;
 
     const newTask: Task = {
-      id: activeTasks.length + 1,
+      id: activeTasks?.length + 1,
       title: newTaskName,
       description: newTaskDescription.trim() || undefined,
       assignedTo: newTaskAssignee,
@@ -195,7 +133,7 @@ export default function ParentDashboard() {
 
   // Complete task
   const handleCompleteTask = (taskId: number) => {
-    const updatedTasks = activeTasks.map(task =>
+    const updatedTasks = activeTasks?.map(task =>
       task.id === taskId ? { ...task, status: "completed" as const } : task
     );
     setActiveTasks(updatedTasks);
@@ -205,7 +143,7 @@ export default function ParentDashboard() {
   // Delete task
   const handleDeleteTask = (taskId: number) => {
     if (confirm("Are you sure you want to delete this task?")) {
-      const updatedTasks = activeTasks.filter(task => task.id !== taskId);
+      const updatedTasks = activeTasks?.filter(task => task.id !== taskId);
       setActiveTasks(updatedTasks);
       alert("Task deleted successfully!");
     }
@@ -216,7 +154,7 @@ export default function ParentDashboard() {
     if (!newBulletinMessage.trim()) return;
 
     const newMessage: BulletinMessage = {
-      id: bulletinMessages.length + 1,
+      id: bulletinMessages?.length + 1,
       avatar: "P",
       message: newBulletinMessage,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -229,14 +167,14 @@ export default function ParentDashboard() {
   // Delete bulletin message
   const handleDeleteBulletinMessage = (messageId: number) => {
     if (confirm("Are you sure you want to delete this message?")) {
-      const updatedMessages = bulletinMessages.filter(msg => msg.id !== messageId);
+      const updatedMessages = bulletinMessages?.filter(msg => msg.id !== messageId);
       setBulletinMessages(updatedMessages);
     }
   };
 
   // Handle reward request
   const handleRewardRequest = (requestId: number, status: "approved" | "rejected") => {
-    const updatedRequests = rewardRequests.map(request =>
+    const updatedRequests = rewardRequests?.map(request =>
       request.id === requestId ? { ...request, status } : request
     );
     setRewardRequests(updatedRequests);
@@ -244,9 +182,9 @@ export default function ParentDashboard() {
   };
 
   // Calculate totals
-  const totalPoints = children.reduce((sum, child) => sum + child.points, 0);
-  const pendingTasks = activeTasks.filter(task => task.status === "pending").length;
-  const completedTasks = activeTasks.filter(task => task.status === "completed").length;
+  const totalPoints = children?.reduce((sum, child) => sum + child.points, 0);
+  const pendingTasks = activeTasks?.filter(task => task.status === "pending").length;
+  const completedTasks = activeTasks?.filter(task => task.status === "completed").length;
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
@@ -325,14 +263,7 @@ export default function ParentDashboard() {
                 <p className="text-gray-600 mt-2">Monitor your family's tasks, rewards, and activities</p>
               </div>
               <div className="flex items-center gap-4">
-                <button
-                  onClick={addSampleNotification}
-                  className="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium text-sm shadow hover:shadow-md transition-all"
-                  title="Add test notification"
-                >
-                  <i className="fas fa-bell mr-1"></i>
-                  Test
-                </button>
+                
                 <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white overflow-hidden">
                     {isClient && parentProfileImage ? (
@@ -382,7 +313,7 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm opacity-90">Active Children</p>
-                    <p className="text-2xl font-bold mt-1">{children.length}</p>
+                    <p className="text-2xl font-bold mt-1">{children?.length}</p>
                   </div>
                   <i className="fas fa-users text-2xl opacity-80"></i>
                 </div>
@@ -398,12 +329,12 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Active Family Tasks</h2>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                    {activeTasks.length} tasks
+                    {activeTasks?.length} tasks
                   </span>
                 </div>
 
                 <div className="space-y-4">
-                  {activeTasks.map((task) => (
+                  {activeTasks?.map((task) => (
                     <div key={task.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                       <div className="flex items-center justify-between">
                         <div>
@@ -490,7 +421,7 @@ export default function ParentDashboard() {
                 </div>
 
                 <div className="space-y-4">
-                  {children.map((child) => (
+                  {children?.map((child) => (
                     <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                       <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white font-bold text-lg">
@@ -527,12 +458,12 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Family Bulletin</h2>
                   <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
-                    {bulletinMessages.length} messages
+                    {bulletinMessages?.length} messages
                   </span>
                 </div>
 
                 <div className="space-y-4">
-                  {bulletinMessages.map((message) => (
+                  {bulletinMessages?.map((message) => (
                     <div key={message.id} className="p-4 bg-gradient-to-br from-purple-50/30 to-white rounded-xl border border-purple-100/50 hover:border-purple-200 transition-colors">
                       <div className="flex items-start gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 flex items-center justify-center text-white font-bold">
@@ -580,12 +511,12 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Reward Requests</h2>
                   <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                    {rewardRequests.filter(r => r.status === "pending").length} pending
+                    {rewardRequests?.filter(r => r.status === "pending").length} pending
                   </span>
                 </div>
 
                 <div className="space-y-4">
-                  {rewardRequests.map((request) => (
+                  {rewardRequests?.map((request) => (
                     <div key={request.id} className="p-4 bg-gradient-to-br from-amber-50/30 to-white rounded-xl border border-amber-100/50">
                       <div className="flex items-center justify-between">
                         <div>
@@ -633,3 +564,12 @@ export default function ParentDashboard() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

@@ -37,22 +37,45 @@ export default function ChildDashboardPage() {
   ];
   const router = useRouter();
   const pathname = usePathname();
-  const [points, setPoints] = useState(1250);
-  const [tasks, setTasks] = useState([
-    { id: 1, title: "Hockey practice", points: 5, completed: false, category: "sports" },
-    { id: 2, title: "Homework", points: 10, completed: true, category: "school" },
-    { id: 3, title: "Clean Room", points: 2, completed: true, category: "chores" },
-    { id: 4, title: "Walk the dog", points: 8, completed: false, category: "chores" },
-  ]);
-  const [rewards, setRewards] = useState([
-    { id: 1, name: "Ice Cream Trip", description: "A special trip to your favorite shop.", points: 50, redeemed: false },
-    { id: 2, name: "Movie Night Pick", description: "Choose the movie for family night", points: 30, redeemed: true },
-    { id: 3, name: "Extra Game Time", description: "30 minutes extra video game time", points: 25, redeemed: false },
-    { id: 4, name: "New Book", description: "Choose a new book from the store", points: 40, redeemed: false },
-  ]);
+  const [points, setPoints] = useState(0);
+  const [tasks, setTasks] = useState([]);;
+  const [rewards, setRewards] = useState([]);;
   const [toast, setToast] = useState({ show: false, message: "" });
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
+
+
+  // === SUPABASE DATA FETCHING ===
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // TODO: Replace with your actual Supabase integration
+        // Example structure:
+        // 1. Fetch user points from completed tasks
+        // const totalPoints = await calculateUserPoints();
+        // setPoints(totalPoints);
+        
+        // 2. Fetch child's tasks
+        // const childTasks = await fetchChildTasks();
+        // setTasks(childTasks);
+        
+        // 3. Fetch available rewards
+        // const availableRewards = await fetchAvailableRewards();
+        // setRewards(availableRewards);
+        
+        // // TODO: Add Supabase data fetching here BLOCK WHEN SUPABASE IS CONNECTED
+        // TODO: Add Supabase data fetching here;
+        // TODO: Add Supabase data fetching here;
+        // TODO: Add Supabase data fetching here;
+        
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        // Optionally set error state or show user message
+      }
+    };
+    
+    fetchDashboardData();
+  }, []); // Empty dependency array = run once on mount
   useEffect(() => {
     // Check if user is trying to access parent-only routes
     const parentOnlyRoutes = [
@@ -424,6 +447,9 @@ export default function ChildDashboardPage() {
     </div>
   );
 }
+
+
+
 
 
 

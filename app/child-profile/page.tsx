@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -111,9 +111,7 @@ export default function ChildProfilePage() {
             <i className="fas fa-chevron-left"></i> My Profile
           </Link>
           <div className="header-actions flex items-center gap-4">
-            <div className="notif-badge w-10 h-10 rounded-full border border-[#00C2E0] text-[#00C2E0] flex items-center justify-center bg-white cursor-pointer">
-              <i className="far fa-bell"></i>
-            </div>
+            
             <div className="user-avatar-small w-10 h-10 rounded-full bg-[#E0F7FA] text-[#00C2E0] flex items-center justify-center font-bold border border-[#B2EBF2] overflow-hidden">
               {isClient && profileImage ? (
                 <img 
@@ -208,8 +206,8 @@ export default function ChildProfilePage() {
                       />
                     </div>
                     
-                    <h3 className="text-2xl font-black text-gray-800 mb-1">Super Kid</h3>
-                    <p className="text-[#64748b] text-base mb-6">Task Master</p>
+                    <h3 className="text-2xl font-black text-gray-800 mb-1">Child Name</h3>
+                    <p className="text-[#64748b] text-base mb-6">Family Member</p>
                     
                     {isEditing && (
                       <div className="space-y-3 mb-6">
@@ -222,7 +220,7 @@ export default function ChildProfilePage() {
                         </button>
                         <button
                           onClick={handleCancel}
-                          className="w-full bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-300 transition-all flex items-center justify-center gap-2 border border-gray-300"
+                          className="w-full bg-gradient-to-r from-gray-0 to-gray-200 text-gray-700 py-2.5 rounded-lg font-medium hover:bg-gray-300 transition-all flex items-center justify-center gap-2 border border-gray-300"
                         >
                           <i className="fas fa-times"></i>
                           Cancel
@@ -255,7 +253,7 @@ export default function ChildProfilePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-[#006372] text-sm font-medium">Total Points</p>
-                            <p className="text-4xl font-black text-[#00A8C2]">1,250</p>
+                            <p className="text-4xl font-black text-[#00A8C2]">0</p>
                           </div>
                           <i className="fas fa-star text-3xl text-yellow-500"></i>
                         </div>
@@ -268,7 +266,7 @@ export default function ChildProfilePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-[#006372] text-sm font-medium">Tasks Done</p>
-                            <p className="text-4xl font-black text-[#00A8C2]">47</p>
+                            <p className="text-4xl font-black text-[#00A8C2]">0</p>
                           </div>
                           <i className="fas fa-check-circle text-3xl text-[#00C2E0]"></i>
                         </div>
@@ -281,7 +279,7 @@ export default function ChildProfilePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-[#006372] text-sm font-medium">Level</p>
-                            <p className="text-4xl font-black text-[#00A8C2]">8</p>
+                            <p className="text-4xl font-black text-[#00A8C2]">1</p>
                           </div>
                           <i className="fas fa-trophy text-3xl text-[#00C2E0]"></i>
                         </div>
@@ -292,7 +290,7 @@ export default function ChildProfilePage() {
                               style={{ width: "75%" }}
                             ></div>
                           </div>
-                          <p className="text-sm text-[#64748b] mt-2">750/1000 points to level 9</p>
+                          <p className="text-sm text-[#64748b] mt-2">0/100 points to level 2</p>
                         </div>
                         <button className="w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold">
                           Level Up!
@@ -322,10 +320,10 @@ export default function ChildProfilePage() {
                 
                 <div className="space-y-4">
                   {[
-                    { type: "task", title: "Completed Math Homework", points: "+25", time: "2h ago", icon: "fa-check", color: "text-green-500" },
-                    { type: "ai", title: "Finished AI Task", points: "+15", time: "Yesterday", icon: "fa-robot", color: "text-purple-500" },
-                    { type: "reward", title: "Redeemed Game Time", points: "-100", time: "2 days ago", icon: "fa-gift", color: "text-[#00C2E0]" },
-                    { type: "task", title: "Cleaned Room", points: "+20", time: "3 days ago", icon: "fa-check", color: "text-green-500" },
+                    { type: "task", title: "Completed Task", points: "+0", time: "Recently", icon: "fa-check", color: "text-green-500" },
+                    { type: "ai", title: "Completed Activity", points: "+0", time: "Recently", icon: "fa-robot", color: "text-purple-500" },
+                    { type: "reward", title: "Redeemed Reward", points: "-0", time: "Recently", icon: "fa-gift", color: "text-[#00C2E0]" },
+                    { type: "task", title: "Completed Chore", points: "+0", time: "Recently", icon: "fa-check", color: "text-green-500" },
                   ].map((activity, index) => (
                     <div key={index} className="activity-item flex items-center gap-4 p-4 border border-[#e2e8f0] rounded-xl hover:bg-[#f8fafc] transition">
                       <div className={`activity-icon w-12 h-12 bg-[#E0F7FA] rounded-full flex items-center justify-center ${activity.color}`}>
@@ -349,3 +347,15 @@ export default function ChildProfilePage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+

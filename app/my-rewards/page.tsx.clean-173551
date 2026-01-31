@@ -1,0 +1,145 @@
+﻿"use client";
+
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+export default function MyRewardsPage() {
+  const [userRole, setUserRole] = useState("child");
+  const router = useRouter();
+  
+  // CHILD-ONLY REWARDS VIEW - NO DUPLICATE VARIABLES
+  useEffect(() => {
+    const role = sessionStorage.getItem("userRole") || "child";
+    setUserRole(role);
+    
+    // STRICT: Parents CANNOT access child rewards
+    
+  }, [router]);
+
+  const [availableRewards, setAvailableRewards] = useState([]);
+
+  const [myPoints, setMyPoints] = useState(0);
+
+
+  // --- Data Fetching from Supabase ---
+  useEffect(() => {
+    const fetchData = async () => {
+      // Replace these example calls with your actual Supabase functions from app/lib/supabase.ts
+      // Example: Fetch points from completed tasks
+      // const { totalPoints } = await calculateUserPoints(authUserId);
+      // setMyPoints(totalPoints);
+
+      // Example: Fetch available rewards for the user's family
+      // const rewards = await fetchFamilyRewards(familyId);
+      // setAvailableRewards(rewards);
+
+      // TODO: Connect to Supabase here
+    // Example:
+    // const points = await calculateUserPoints();
+    // setMyPoints(points);
+    // 
+    // const rewards = await fetchAvailableRewards();
+    // setAvailableRewards(rewards);
+    };
+    fetchData();
+  }, []); // Empty dependency array means this runs once on component mount
+  // --- End of Data Fetching ---
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* HEADER - Changed from purple/pink to teal/cyan */}
+      <div className="bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white p-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <Link href="/child-dashboard" className="flex items-center gap-2 hover:opacity-80 hover:text-white/90">
+            <i className="fas fa-arrow-left"></i>
+            <span>Back to Dashboard</span>
+          </Link>
+          <h1 className="text-2xl font-bold">My Rewards</h1>
+          <div className="w-24"></div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto p-6">
+        {/* POINTS DISPLAY - Changed from yellow/orange to teal/cyan */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 mb-8 text-center border border-[#00C2E0]/20">
+          <div className="inline-block bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 px-8 rounded-full shadow-lg">
+            <i className="fas fa-star mr-2"></i>
+            <span className="text-3xl font-bold">{myPoints.toLocaleString()}</span>
+            <span className="ml-2">Points Available</span>
+          </div>
+          <p className="text-gray-600 mt-4">Ask your parents to add more rewards you can earn!</p>
+        </div>
+
+        {/* AVAILABLE REWARDS */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+          <h2 className="text-2xl font-bold text-[#006372] mb-6">Available Rewards</h2>
+          <p className="text-gray-600 mb-6">Redeem your points for these rewards:</p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {availableRewards.map((reward, index) => (
+              <div key={index} className="border border-[#00C2E0]/30 rounded-xl p-6 hover:shadow-md transition bg-gradient-to-br from-cyan-50 to-teal-50">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-[#006372]">{reward.name}</h3>
+                    <p className="text-gray-600 text-sm mt-1">{reward.description}</p>
+                  </div>
+                  {/* Changed from purple/pink to teal/cyan */}
+                  <div className="bg-gradient-to-r from-[#00C2E0]/20 to-[#006372]/20 text-[#006372] py-1 px-4 rounded-full font-bold border border-[#00C2E0]/30">
+                    {reward.cost} pts
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between mt-4">
+                  <div className="text-sm">
+                    {myPoints >= reward.cost ? (
+                      <span className="text-green-600">
+                        <i className="fas fa-check-circle mr-1"></i> You have enough points!
+                      </span>
+                    ) : (
+                      <span className="text-red-600">
+                        Need {reward.cost - myPoints} more points
+                      </span>
+                    )}
+                  </div>
+                  {/* Button changed to teal/cyan gradient */}
+                  <button 
+                    className={`px-6 py-2 rounded-lg font-bold transition ${
+                      myPoints >= reward.cost
+                        ? "bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 hover:shadow-md"
+                        : "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    }`}
+                    disabled={myPoints < reward.cost}
+                    onClick={() => {
+                      if (myPoints >= reward.cost) {
+                        alert(`Request sent to parents for: ${reward.name}\nParents will review and approve.`);
+                      }
+                    }}
+                  >
+                    {myPoints >= reward.cost ? "Request Reward" : "Need More Points"}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          
+          {/* INFO BOX - Changed to teal/cyan theme */}
+          <div className="mt-8 p-4 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl border border-[#00C2E0]/30">
+            <div className="flex items-center gap-3">
+              <i className="fas fa-info-circle text-[#00C2E0] text-xl"></i>
+              <div>
+                <h4 className="font-bold text-[#006372]">How Rewards Work</h4>
+                <p className="text-[#006372]/80 text-sm">
+                  1. Request a reward using your points<br/>
+                  2. Parents will review and approve<br/>
+                  3. Once approved, enjoy your reward!
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+

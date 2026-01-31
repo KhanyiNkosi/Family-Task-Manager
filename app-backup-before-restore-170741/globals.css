@@ -1,0 +1,80 @@
+﻿/* app/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --primary-cyan: #00C2E0;
+  --cyan-glow: rgba(0, 194, 224, 0.4);
+  --text-dark: #4A5568;
+  --white: #FFFFFF;
+  --bg-top: #F0F9FF;
+  --bg-bottom: #D8EEFE;
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --sidebar-bg: #006372;
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--text-dark);
+  min-height: 100vh;
+  line-height: 1.6;
+  background: #f4f7f9;
+}
+
+/* Fix for sidebar pages */
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+.dashboard-container .sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 260px;
+  background: var(--sidebar-bg);
+  z-index: 40;
+  overflow-y: auto;
+}
+
+.dashboard-container .main-content {
+  margin-left: 260px;
+  flex: 1;
+  position: relative;
+  z-index: 10;
+  min-height: 100vh;
+}
+
+/* Home page specific - keep the gradient */
+.home-page-body {
+  background: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  padding-top: 90px;
+  min-height: 100vh;
+}
+
+/* Animation for toast */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}

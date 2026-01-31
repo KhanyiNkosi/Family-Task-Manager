@@ -1,19 +1,34 @@
-/** @type {import('next').NextConfig} */
+﻿/** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-  eslint: {
-    ignoreDuringBuilds: true,
+  reactStrictMode: false,
+  
+  // Environment variables that should be available on the client
+  env: {
+    // These will be available as process.env.NEXT_PUBLIC_*
+    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    
+    // Vercel-specific (optional, for debugging)
+    NEXT_PUBLIC_VERCEL_ENV: process.env.VERCEL_ENV,
+    NEXT_PUBLIC_VERCEL_URL: process.env.VERCEL_URL,
   },
-  typescript: {
-    ignoreBuildErrors: false,
+  
+  // Enable CORS for auth callbacks
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+        ],
+      },
+    ];
   },
-  // Note: Next.js doesn't have a top-level 'exclude' option
-  // Instead, we use experimental config or other approaches
-  experimental: {
-    // This is an experimental way to exclude directories
-    // Alternatively, we'll use a different approach below
-  }
-}
+};
 
-module.exports = nextConfig  // Make sure this says 'nextConfig' not 'nextConfigs'
+module.exports = nextConfig;
+

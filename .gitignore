@@ -53,3 +53,15 @@ test-role.html
 .json.corrupted-backup
 *.config.ts.backup
 *.config.js.backup
+
+# Server environment files
+.env.server.local
+.env.production
+.env.local.backup
+
+# Never commit secrets
+*.env.local
+!.env.local.example
+
+# Supabase local
+.supabase/

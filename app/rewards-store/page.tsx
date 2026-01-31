@@ -9,42 +9,9 @@ export default function RewardsStorePage() {
   
   // Note: In production, add proper authentication here
 
-  const [pendingApprovals, setPendingApprovals] = useState([
-    {
-      id: 1,
-      name: "Video Game Hour",
-      requestedBy: "Alex",
-      points: 50,
-      icon: "fas fa-gamepad",
-      iconBg: "#E0F7FA"
-    },
-    {
-      id: 2,
-      name: "Movie Night",
-      requestedBy: "Sam",
-      points: 75,
-      icon: "fas fa-film",
-      iconBg: "#FFEBEE"
-    },
-    {
-      id: 3,
-      name: "Ice Cream Trip",
-      requestedBy: "Jordan",
-      points: 40,
-      icon: "fas fa-ice-cream",
-      iconBg: "#F3E5F5"
-    }
-  ]);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
 
-  const [rewards, setRewards] = useState([
-    { id: 1, name: "New Book", description: "Pick out a brand new book from the bookstore", points: 120, icon: "fas fa-book", stock: 5 },
-    { id: 2, name: "Extra Game Time", description: "30 minutes of extra video game time", points: 80, icon: "fas fa-gamepad", stock: 10 },
-    { id: 3, name: "Movie Choice", description: "Choose the movie for family movie night", points: 100, icon: "fas fa-film", stock: 8 },
-    { id: 4, name: "Park Day", description: "Special trip to the park with friends", points: 60, icon: "fas fa-tree", stock: 15 },
-    { id: 5, name: "Bake Cookies", description: "Bake and decorate cookies together", points: 90, icon: "fas fa-cookie-bite", stock: 6 },
-    { id: 6, name: "Stay Up Late", description: "Stay up 30 minutes past bedtime", points: 150, icon: "fas fa-moon", stock: 12 },
-  ]);
-
+  const [rewards, setRewards] = useState([]);
   const [newReward, setNewReward] = useState({ name: "", description: "", points: 0, stock: 1 });
 
   const approveRequest = (id: number) => {
@@ -60,14 +27,7 @@ export default function RewardsStorePage() {
   const addReward = () => {
     if (newReward.name && newReward.description && newReward.points > 0) {
       const newId = rewards.length > 0 ? Math.max(...rewards.map(r => r.id)) + 1 : 1;
-      setRewards([...rewards, {
-        id: newId,
-        name: newReward.name,
-        description: newReward.description,
-        points: newReward.points,
-        icon: "fas fa-gift",
-        stock: newReward.stock
-      }]);
+      // TODO: Add Supabase data fetching here;
       setNewReward({ name: "", description: "", points: 0, stock: 1 });
       alert("New reward added to store!");
     }
@@ -387,4 +347,5 @@ export default function RewardsStorePage() {
     </div>
   );
 }
+
 

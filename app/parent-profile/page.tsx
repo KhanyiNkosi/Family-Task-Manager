@@ -8,6 +8,8 @@ import {
   Bell, HelpCircle, LogOut, Camera, Shield, CreditCard,
   MessageSquare, Star, Gift, Target, TrendingUp, Home
 } from "lucide-react";
+import { supabase } from "@/app/lib/supabase";
+import { fetchParentProfileData, fetchParentProfile } from "@/app/lib/profile-data";
 
 interface ParentProfile {
   id: string;
@@ -34,16 +36,20 @@ export default function ParentProfilePage() {
   const pathname = usePathname();
   const [isEditing, setIsEditing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isClient, setIsClient] = useState(false);
+  const [tempImage, setTempImage] = useState("");
+  const [profileImage, setProfileImage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<ParentProfile>({
     id: "1",
-    name: "Alex Johnson",
-    email: "alex.johnson@familytask.com",
+    name: "",
+    email: "email@example.com",
     phone: "+1 (555) 123-4567",
-    joinDate: "2024-01-15",
+    joinDate: "0-01-15",
     role: "Parent",
-    childrenCount: 2,
-    totalTasksAssigned: 47,
-    completedTasks: 42,
+    childrenCount: 0,
+    totalTasksAssigned: 0,
+    completedTasks: 0,
     profileImage: "",
   });
 
@@ -52,11 +58,63 @@ export default function ParentProfilePage() {
   // Load profile image from localStorage on component mount
   useEffect(() => {
     const savedImage = localStorage.getItem("parentProfileImage") || "";
-    if (savedImage) {
-      setProfile(prev => ({ ...prev, profileImage: savedImage }));
-      setEditedProfile(prev => ({ ...prev, profileImage: savedImage }));
-    }
+    setProfileImage(savedImage);
+    setIsClient(true);
+    
+    // Fetch profile data from Supabase
+    fetchProfileFromSupabase();
   }, []);
+
+  // Fetch profile data from Supabase
+  const fetchProfileFromSupabase = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session?.user) {
+        console.log("No user session found");
+        setIsLoading(false);
+        return;
+      }
+      
+      const userId = session.user.id;
+      
+      // Fetch parent profile from database
+      const dbProfile = await fetchParentProfile(userId);
+      if (dbProfile) {
+        setProfile(prev => ({
+          ...prev,
+          name: dbProfile.name || "",
+          email: dbProfile.email || "",
+          phone: dbProfile.phone || "+1 (555) 123-4567",
+          role: dbProfile.role === 'parent' ? 'Parent' : 'Family Member',
+          profileImage: dbProfile.profile_image || ""
+        }));
+        
+        // If database has profile image, use it
+        if (dbProfile.profile_image) {
+          setProfileImage(dbProfile.profile_image);
+          localStorage.setItem("parentProfileImage", dbProfile.profile_image);
+        }
+      }
+      
+      // Fetch profile statistics
+      const stats = await fetchParentProfileData(userId);
+      setProfile(prev => ({
+        ...prev,
+        childrenCount: stats.childrenCount,
+        totalTasksAssigned: stats.totalTasksAssigned,
+        completedTasks: stats.completedTasks
+      }));
+      
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Navigation items - Custom for parent-profile
   const navItems: NavItem[] = [
@@ -68,54 +126,153 @@ export default function ParentProfilePage() {
     { href: "/parent-profile", icon: "fas fa-user", label: "Profile" },
   ];
 
-  // Fetch profile data
-  useEffect(() => {
-    const fetchProfile = async () => {
-      // Simulate API call
-      setTimeout(() => {
-        console.log("Profile data loaded");
-      }, 500);
-    };
-    fetchProfile();
-  }, []);
-
   const handleEdit = () => {
     setEditedProfile({ ...profile });
     setIsEditing(true);
   };
 
-  const handleSave = () => {
-    setProfile({ ...editedProfile });
-    setIsEditing(false);
-    alert("Profile updated successfully!");
+    const handleSave = async () => {
+    try {
+      console.log("Saving profile...", editedProfile);
+      
+      // Get current user session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        throw new Error("Cannot get user session");
+      }
+      
+      if (!session?.user) {
+        console.error("No user found in session");
+        throw new Error("No user logged in");
+      }
+      
+      const userId = session.user.id;
+      console.log("Updating user ID:", userId);
+      
+      // First, check if profiles table exists for this user
+      const { data: existingProfile, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', userId)
+        .single();
+      
+      console.log("Existing profile check:", { existingProfile, fetchError });
+      
+      // Prepare update data
+      const updateData: any = {
+        name: editedProfile.name || "",
+        email: editedProfile.email || "",
+        phone: editedProfile.phone || "",
+        updated_at: new Date().toISOString()
+      };
+      
+      // Add profile image if we have one
+      if (tempImage) {
+        updateData.profile_image = tempImage;
+        setProfileImage(tempImage);
+        localStorage.setItem("parentProfileImage", tempImage);
+      }
+      
+      console.log("Update data:", updateData);
+      
+      let updateError;
+      
+      if (fetchError?.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        console.log("Creating new profile...");
+        const { error: createError } = await supabase
+          .from('profiles')
+          .insert({
+            id: userId,
+            ...updateData,
+            role: 'parent',
+            family_id: 'temp-family-id', // This should come from user metadata
+            created_at: new Date().toISOString()
+          });
+        updateError = createError;
+      } else {
+        // Update existing profile
+        console.log("Updating existing profile...");
+        const { error: updateError2 } = await supabase
+          .from('profiles')
+          .update(updateData)
+          .eq('id', userId);
+        updateError = updateError2;
+      }
+      
+      if (updateError) {
+        console.error("Database error details:", updateError);
+        throw new Error(`Database error: ${updateError.message} (Code: ${updateError.code})`);
+      }
+      
+      // Update local state
+      setProfile({ ...editedProfile });
+      
+      setIsEditing(false);
+      alert("Profile updated successfully!");
+      
+      // Refresh data
+      fetchProfileFromSupabase();
+      
+    } catch (error: any) {
+      console.error("Detailed save error:", error);
+      alert(`Error saving profile: ${error.message || "Please try again."}`);
+    }
   };
 
   const handleCancel = () => {
+    setTempImage("");
     setIsEditing(false);
-    setEditedProfile({ ...profile });
   };
 
+  
   const handleInputChange = (field: keyof ParentProfile, value: string) => {
     setEditedProfile(prev => ({ ...prev, [field]: value }));
   };
-
-  const handleProfileImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        const imageUrl = e.target?.result as string;
-        setEditedProfile(prev => ({ ...prev, profileImage: imageUrl }));
-        localStorage.setItem("parentProfileImage", imageUrl);
-        if (!isEditing) {
-          setProfile(prev => ({ ...prev, profileImage: imageUrl }));
-          localStorage.setItem("parentProfileImage", imageUrl);
-        }
+        const result = e.target?.result as string;
+        setTempImage(result);
+        setIsEditing(true);
       };
       reader.readAsDataURL(file);
     }
   };
 
+  // Remove profile picture
+  const handleRemoveparentProfileImage = async () => {
+    if (confirm("Remove profile picture?")) {
+      try {
+        // Get current user session
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          // Update database to remove profile image
+          const { error } = await supabase
+            .from('profiles')
+            .update({ profile_image: null })
+            .eq('id', session.user.id);
+          
+          if (error) throw error;
+        }
+        
+        // Update local state
+        setProfileImage("");
+        localStorage.removeItem("parentProfileImage");
+        alert("Profile picture removed!");
+        
+      } catch (error) {
+        console.error("Error removing profile image:", error);
+        alert("Error removing profile picture. Please try again.");
+      }
+    }
+  };
+  
   const triggerFileInput = () => {
     fileInputRef.current?.click();
   };
@@ -123,6 +280,17 @@ export default function ParentProfilePage() {
   const completionRate = profile.totalTasksAssigned > 0 
     ? Math.round((profile.completedTasks / profile.totalTasksAssigned) * 100) 
     : 0;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE] flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#00C2E0]"></div>
+          <p className="mt-4 text-gray-600">Loading profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE]">
@@ -169,8 +337,9 @@ export default function ParentProfilePage() {
             </button>
 
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (confirm("Are you sure you want to logout?")) {
+                  await supabase.auth.signOut();
                   sessionStorage.removeItem('userRole');
                   sessionStorage.removeItem('userEmail');
                   sessionStorage.removeItem('userName');
@@ -197,7 +366,15 @@ export default function ParentProfilePage() {
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center">
-                    <i className="fas fa-user text-white text-sm"></i>
+                    {profileImage ? (
+                      <img 
+                        src={profileImage} 
+                        alt="Profile" 
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <i className="fas fa-user text-white text-sm"></i>
+                    )}
                   </div>
                   <span className="font-medium text-gray-700">Parent Account</span>
                 </div>
@@ -233,7 +410,7 @@ export default function ParentProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm opacity-90">Total Points</p>
-                    <p className="text-2xl font-bold mt-1">420</p>
+                    <p className="text-2xl font-bold mt-1">0</p>
                   </div>
                   <i className="fas fa-star text-2xl opacity-80"></i>
                 </div>
@@ -242,7 +419,7 @@ export default function ParentProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm opacity-90">Member Since</p>
-                    <p className="text-2xl font-bold mt-1">2024</p>
+                    <p className="text-2xl font-bold mt-1">0</p>
                   </div>
                   <i className="fas fa-calendar text-2xl opacity-80"></i>
                 </div>
@@ -259,14 +436,30 @@ export default function ParentProfilePage() {
                   {/* Profile Picture */}
                   <div className="relative mb-8">
                     <div className="w-40 h-40 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white text-5xl font-bold relative overflow-hidden">
-                      {profile.profileImage ? (
-                        <img 
-                          src={profile.profileImage} 
-                          alt="Profile" 
-                          className="w-full h-full rounded-full object-cover"
-                        />
+                      {isClient ? (
+                        <div className="w-full h-full">
+                          {isEditing && tempImage ? (
+                            <img 
+                              src={tempImage} 
+                              alt="Preview" 
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : profileImage ? (
+                            <img 
+                              src={profileImage} 
+                              alt="Profile" 
+                              className="w-full h-full rounded-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <i className="fas fa-user text-white text-5xl"></i>
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <span>{profile.name.charAt(0)}</span>
+                        <div className="w-full h-full flex items-center justify-center">
+                          <i className="fas fa-user text-white text-5xl"></i>
+                        </div>
                       )}
                       
                       {/* Edit overlay when in edit mode */}
@@ -279,7 +472,7 @@ export default function ParentProfilePage() {
                               ref={fileInputRef}
                               className="hidden"
                               accept="image/*"
-                              onChange={handleProfileImageUpload}
+                              onChange={handleFileUpload}
                             />
                           </label>
                         </div>
@@ -289,16 +482,26 @@ export default function ParentProfilePage() {
                     {/* Edit button when not in edit mode */}
                     {!isEditing && (
                       <button
-                        onClick={triggerFileInput}
+                       onClick={triggerFileInput}
                         className="absolute bottom-3 right-3 bg-white p-2 rounded-full shadow-lg hover:shadow-xl transition-shadow"
                         title="Change photo"
                       >
-                        <Camera size={20} className="text-gray-700" />
+                        <Camera size={20} className="text-gray-700"/>
                       </button>
                     )}
                   </div>
 
-                  <h2 className="text-2xl font-bold text-[#006372]">{profile.name}</h2>
+                  {!isEditing && profileImage && (
+                    <button
+                      onClick={handleRemoveparentProfileImage}
+                      className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 mb-6"
+                    >
+                      <i className="fas fa-trash"></i>
+                      Remove Profile Picture
+                    </button>
+                  )}
+
+                  <h2 className="text-2xl font-bold text-[#006372]">{profile.name || "Parent User"}</h2>
                   <p className="text-gray-600 mt-1 flex items-center gap-2">
                     <i className="fas fa-user-tag text-blue-500"></i>
                     {profile.role}
@@ -338,9 +541,10 @@ export default function ParentProfilePage() {
                         <i className="fas fa-save"></i>
                         Save Changes
                       </button>
+                      
                       <button
                         onClick={handleCancel}
-                        className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-1.5.5 rounded-lg font-medium hover:bg-gray-300 transition-all flex items-center justify-center gap-2 border border-gray-300"
+                        className="bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-300 transition-all flex items-center justify-center gap-2 border border-gray-300"
                       >
                         <i className="fas fa-times"></i>
                         Cancel
@@ -374,7 +578,7 @@ export default function ParentProfilePage() {
                         <input
                           type="text"
                           value={editedProfile.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          onChange={(e) => setEditedProfile(prev => ({ ...prev, name: e.target.value }))}
                           className="w-full p-4 border border-[#00C2E0]/30 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-[#00C2E0] focus:border-transparent"
                           placeholder="Enter your full name"
                         />
@@ -386,7 +590,7 @@ export default function ParentProfilePage() {
                         <input
                           type="email"
                           value={editedProfile.email}
-                          onChange={(e) => handleInputChange('email', e.target.value)}
+                          onChange={(e) => setEditedProfile(prev => ({ ...prev, email: e.target.value }))}
                           className="w-full p-4 border border-[#00C2E0]/30 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-[#00C2E0] focus:border-transparent"
                           placeholder="Enter your email"
                         />
@@ -398,20 +602,9 @@ export default function ParentProfilePage() {
                         <input
                           type="tel"
                           value={editedProfile.phone}
-                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          onChange={(e) => setEditedProfile(prev => ({ ...prev, phone: e.target.value }))}
                           className="w-full p-4 border border-[#00C2E0]/30 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-[#00C2E0] focus:border-transparent"
                           placeholder="Enter your phone number"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-3">
-                          Join Date
-                        </label>
-                        <input
-                          type="date"
-                          value={editedProfile.joinDate}
-                          onChange={(e) => handleInputChange('joinDate', e.target.value)}
-                          className="w-full p-4 border border-[#00C2E0]/30 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-[#00C2E0] focus:border-transparent"
                         />
                       </div>
                     </div>
@@ -422,32 +615,32 @@ export default function ParentProfilePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                       <div className="p-5 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                         <div className="flex items-center gap-3 mb-2">
-                          <User size={18} className="text-[#00C2E0]" />
+                          <User size={0} className="text-[#00C2E0]" />
                           <span className="text-sm font-medium text-[#00C2E0]">Full Name</span>
                         </div>
-                        <p className="text-lg font-semibold text-[#006372]">{profile.name}</p>
+                        <p className="text-lg font-semibold text-[#006372]">{profile.name || "Not set"}</p>
                       </div>
                       <div className="p-5 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                         <div className="flex items-center gap-3 mb-2">
-                          <Mail size={18} className="text-[#00C2E0]" />
+                          <Mail size={0} className="text-[#00C2E0]" />
                           <span className="text-sm font-medium text-[#00C2E0]">Email</span>
                         </div>
                         <p className="text-lg font-semibold text-[#006372]">{profile.email}</p>
                       </div>
                       <div className="p-5 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                         <div className="flex items-center gap-3 mb-2">
-                          <Phone size={18} className="text-[#00C2E0]" />
+                          <Phone size={0} className="text-[#00C2E0]" />
                           <span className="text-sm font-medium text-[#00C2E0]">Phone</span>
                         </div>
                         <p className="text-lg font-semibold text-[#006372]">{profile.phone}</p>
                       </div>
                       <div className="p-5 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                         <div className="flex items-center gap-3 mb-2">
-                          <Calendar size={18} className="text-[#00C2E0]" />
+                          <Calendar size={0} className="text-[#00C2E0]" />
                           <span className="text-sm font-medium text-[#00C2E0]">Member Since</span>
                         </div>
                         <p className="text-lg font-semibold text-[#006372]">
-                          {new Date(profile.joinDate).toLocaleDateString()}
+                          {profile.joinDate ? new Date(profile.joinDate).toLocaleDateString() : "Not set"}
                         </p>
                       </div>
                     </div>
@@ -460,7 +653,7 @@ export default function ParentProfilePage() {
                             <p className="text-sm font-medium text-blue-700">Total Tasks Assigned</p>
                             <p className="text-2xl font-bold text-blue-800 mt-1">{profile.totalTasksAssigned}</p>
                           </div>
-                          <CheckCircle size={24} className="text-blue-500" />
+                          <CheckCircle size={0} className="text-blue-500" />
                         </div>
                       </div>
                       <div className="p-5 bg-gradient-to-br from-green-50/80 to-green-100/30 rounded-xl border border-green-200/50">
@@ -469,7 +662,7 @@ export default function ParentProfilePage() {
                             <p className="text-sm font-medium text-green-700">Completed Tasks</p>
                             <p className="text-2xl font-bold text-green-800 mt-1">{profile.completedTasks}</p>
                           </div>
-                          <Users size={24} className="text-green-500" />
+                          <Users size={0} className="text-green-500" />
                         </div>
                       </div>
                       <div className="p-5 bg-gradient-to-br from-purple-50/80 to-purple-100/30 rounded-xl border border-purple-200/50">
@@ -478,7 +671,7 @@ export default function ParentProfilePage() {
                             <p className="text-sm font-medium text-purple-700">Completion Rate</p>
                             <p className="text-2xl font-bold text-purple-800 mt-1">{completionRate}%</p>
                           </div>
-                          <TrendingUp size={24} className="text-purple-500" />
+                          <TrendingUp size={0} className="text-purple-500" />
                         </div>
                       </div>
                     </div>
@@ -492,3 +685,5 @@ export default function ParentProfilePage() {
     </div>
   );
 }
+
+

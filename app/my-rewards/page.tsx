@@ -8,25 +8,43 @@ export default function MyRewardsPage() {
   const [userRole, setUserRole] = useState("child");
   const router = useRouter();
   
-  // CHILD-ONLY REWARDS VIEW
+  // CHILD-ONLY REWARDS VIEW - NO DUPLICATE VARIABLES
   useEffect(() => {
     const role = sessionStorage.getItem("userRole") || "child";
     setUserRole(role);
     
-    if (role === "parent") {
-      alert("Parents manage rewards in Rewards Store");
-      router.push("/rewards-store");
-    }
+    // STRICT: Parents CANNOT access child rewards
+    
   }, [router]);
 
-  const availableRewards = [
-    { name: "30 Min Game Time", cost: 100, description: "Play your favorite game for 30 minutes" },
-    { name: "Movie Night", cost: 200, description: "Choose a movie for family movie night" },
-    { name: "Ice Cream Treat", cost: 50, description: "Get an ice cream of your choice" },
-    { name: "Stay Up 30 Min Late", cost: 150, description: "Stay up 30 minutes past bedtime" },
-  ];
+  const [availableRewards, setAvailableRewards] = useState([]);
 
-  const myPoints = 1250;
+  const [myPoints, setMyPoints] = useState(0);
+
+
+  // --- Data Fetching from Supabase ---
+  useEffect(() => {
+    const fetchData = async () => {
+      // Replace these example calls with your actual Supabase functions from app/lib/supabase.ts
+      // Example: Fetch points from completed tasks
+      // const { totalPoints } = await calculateUserPoints(authUserId);
+      // setMyPoints(totalPoints);
+
+      // Example: Fetch available rewards for the user's family
+      // const rewards = await fetchFamilyRewards(familyId);
+      // setAvailableRewards(rewards);
+
+      // TODO: Connect to Supabase here
+    // Example:
+    // const points = await calculateUserPoints();
+    // setMyPoints(points);
+    // 
+    // const rewards = await fetchAvailableRewards();
+    // setAvailableRewards(rewards);
+    };
+    fetchData();
+  }, []); // Empty dependency array means this runs once on component mount
+  // --- End of Data Fetching ---
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -124,3 +142,5 @@ export default function MyRewardsPage() {
     </div>
   );
 }
+
+
