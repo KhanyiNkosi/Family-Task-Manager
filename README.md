@@ -1,42 +1,133 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Family Task Manager 👨‍👩‍👧‍👦
 
-## 🧹 Repository Cleanup Note
+A Next.js application for managing family tasks, rewards, and collaboration with Supabase authentication.
 
-This repository contains several backup folders from development work (`app-backup-before-restore-170741`, `auth-backup-20260129-143931`, `backup_2026-01-26_21-37`, etc.). 
+## 🚀 Quick Start
 
-**Recommended**: Move these to an `/archive` directory or remove them to keep the repository clean. See [VERCEL-DEPLOYMENT.md](./VERCEL-DEPLOYMENT.md#backup--cleanup) for cleanup instructions.
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+- Supabase account ([create one free](https://supabase.com))
 
-## Getting Started
+### Local Development Setup
 
-First, run the development server:
-
+1. **Clone the repository**
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/KhanyiNkosi/Family-Task-Manager.git
+cd Family-Task-Manager
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. **Install dependencies**
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. **Set up environment variables**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env.local` file in the root directory:
 
-## Learn More
+```bash
+# Copy the template
+cp .env.local.example .env.local
+```
 
-To learn more about Next.js, take a look at the following resources:
+Add your Supabase credentials:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```env
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome! 
+# App Configuration
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-## Deploy on Vercel
+**Where to find these values:**
+- Go to [Supabase Dashboard](https://supabase.com/dashboard)
+- Select your project → Settings → API
+- Copy the Project URL and API keys
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+4. **Run the development server**
+```bash
+npm run dev
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Open [http://localhost:3000](http://localhost:3000) to see the app.
+
+### Verify Your Setup
+
+Test that environment variables are configured correctly:
+
+```bash
+# Check environment configuration
+node utils/verify-env.js
+
+# Test Supabase API connectivity
+node test-direct-api.js
+```
+
+## 📋 Production Deployment
+
+See [VERCEL-DEPLOYMENT.md](./VERCEL-DEPLOYMENT.md) for complete Vercel deployment instructions including:
+- Environment variable configuration
+- CI/CD setup
+- Security best practices
+
+### Health Check
+
+Once deployed, verify your production instance:
+
+```bash
+curl https://your-app.vercel.app/api/health
+```
+
+## 🔐 Security Notes
+
+- **Never commit `.env.local`** - It's in `.gitignore` by default
+- **Rotate keys if exposed** - See [Key Rotation Guide](./VERCEL-DEPLOYMENT.md#security-best-practices)
+- **Server-only secrets** - `SUPABASE_SERVICE_ROLE_KEY` should never be exposed to the client
+
+## 🧪 Testing
+
+```bash
+# Run smoke tests (requires env vars)
+npm run test
+
+# Run E2E tests
+npm run test:e2e
+```
+
+## 📚 Project Structure
+
+```
+├── app/                  # Next.js app directory
+│   ├── api/             # API routes (auth, tasks, etc.)
+│   ├── components/      # Shared components
+│   └── lib/             # Utilities and configurations
+├── archive/             # Backup files (not in version control)
+├── tests/               # E2E and integration tests
+└── utils/               # Build and verification scripts
+```
+
+## 🔧 Available Scripts
+
+- `npm run dev` - Start development server
+- `npm run build` - Create production build
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+
+## 🤝 Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Test locally
+4. Submit a pull request
+
+## 📄 License
+
+MIT
+
+---
+
+**Production URL:** https://family-task-manager-4pcm.vercel.app

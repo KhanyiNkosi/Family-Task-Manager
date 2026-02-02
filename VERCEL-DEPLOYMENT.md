@@ -31,6 +31,100 @@ These have **NO** `NEXT_PUBLIC_` prefix and are only available server-side:
 
 ## � Security Best Practices
 
+### Key Rotation Process
+
+If you need to rotate your Supabase keys (e.g., after accidental exposure):
+
+1. **Generate new keys in Supabase:**
+   - Go to: Supabase Dashboard → Settings → API
+   - Click "Generate new anon key" or "Generate new service_role key"
+   - Copy the new keys immediately
+
+2. **Update Vercel environment variables:**
+   - Go to: Vercel Dashboard → Project Settings → Environment Variables
+   - Find `NEXT_PUBLIC_SUPABASE_ANON_KEY` or `SUPABASE_SERVICE_ROLE_KEY`
+   - Click Edit → Paste new value → Save
+   - Select all environments (Production, Preview, Development)
+
+3. **Update GitHub Actions secrets (if applicable):**
+   - Go to: GitHub repo → Settings → Secrets and variables → Actions
+   - Update `SUPABASE_ANON_KEY` and/or `SUPABASE_SERVICE_ROLE_KEY`
+
+4. **Update local development:**
+   - Edit your `.env.local` file with new keys
+   - Restart your dev server
+
+5. **Redeploy:**
+   ```bash
+   # Trigger redeployment in Vercel
+   vercel --prod
+   ```
+
+### Environment Variable Checklist
+
+✅ **Verified secure:**
+- [ ] `SUPABASE_SERVICE_ROLE_KEY` is set as server-only (not `NEXT_PUBLIC_`)
+- [ ] No secrets committed in git history (`git log --all --full-history --source -- **/*.env*`)
+- [ ] `.env.local` is in `.gitignore`
+- [ ] Vercel env vars are set for all environments (Production, Preview, Dev)
+- [ ] GitHub Actions secrets are configured (for CI/CD)
+
+### Cookie Security
+
+The app uses Supabase Auth which automatically sets secure cookies:
+- ✅ `HttpOnly` - Cannot be accessed via JavaScript
+- ✅ `Secure` - Only sent over HTTPS in production
+- ✅ `SameSite=Lax` - CSRF protection
+
+No additional cookie configuration needed.
+
+---
+
+## 🩺 Monitoring & Health Checks
+
+### Health Check Endpoint
+
+Monitor your deployment with the built-in health check:
+
+```bash
+# Check if app is healthy
+curl https://your-app.vercel.app/api/health
+
+# Expected response:
+{
+  "status": "healthy",
+  "timestamp": "2026-02-02T09:50:00.000Z",
+  "checks": {
+    "supabaseUrl": "ok",
+    "supabaseKey": "ok"
+  }
+}
+```
+
+### Uptime Monitoring (Recommended)
+
+Set up monitoring with one of these services:
+- **Vercel Pro**: Built-in uptime monitoring
+- **UptimeRobot**: Free tier available (https://uptimerobot.com)
+- **Better Uptime**: Free tier (https://betteruptime.com)
+- **Pingdom**: Enterprise option
+
+**Monitor these endpoints:**
+- `GET /` - Homepage
+- `GET /api/health` - Health check
+- `POST /api/auth/login` - Auth endpoint
+
+### Error Logging (Recommended)
+
+Add error tracking to catch issues:
+- **Sentry** - Free tier for small projects (https://sentry.io)
+- **Logflare** - Vercel integration (https://logflare.app)
+- **Datadog** - Enterprise option
+
+---
+
+## 🔐 Security Best Practices
+
 1. **Never commit secrets to git**
    - Add `.env.local` to `.gitignore` (already done)
    - Never hardcode API keys in code
@@ -41,8 +135,16 @@ These have **NO** `NEXT_PUBLIC_` prefix and are only available server-side:
    - Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client
 
 3. **Rotate keys if exposed**
-   - If secrets are accidentally committed or exposed, rotate them immediately in Supabase
+   - Follow the Key Rotation Process above
    - Update all deployment environments with new keys
+
+4. **Enable branch protection:**
+   ```
+   GitHub repo → Settings → Branches → Add rule:
+   - Require pull request reviews before merging
+   - Require status checks to pass
+   - Include administrators
+   ```
 
 ---
 

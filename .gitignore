@@ -48,6 +48,17 @@ coverage/
 *.sqlite
 
 # Project specific
+archive/
+*-backup-*/
+app-backup-*/
+auth-backup-*/
+
+# Sensitive files
+*.pem
+*.key
+*.cert
+.env.production
+.vercel
 test-role.html
 .json.backup
 .json.corrupted-backup
