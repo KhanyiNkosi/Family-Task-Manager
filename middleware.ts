@@ -7,6 +7,8 @@ export async function middleware(request: NextRequest) {
     request,
   })
 
+  // Creates a Supabase client for middleware using the anon key (NEXT_PUBLIC_SUPABASE_ANON_KEY)
+  // This is correct for reading session cookies and performing non-privileged operations
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
