@@ -1,8 +1,13 @@
 ﻿// test-direct-api.js
 const { createClient } = require('@supabase/supabase-js');
 
-// Load your .env.local
-require('dotenv').config({ path: '.env.local' });
+// Load your .env.local (if dotenv is available)
+try {
+  require('dotenv').config({ path: '.env.local' });
+} catch (err) {
+  // dotenv not available, use existing environment variables
+  console.log('ℹ️  Using environment variables (dotenv not available)');
+}
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
