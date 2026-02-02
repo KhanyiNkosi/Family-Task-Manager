@@ -115,7 +115,7 @@ export default function AddChildSection() {
           <p className="text-sm text-white/90">
             <i className="fas fa-info-circle mr-2"></i>
             Children need this code to register. They can sign up at:{' '}
-            <span className="font-bold">{window.location.origin}/register</span>
+            <span className="font-bold">{typeof window !== 'undefined' ? window.location.origin : ''}/register</span>
           </p>
         </div>
       </div>
