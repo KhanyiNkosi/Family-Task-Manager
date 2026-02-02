@@ -77,3 +77,6 @@ test-role.html
 # Supabase local
 .supabase/
 .env.local.test
+
+# Sentry Config File
+.env.sentry-build-plugin
