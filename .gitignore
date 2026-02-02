@@ -65,3 +65,4 @@ test-role.html
 
 # Supabase local
 .supabase/
+.env.local.test
