@@ -1,18 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createServerSupabaseAuthClient } from '@/lib/supabaseServer';
-import { createClient } from '@supabase/supabase-js';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
-// Create admin client for database operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-
 export async function GET(request: Request) {
   try {
-    const supabase = createServerSupabaseAuthClient();
+    const cookieStore = await cookies();
+    
+    // Create auth client with cookies
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            try {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                cookieStore.set(name, value, options)
+              );
+            } catch {}
+          },
+        },
+      }
+    );
     
     // Get authenticated user
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -21,7 +35,18 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user profile to check family_id
+    // Get user profile to check family_id using service role for RLS bypass
+    const supabaseAdmin = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll() { return []; },
+          setAll() {},
+        },
+      }
+    );
+
     const { data: profile, error: profileError } = await supabaseAdmin
       .from('profiles')
       .select('family_id')
@@ -37,6 +62,7 @@ export async function GET(request: Request) {
       message: 'Share this code with your children to join your family' 
     });
   } catch (err) {
+    console.error('Family code API error:', err);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
