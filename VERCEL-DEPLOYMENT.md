@@ -1,42 +1,52 @@
-﻿# VERCEL DEPLOYMENT INSTRUCTIONS
+﻿# Vercel Deployment Guide
 
-## 🚀 Environment Variables Reference
+Complete guide for deploying the Family Task Manager to Vercel with proper environment configuration.
 
-### Required Environment Variables
+## 🚀 Required Environment Variables
 
-Configure these in Vercel Project Settings → Environment Variables:
+Configure these in **Vercel Project Settings → Environment Variables**
 
-#### Public Variables (accessible in browser and server)
-- `NEXT_PUBLIC_SUPABASE_URL` = `https://your-project-ref.supabase.co`
-  - Your Supabase project URL
-  - Get from: Supabase Dashboard → Project Settings → API
-  
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
-  - Supabase anon/public key (JWT token starting with "eyJ")
-  - Get from: Supabase Dashboard → Project Settings → API
-  
-- `NEXT_PUBLIC_APP_URL` = `https://your-app.vercel.app` (production) or `http://localhost:3000` (local)
-  - The base URL of your application
-  - Used for auth callbacks and redirects
+### Public Variables (Client + Server)
 
-#### Server-Only Variables (⚠️ NEVER expose to browser)
-- `SUPABASE_SERVICE_ROLE_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
-  - Supabase service role key with admin privileges
-  - Get from: Supabase Dashboard → Project Settings → API
-  - **WARNING**: This key bypasses Row Level Security (RLS)
-  
-- `DATABASE_URL` (optional)
-  - Direct Prisma/database connection string if using Prisma
-  
-- `DIRECT_DATABASE_URL` (optional)
-  - Direct database URL for migrations
-  
-- `NEXTAUTH_SECRET` (optional)
-  - Secret for NextAuth.js session encryption if using NextAuth
+These are prefixed with `NEXT_PUBLIC_` and are exposed to the browser:
+
+| Variable | Example Value | Source |
+|----------|---------------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxxxx.supabase.co` | Supabase Dashboard → Settings → API → Project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | Supabase Dashboard → Settings → API → Project API keys → anon/public |
+| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` | Your Vercel deployment URL (or `http://localhost:3000` locally) |
+
+### Server-Only Variables (⚠️ Never Expose to Browser)
+
+These have **NO** `NEXT_PUBLIC_` prefix and are only available server-side:
+
+| Variable | Example Value | Source | Required |
+|----------|---------------|--------|----------|
+| `SUPABASE_SERVICE_ROLE_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | Supabase Dashboard → Settings → API → Project API keys → service_role | ⚠️ **Yes** (bypasses RLS, admin access) |
+| `DATABASE_URL` | `postgresql://...` | For Prisma (if used) | Optional |
+| `DIRECT_DATABASE_URL` | `postgresql://...` | For Prisma migrations | Optional |
+| `NEXTAUTH_SECRET` | Random string | For NextAuth.js sessions | Optional |
 
 ---
 
-## 📝 Deployment Steps
+## � Security Best Practices
+
+1. **Never commit secrets to git**
+   - Add `.env.local` to `.gitignore` (already done)
+   - Never hardcode API keys in code
+
+2. **Use server-only variables correctly**
+   - Server-only vars have NO `NEXT_PUBLIC_` prefix
+   - Access them only in API routes, server components, or `getServerSideProps`
+   - Never expose `SUPABASE_SERVICE_ROLE_KEY` to the client
+
+3. **Rotate keys if exposed**
+   - If secrets are accidentally committed or exposed, rotate them immediately in Supabase
+   - Update all deployment environments with new keys
+
+---
+
+## �📝 Deployment Steps
 
 ### 1. Push your code to GitHub/GitLab
 ```bash
