@@ -41,7 +41,12 @@
                     "**/*.mts"
                 ],
     "exclude":  [
-                    "node_modules"
+                    "node_modules",
+                    "app-backup-*",
+                    "*-backup",
+                    "backup_*",
+                    "backups",
+                    "archive"
                 ]
 }
 

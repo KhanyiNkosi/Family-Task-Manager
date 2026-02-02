@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
   );
 
   const { error } = await supabase.auth.verifyOtp({
-    type: type as 'email' | 'recovery' | 'sms',
+    type: type as 'email' | 'recovery',
     token_hash,
   });
 
