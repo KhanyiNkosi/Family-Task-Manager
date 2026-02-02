@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import NotificationAlert, { Notification, NotificationType } from '@/components/NotificationAlert';
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import AddChildSection from '@/components/AddChildSection';
 
 interface Task {
   id: number;
@@ -320,6 +321,11 @@ export default function ParentDashboard() {
               </div>
             </div>
           </header>
+
+          {/* Add Child Section */}
+          <div className="mb-8">
+            <AddChildSection />
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column */}

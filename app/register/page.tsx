@@ -73,6 +73,23 @@ export default function RegisterPage() {
     setErrors({});
 
     try {
+      // If child, validate family code first
+      if (formData.role === "child") {
+        const validateResponse = await fetch('/api/family/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ familyCode: formData.familyCode })
+        });
+
+        const validateData = await validateResponse.json();
+        
+        if (!validateData.valid) {
+          setErrors({ familyCode: validateData.error });
+          setLoading(false);
+          return;
+        }
+      }
+
       // Use the Supabase client we fixed
       const supabase = createClientSupabaseClient();
       
@@ -105,6 +122,9 @@ export default function RegisterPage() {
       } else {
         // Success! Set success state and redirect
         setSuccess(true);
+        
+        // Store email for confirmation page
+        localStorage.setItem("pendingRegistrationEmail", formData.email);
         
         // Show success message briefly then redirect to success page
         setTimeout(() => {
