@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createClientSupabaseClient } from '@/lib/supabase';
 
 interface Child {
   id: string;
@@ -18,40 +19,71 @@ export default function AddChildSection() {
   const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
-    fetchFamilyCode();
-    fetchChildren();
+    fetchFamilyData();
   }, []);
 
-  const fetchFamilyCode = async () => {
-    try {
-      const response = await fetch('/api/family/code', {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setFamilyCode(data.familyCode);
-      } else {
-        console.error('Failed to fetch family code:', response.status);
-      }
-    } catch (error) {
-      console.error('Error fetching family code:', error);
-    }
-  };
-
-  const fetchChildren = async () => {
+  const fetchFamilyData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/family/children', {
-        credentials: 'include',
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setChildren(data.children || []);
-      } else {
-        console.error('Failed to fetch children:', response.status);
+      const supabase = createClientSupabaseClient();
+      
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        console.error('No user found');
+        return;
+      }
+
+      // Get user's profile to get family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.family_id) {
+        setFamilyCode(profile.family_id);
+
+        // Get all family members who are children
+        const { data: childProfiles } = await supabase
+          .from('profiles')
+          .select(`
+            id,
+            full_name,
+            email,
+            created_at
+          `)
+          .eq('family_id', profile.family_id)
+          .neq('id', user.id);
+
+        if (childProfiles) {
+          const childIds = childProfiles.map(c => c.id);
+          
+          if (childIds.length > 0) {
+            const { data: userProfiles } = await supabase
+              .from('user_profiles')
+              .select('id, role, total_points')
+              .in('id', childIds)
+              .eq('role', 'child');
+
+            const childrenData = childProfiles.map(child => {
+              const userProfile = userProfiles?.find(up => up.id === child.id);
+              return {
+                id: child.id,
+                name: child.full_name,
+                email: child.email,
+                points: userProfile?.total_points || 0,
+                joinedAt: child.created_at,
+              };
+            }).filter(child => userProfiles?.some(up => up.id === child.id));
+
+            setChildren(childrenData);
+          }
+        }
       }
     } catch (error) {
-      console.error('Error fetching children:', error);
+      console.error('Error fetching family data:', error);
     } finally {
       setLoading(false);
     }
@@ -121,7 +153,7 @@ export default function AddChildSection() {
               Family Members ({children.length})
             </h3>
             <button
-              onClick={fetchChildren}
+              onClick={fetchFamilyData}
               className="p-1.5 text-gray-500 hover:text-cyan-500 transition text-xs"
               title="Refresh"
             >
