@@ -7,7 +7,7 @@ RETURNS TRIGGER AS $$
 DECLARE
   parent_family_id UUID;
 BEGIN
-  -- Insert into profiles table
+  -- Insert into profiles table (with conflict handling)
   INSERT INTO public.profiles (id, email, full_name, family_id)
   VALUES (
     NEW.id,
@@ -19,15 +19,21 @@ BEGIN
       -- If child, use the family_code provided
       ELSE (NEW.raw_user_meta_data->>'family_code')::UUID
     END
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    full_name = EXCLUDED.full_name,
+    updated_at = NOW();
 
-  -- Insert into user_profiles table with role and initial points
+  -- Insert into user_profiles table with role and initial points (with conflict handling)
   INSERT INTO public.user_profiles (id, role, total_points)
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data->>'role', 'child'),
     0
-  );
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    role = EXCLUDED.role;
 
   RETURN NEW;
 END;
