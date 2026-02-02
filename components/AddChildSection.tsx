@@ -24,10 +24,14 @@ export default function AddChildSection() {
 
   const fetchFamilyCode = async () => {
     try {
-      const response = await fetch('/api/family/code');
+      const response = await fetch('/api/family/code', {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setFamilyCode(data.familyCode);
+      } else {
+        console.error('Failed to fetch family code:', response.status);
       }
     } catch (error) {
       console.error('Error fetching family code:', error);
@@ -37,10 +41,14 @@ export default function AddChildSection() {
   const fetchChildren = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/family/children');
+      const response = await fetch('/api/family/children', {
+        credentials: 'include',
+      });
       if (response.ok) {
         const data = await response.json();
         setChildren(data.children || []);
+      } else {
+        console.error('Failed to fetch children:', response.status);
       }
     } catch (error) {
       console.error('Error fetching children:', error);
