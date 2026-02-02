@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { createClientSupabaseClient } from '@/lib/supabase';
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 interface Child {
   id: string;
