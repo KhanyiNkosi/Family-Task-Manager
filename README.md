@@ -1,5 +1,11 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 🧹 Repository Cleanup Note
+
+This repository contains several backup folders from development work (`app-backup-before-restore-170741`, `auth-backup-20260129-143931`, `backup_2026-01-26_21-37`, etc.). 
+
+**Recommended**: Move these to an `/archive` directory or remove them to keep the repository clean. See [VERCEL-DEPLOYMENT.md](./VERCEL-DEPLOYMENT.md#backup--cleanup) for cleanup instructions.
+
 ## Getting Started
 
 First, run the development server:

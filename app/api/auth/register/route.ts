@@ -1,6 +1,6 @@
 ﻿// app/api/auth/register/route.ts - SECURE VERSION
 import { NextResponse } from 'next/server';
-import { createClientSupabaseClient } from '@/lib/supabaseClient';
+import { createServerSupabaseAuthClient } from '@/lib/supabaseServer';
 
 export async function POST(request: Request) {
   try {
@@ -13,8 +13,8 @@ export async function POST(request: Request) {
       );
     }
     
-    // Use real Supabase registration
-    const supabase = createClientSupabaseClient();
+    // Use server-side Supabase client with SSR cookie support
+    const supabase = createServerSupabaseAuthClient();
     const redirectTo = `${new URL(request.url).origin}/auth/callback`;
     
     const { data, error } = await supabase.auth.signUp({

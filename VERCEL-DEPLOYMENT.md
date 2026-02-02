@@ -1,37 +1,141 @@
 ﻿# VERCEL DEPLOYMENT INSTRUCTIONS
-Write-Host "🚀 VERCEL DEPLOYMENT SETUP" -ForegroundColor Cyan
-Write-Host "=========================" -ForegroundColor Cyan
 
-Write-Host "`n1. Push your code to GitHub/GitLab:" -ForegroundColor White
-Write-Host "   git add ." -ForegroundColor Yellow
-Write-Host "   git commit -m 'Setup Supabase SSR migration'" -ForegroundColor Yellow
-Write-Host "   git push origin main" -ForegroundColor Yellow
+## 🚀 Environment Variables Reference
 
-Write-Host "`n2. Import your project in Vercel:" -ForegroundColor White
-Write-Host "   - Go to: https://vercel.com/new" -ForegroundColor White
-Write-Host "   - Import your Git repository" -ForegroundColor White
+### Required Environment Variables
 
-Write-Host "`n3. Set these Environment Variables in Vercel:" -ForegroundColor White
-Write-Host "   Project Settings → Environment Variables" -ForegroundColor Yellow
-Write-Host "   " -ForegroundColor Yellow
-Write-Host "   ✅ Add these variables:" -ForegroundColor Green
-Write-Host "   - NEXT_PUBLIC_SUPABASE_URL = https://your-project-ref.supabase.co" -ForegroundColor White
-Write-Host "   - NEXT_PUBLIC_SUPABASE_ANON_KEY = your-anon-key-here" -ForegroundColor White
-Write-Host "   - SUPABASE_SERVICE_ROLE_KEY = your-service-role-key-here" -ForegroundColor White
-Write-Host "   - NEXT_PUBLIC_APP_URL = https://family-task-manager-4pcm.vercel.app" -ForegroundColor White
+Configure these in Vercel Project Settings → Environment Variables:
 
-Write-Host "`n4. For Preview/Development branches:" -ForegroundColor White
-Write-Host "   - Vercel will automatically set VERCEL_URL" -ForegroundColor White
-Write-Host "   - Our code will use: https://${VERCEL_URL}" -ForegroundColor White
+#### Public Variables (accessible in browser and server)
+- `NEXT_PUBLIC_SUPABASE_URL` = `https://your-project-ref.supabase.co`
+  - Your Supabase project URL
+  - Get from: Supabase Dashboard → Project Settings → API
+  
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+  - Supabase anon/public key (JWT token starting with "eyJ")
+  - Get from: Supabase Dashboard → Project Settings → API
+  
+- `NEXT_PUBLIC_APP_URL` = `https://your-app.vercel.app` (production) or `http://localhost:3000` (local)
+  - The base URL of your application
+  - Used for auth callbacks and redirects
 
-Write-Host "`n5. Deploy!" -ForegroundColor White
-Write-Host "   - Vercel will auto-deploy when you push to main" -ForegroundColor White
-Write-Host "   - For manual deploy: Click 'Deploy' in Vercel dashboard" -ForegroundColor White
+#### Server-Only Variables (⚠️ NEVER expose to browser)
+- `SUPABASE_SERVICE_ROLE_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+  - Supabase service role key with admin privileges
+  - Get from: Supabase Dashboard → Project Settings → API
+  - **WARNING**: This key bypasses Row Level Security (RLS)
+  
+- `DATABASE_URL` (optional)
+  - Direct Prisma/database connection string if using Prisma
+  
+- `DIRECT_DATABASE_URL` (optional)
+  - Direct database URL for migrations
+  
+- `NEXTAUTH_SECRET` (optional)
+  - Secret for NextAuth.js session encryption if using NextAuth
 
-Write-Host "`n🌐 Your production URL will be:" -ForegroundColor Cyan
-Write-Host "   https://family-task-manager-4pcm.vercel.app" -ForegroundColor Green
+---
 
-Write-Host "`n🔧 Local development:" -ForegroundColor Cyan
-Write-Host "   - Use .env.local for local variables" -ForegroundColor White
-Write-Host "   - NEXT_PUBLIC_APP_URL = http://localhost:3000" -ForegroundColor White
-Write-Host "   - Run: npm run dev" -ForegroundColor White
+## 📝 Deployment Steps
+
+### 1. Push your code to GitHub/GitLab
+```bash
+git add .
+git commit -m "Setup Supabase SSR migration"
+git push origin main
+```
+
+### 2. Import your project in Vercel
+- Go to: https://vercel.com/new
+- Import your Git repository
+
+### 3. Configure Environment Variables
+In Vercel Project Settings → Environment Variables, add all variables listed above.
+
+⚠️ **Important**: 
+- Set server-only variables for Production, Preview, and Development environments
+- Never commit `.env.local` to version control
+
+### 4. Deploy!
+- Vercel will auto-deploy when you push to main
+- For manual deploy: Click "Deploy" in Vercel dashboard
+
+---
+
+## 🔧 Local Development
+
+### Setup .env.local (Never commit this file!)
+```bash
+# Copy the example file
+cp .env.local.example .env.local
+
+# Edit .env.local with your actual values
+NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
+
+### Verify Your Configuration
+Run these scripts to check your environment setup:
+
+```bash
+# Check that all required variables are set correctly
+node utils/verify-env.js
+
+# Test direct Supabase API connectivity
+node test-direct-api.js
+```
+
+### Run Development Server
+```bash
+npm run dev
+# Open http://localhost:3000
+```
+
+---
+
+## 🧹 Backup & Cleanup
+
+### Archive Old Backup Folders
+This repository contains several backup folders from previous work. To keep the repository clean:
+
+```bash
+# Move backup folders to an archive directory
+mkdir -p archive
+mv app-backup-before-restore-170741 archive/
+mv auth-backup-20260129-143931 archive/
+mv backup_2026-01-26_21-37 archive/
+mv backup_2026-01-26_21-38 archive/
+mv backups archive/
+
+# Optional: Add to .gitignore if not already there
+echo "archive/" >> .gitignore
+```
+
+### If Secrets Were Accidentally Committed
+If you accidentally committed `.env.local` or secrets to git history:
+
+1. **Remove from current commit**:
+   ```bash
+   git rm --cached .env.local
+   git commit -m "Remove .env.local from tracking"
+   ```
+
+2. **Scrub from git history** (use with caution):
+   ```bash
+   # Use BFG Repo-Cleaner or git filter-branch
+   # See: https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository
+   ```
+
+3. **Rotate all exposed secrets** immediately in Supabase Dashboard
+
+---
+
+## 🌐 Production URL
+Your production app will be available at:
+`https://family-task-manager-4pcm.vercel.app`
+
+Preview deployments get automatic URLs like:
+`https://family-task-manager-git-branch-name-username.vercel.app`
+

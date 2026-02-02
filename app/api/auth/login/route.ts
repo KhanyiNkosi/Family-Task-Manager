@@ -1,6 +1,6 @@
 ﻿// app/api/auth/login/route.ts - SECURE VERSION
 import { NextResponse } from 'next/server';
-import { createClientSupabaseClient } from '@/lib/supabaseClient';
+import { createServerSupabaseAuthClient } from '@/lib/supabaseServer';
 
 export async function POST(request: Request) {
   try {
@@ -13,8 +13,8 @@ export async function POST(request: Request) {
       );
     }
     
-    // Use real Supabase authentication
-    const supabase = createClientSupabaseClient();
+    // Use server-side Supabase client with SSR cookie support
+    const supabase = createServerSupabaseAuthClient();
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
