@@ -35,7 +35,7 @@ jobs:
 
       - name: Run direct API test
         # Only run if required secrets are available
-        if: ${{ secrets.SUPABASE_URL != '' && secrets.SUPABASE_ANON_KEY != '' }}
+        if: ${{ secrets.SUPABASE_URL && secrets.SUPABASE_ANON_KEY }}
         run: node test-direct-api.js
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
