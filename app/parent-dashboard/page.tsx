@@ -5,15 +5,20 @@ import NotificationAlert, { Notification, NotificationType } from '@/components/
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import AddChildSection from '@/components/AddChildSection';
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 interface Task {
-  id: number;
+  id: string;
   title: string;
   assignedTo: string;
+  assigned_to?: string;
   points: number;
-  dueDate: string;
-  status: "pending" | "completed";
+  dueDate?: string;
+  due_date?: string;
+  status: "pending" | "completed" | "approved";
   description?: string;
+  created_at?: string;
+  completed_at?: string;
 }
 
 interface Child {
@@ -87,6 +92,7 @@ export default function ParentDashboard() {
 
   // State for children
   const [children, setChildren] = useState<Child[]>([]);
+  const [familyChildren, setFamilyChildren] = useState<{ id: string; name: string }[]>([]);
 
   // State for bulletin messages
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
@@ -97,7 +103,7 @@ export default function ParentDashboard() {
   // New task form state
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskPoints, setNewTaskPoints] = useState("10");
-  const [newTaskAssignee, setNewTaskAssignee] = useState("Alex");
+  const [newTaskAssignee, setNewTaskAssignee] = useState("");
   const [newBulletinMessage, setNewBulletinMessage] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
 
@@ -111,25 +117,128 @@ export default function ParentDashboard() {
     }
   };
 
+  // Load tasks from database
+  useEffect(() => {
+    loadTasks();
+  }, []);
+
+  const loadTasks = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) return;
+
+      // Load all tasks for this family
+      const { data: tasks, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('created_by', user.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading tasks:', error);
+        return;
+      }
+
+      if (tasks) {
+        const formattedTasks = tasks.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          assignedTo: task.assigned_to,
+          assigned_to: task.assigned_to,
+          points: task.points,
+          status: task.status,
+          dueDate: task.due_date,
+          due_date: task.due_date,
+          created_at: task.created_at,
+          completed_at: task.completed_at
+        }));
+        setActiveTasks(formattedTasks);
+      }
+    } catch (error) {
+      console.error('Error in loadTasks:', error);
+    }
+  };
+
   // Add new task
-  const handleAddTask = () => {
-    if (!newTaskName.trim()) return;
+  const handleAddTask = async () => {
+    if (!newTaskName.trim() || !newTaskAssignee) return;
 
-    const newTask: Task = {
-      id: activeTasks?.length + 1,
-      title: newTaskName,
-      description: newTaskDescription.trim() || undefined,
-      assignedTo: newTaskAssignee,
-      points: parseInt(newTaskPoints) || 10,
-      dueDate: "Tomorrow",
-      status: "pending"
-    };
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        alert('You must be logged in to create tasks');
+        return;
+      }
 
-    setActiveTasks([...activeTasks, newTask]);
-    setNewTaskName("");
-    setNewTaskDescription("");
-    setNewTaskPoints("10");
-    alert("New task added successfully!");
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      // Insert task into database
+      const { data: newTask, error } = await supabase
+        .from('tasks')
+        .insert({
+          title: newTaskName,
+          description: newTaskDescription.trim() || null,
+          points: parseInt(newTaskPoints) || 10,
+          assigned_to: newTaskAssignee,
+          created_by: user.id,
+          family_id: profile?.family_id,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating task:', error);
+        alert('Failed to create task: ' + error.message);
+        return;
+      }
+
+      // Add to local state
+      if (newTask) {
+        const formattedTask: Task = {
+          id: newTask.id,
+          title: newTask.title,
+          description: newTask.description,
+          assignedTo: newTask.assigned_to,
+          assigned_to: newTask.assigned_to,
+          points: newTask.points,
+          status: newTask.status,
+          dueDate: newTask.due_date,
+          due_date: newTask.due_date,
+          created_at: newTask.created_at
+        };
+        setActiveTasks([formattedTask, ...activeTasks]);
+      }
+
+      // Clear form
+      setNewTaskName("");
+      setNewTaskDescription("");
+      setNewTaskPoints("10");
+      setNewTaskAssignee("");
+      alert("New task added successfully!");
+    } catch (error) {
+      console.error('Error in handleAddTask:', error);
+      alert('Failed to create task');
+    }
   };
 
   // Complete task
@@ -324,7 +433,12 @@ export default function ParentDashboard() {
 
           {/* Add Child Section */}
           <div className="mb-8">
-            <AddChildSection />
+            <AddChildSection onChildrenLoaded={(childrenData) => {
+              setFamilyChildren(childrenData.map(child => ({
+                id: child.id,
+                name: child.name
+              })));
+            }} />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -402,14 +516,25 @@ export default function ParentDashboard() {
                       onChange={(e) => setNewTaskAssignee(e.target.value)}
                       className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
                     >
-                      <option value="Alex">Alex</option>
-                      <option value="Sam">Sam</option>
-                      <option value="Both">Both</option>
+                      <option value="">Select child</option>
+                      {familyChildren.map((child) => (
+                        <option key={child.id} value={child.id}>
+                          {child.name}
+                        </option>
+                      ))}
                     </select>
+                    <textarea
+                      value={newTaskDescription}
+                      onChange={(e) => setNewTaskDescription(e.target.value)}
+                      placeholder="Task description (optional)"
+                      rows={3}
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0] resize-none"
+                    />
                   </div>
                   <button
                     onClick={handleAddTask}
-                    className="mt-3 w-full py-2.5 bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] text-white rounded-lg font-medium hover:opacity-90"
+                    disabled={!newTaskName.trim() || !newTaskAssignee}
+                    className="mt-3 w-full py-2.5 bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] text-white rounded-lg font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <i className="fas fa-plus mr-2"></i>
                     Add Task

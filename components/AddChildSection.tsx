@@ -11,7 +11,11 @@ interface Child {
   joinedAt: string;
 }
 
-export default function AddChildSection() {
+interface AddChildSectionProps {
+  onChildrenLoaded?: (children: Child[]) => void;
+}
+
+export default function AddChildSection({ onChildrenLoaded }: AddChildSectionProps) {
   const [familyCode, setFamilyCode] = useState("");
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,19 +32,34 @@ export default function AddChildSection() {
       const supabase = createClientSupabaseClient();
       
       // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError) {
+        console.error('Error getting user:', userError);
+        return;
+      }
       
       if (!user) {
         console.error('No user found');
         return;
       }
 
+      console.log('Fetching profile for user:', user.id);
+
       // Get user's profile to get family_id
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('family_id')
         .eq('id', user.id)
         .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        console.error('Full error details:', JSON.stringify(profileError, null, 2));
+        return;
+      }
+
+      console.log('Profile data:', profile);
 
       if (profile?.family_id) {
         setFamilyCode(profile.family_id);
@@ -79,6 +98,9 @@ export default function AddChildSection() {
             }).filter(child => userProfiles?.some(up => up.id === child.id));
 
             setChildren(childrenData);
+            if (onChildrenLoaded) {
+              onChildrenLoaded(childrenData);
+            }
           }
         }
       }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { createClientSupabaseClient } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -26,9 +27,10 @@ export default function LoginPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
     
     // Simple validation
     if (!email || !password) {
@@ -37,19 +39,46 @@ export default function LoginPage() {
       return;
     }
     
-    // For now, use sessionStorage (same as your current system)
-    sessionStorage.setItem("userRole", role);
-    sessionStorage.setItem("userEmail", email);
-    sessionStorage.setItem("userName", email.split("@")[0]);
-    
-    // Redirect based on role
-    if (role === "parent") {
-      router.push("/parent-dashboard");
-    } else {
-      router.push("/child-dashboard");
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Authenticate with Supabase
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+      
+      if (signInError) {
+        console.error("Login error:", signInError);
+        setError(signInError.message);
+        setIsLoading(false);
+        return;
+      }
+      
+      if (!data.user) {
+        setError("Login failed - no user returned");
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("Login successful, user:", data.user.email);
+      
+      // Store role in sessionStorage for backwards compatibility
+      sessionStorage.setItem("userRole", role);
+      sessionStorage.setItem("userEmail", email);
+      sessionStorage.setItem("userName", email.split("@")[0]);
+      
+      // Redirect based on role
+      if (role === "parent") {
+        router.push("/parent-dashboard");
+      } else {
+        router.push("/child-dashboard");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      setError("An unexpected error occurred");
+      setIsLoading(false);
     }
-    
-    setIsLoading(false);
   };
 
 
