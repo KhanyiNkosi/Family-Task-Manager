@@ -24,6 +24,7 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
 
   useEffect(() => {
     fetchFamilyData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchFamilyData = async () => {
@@ -97,10 +98,24 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
               };
             }).filter(child => userProfiles?.some(up => up.id === child.id));
 
+            console.log('Children loaded:', childrenData);
             setChildren(childrenData);
             if (onChildrenLoaded) {
+              console.log('Calling onChildrenLoaded with:', childrenData);
               onChildrenLoaded(childrenData);
             }
+          } else {
+            console.log('No child profiles found');
+            setChildren([]);
+            if (onChildrenLoaded) {
+              onChildrenLoaded([]);
+            }
+          }
+        } else {
+          console.log('No childIds found');
+          setChildren([]);
+          if (onChildrenLoaded) {
+            onChildrenLoaded([]);
           }
         }
       }

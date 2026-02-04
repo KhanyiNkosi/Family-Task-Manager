@@ -4,6 +4,17 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import LogoutButton from "@/app/components/LogoutButton";
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
+
+interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  points: number;
+  completed: boolean;
+  due_date?: string;
+  created_at: string;
+}
 
 export default function ChildDashboardPage() {
   // Child avatar state
@@ -39,7 +50,12 @@ export default function ChildDashboardPage() {
   const pathname = usePathname();
   const [points, setPoints] = useState(0);
   const [tasks, setTasks] = useState([]);;
-  const [rewards, setRewards] = useState([]);;
+  const [rewards, setRewards] = useState([
+    { id: 1, name: "Extra Screen Time", description: "30 minutes extra gaming or TV", points: 50, redeemed: false },
+    { id: 2, name: "Choose Dinner", description: "Pick what we eat for dinner", points: 100, redeemed: false },
+    { id: 3, name: "Stay Up Late", description: "Stay up 30 mins past bedtime", points: 150, redeemed: false },
+    { id: 4, name: "Movie Night", description: "Choose the family movie", points: 200, redeemed: false }
+  ]);
   const [toast, setToast] = useState({ show: false, message: "" });
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
@@ -49,33 +65,73 @@ export default function ChildDashboardPage() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // TODO: Replace with your actual Supabase integration
-        // Example structure:
-        // 1. Fetch user points from completed tasks
-        // const totalPoints = await calculateUserPoints();
-        // setPoints(totalPoints);
+        const supabase = createClientSupabaseClient();
         
-        // 2. Fetch child's tasks
-        // const childTasks = await fetchChildTasks();
-        // setTasks(childTasks);
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
         
-        // 3. Fetch available rewards
-        // const availableRewards = await fetchAvailableRewards();
-        // setRewards(availableRewards);
+        if (!user) {
+          console.error('No user found');
+          return;
+        }
+
+        console.log('Loading tasks for child:', user.id);
         
-        // // TODO: Add Supabase data fetching here BLOCK WHEN SUPABASE IS CONNECTED
-        // TODO: Add Supabase data fetching here;
-        // TODO: Add Supabase data fetching here;
-        // TODO: Add Supabase data fetching here;
+        // Fetch child's assigned tasks
+        const { data: childTasks, error: tasksError } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('assigned_to', user.id)
+          .order('created_at', { ascending: false });
+
+        if (tasksError) {
+          console.error('Error fetching tasks:', tasksError);
+        } else if (childTasks) {
+          console.log('Loaded tasks:', childTasks);
+          setTasks(childTasks);
+        }
+        
+        // Calculate total points from user_profiles
+        let { data: userProfile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('total_points')
+          .eq('id', user.id)
+          .single();
+        
+        console.log('Loading points for user:', user.id);
+        console.log('User profile data:', userProfile, 'Error:', profileError);
+        
+        // If no profile exists, create one
+        if (!userProfile && profileError) {
+          console.log('No user profile found, creating one...');
+          const { data: newProfile, error: createError } = await supabase
+            .from('user_profiles')
+            .insert({ id: user.id, role: 'child', total_points: 0 })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error('Error creating user profile:', createError);
+          } else {
+            userProfile = newProfile;
+            console.log('Created new profile:', newProfile);
+          }
+        }
+        
+        if (userProfile) {
+          console.log('Setting points to:', userProfile.total_points || 0);
+          setPoints(userProfile.total_points || 0);
+        } else {
+          console.log('No user profile found, points remain at 0');
+        }
         
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
-        // Optionally set error state or show user message
       }
     };
     
     fetchDashboardData();
-  }, []); // Empty dependency array = run once on mount
+  }, []);
   useEffect(() => {
     // Check if user is trying to access parent-only routes
     const parentOnlyRoutes = [
@@ -124,19 +180,85 @@ export default function ChildDashboardPage() {
     return true;
   };
 
-  const completeTask = (taskId: number) => {
-    setTasks(tasks.map(task => 
-      task.id === taskId ? { ...task, completed: true } : task
-    ));
-    const task = tasks.find(t => t.id === taskId);
-    if (task && !task.completed) {
-      setPoints(prev => prev + task.points);
+  const completeTask = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Update task in database
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          completed: true,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error completing task:', error);
+        alert('Failed to complete task');
+        return;
+      }
+
+      // Update local state
+      setTasks(tasks.map(task => 
+        task.id === taskId ? { ...task, completed: true, completed_at: new Date().toISOString() } : task
+      ));
+      
+      const task = tasks.find(t => t.id === taskId);
+      if (task && !task.completed) {
+        // Note: Points will be awarded when parent approves
+        setToast({ 
+          show: true, 
+          message: `Completed "${task.title}"! Waiting for parent approval to earn ${task.points} points!` 
+        });
+        setTimeout(() => setToast({ show: false, message: "" }), 3000);
+      }
+    } catch (error) {
+      console.error('Error in completeTask:', error);
+    }
+  };
+
+  const requestHelp = async (taskId: string) => {
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      
+      // Prompt for help message
+      const helpMessage = prompt(`What help do you need with "${task?.title}"?`);
+      
+      if (!helpMessage || !helpMessage.trim()) {
+        return; // User cancelled or provided empty message
+      }
+      
+      const supabase = createClientSupabaseClient();
+      
+      // Update task to mark help requested
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          help_requested: true,
+          help_requested_at: new Date().toISOString(),
+          help_message: helpMessage.trim()
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error requesting help:', error);
+        alert('Failed to request help');
+        return;
+      }
+
+      // Update local state
+      setTasks(tasks.map(t => 
+        t.id === taskId ? { ...t, help_requested: true, help_message: helpMessage.trim() } : t
+      ));
       
       setToast({ 
         show: true, 
-        message: `Completed "${task.title}"! Earned ${task.points} points!` 
+        message: `Help request sent to parent for "${task?.title}"!` 
       });
-      setTimeout(() => setToast({ ...toast, show: false }), 3000);
+      setTimeout(() => setToast({ show: false, message: "" }), 3000);
+    } catch (error) {
+      console.error('Error in requestHelp:', error);
     }
   };
 
@@ -324,28 +446,62 @@ export default function ChildDashboardPage() {
                   className={`p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow duration-300 ${
                     task.completed
                       ? 'bg-green-50 border-green-200'
-                      : 'bg-gray-50 border-gray-200 hover:bg-gray-100 cursor-pointer'
+                      : 'bg-gray-50 border-gray-200'
                   } transition-all`}
-                  onClick={() => !task.completed && completeTask(task.id)}
                 >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex items-start gap-3 flex-1">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-1 ${
                         task.completed ? 'bg-green-500' : 'border-2 border-gray-400'
                       }`}>
                         {task.completed && (
                           <i className="fas fa-check text-white text-xs"></i>
                         )}
                       </div>
-                      <span className={`font-medium ${task.completed ? 'text-[#00C2E0]/70 line-through' : 'text-gray-800'}`}>
-                        {task.title}
-                      </span>
+                      <div className="flex-1">
+                        <span className={`font-medium block ${task.completed ? 'text-[#00C2E0]/70 line-through' : 'text-gray-800'}`}>
+                          {task.title}
+                        </span>
+                        {task.description && (
+                          <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                        )}
+                        {task.help_requested && (
+                          <span className="inline-block mt-2 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                            <i className="fas fa-hand-paper mr-1"></i>Help Requested
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-[#00C2E0]">+{task.points} pts</div>
-                      <div className="text-xs text-[#00C2E0]/70 capitalize">{task.category}</div>
+                    <div className="text-right ml-3">
+                      <div className="font-bold text-amber-500 flex items-center justify-end gap-1">
+                        <i className="fas fa-star text-sm"></i>
+                        <span className="text-[#00C2E0]">{task.points}</span>
+                      </div>
+                      {task.category && task.category !== 'general' && (
+                        <div className="text-xs text-[#00C2E0]/70 capitalize mt-1">{task.category}</div>
+                      )}
                     </div>
                   </div>
+                  
+                  {!task.completed && (
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => completeTask(task.id)}
+                        className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                      >
+                        <i className="fas fa-check mr-2"></i>Mark Complete
+                      </button>
+                      {!task.help_requested && (
+                        <button
+                          onClick={() => requestHelp(task.id)}
+                          className="bg-amber-500 text-white py-2 px-4 rounded-lg font-medium hover:bg-amber-600 transition-colors"
+                          title="Request help from parent"
+                        >
+                          <i className="fas fa-hand-paper"></i>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

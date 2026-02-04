@@ -16,6 +16,7 @@ interface Task {
   dueDate?: string;
   due_date?: string;
   status: "pending" | "completed" | "approved";
+  completed?: boolean;
   description?: string;
   created_at?: string;
   completed_at?: string;
@@ -92,7 +93,7 @@ export default function ParentDashboard() {
 
   // State for children
   const [children, setChildren] = useState<Child[]>([]);
-  const [familyChildren, setFamilyChildren] = useState<{ id: string; name: string }[]>([]);
+  const [familyChildren, setFamilyChildren] = useState<{ id: string; name: string; total_points?: number }[]>([]);
 
   // State for bulletin messages
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
@@ -106,6 +107,7 @@ export default function ParentDashboard() {
   const [newTaskAssignee, setNewTaskAssignee] = useState("");
   const [newBulletinMessage, setNewBulletinMessage] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskCategory, setNewTaskCategory] = useState("general");
 
   // Permission check for child modifications
   const canModifyChild = false;
@@ -120,7 +122,71 @@ export default function ParentDashboard() {
   // Load tasks from database
   useEffect(() => {
     loadTasks();
+    loadChildren();
   }, []);
+
+  const loadChildren = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        console.log('No family_id found for parent');
+        return;
+      }
+
+      console.log('Parent family_id:', profile.family_id);
+
+      // Load all profiles in the family
+      const { data: familyProfiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('family_id', profile.family_id);
+
+      if (profilesError) {
+        console.error('Error loading family profiles:', profilesError);
+        return;
+      }
+
+      console.log('Family profiles:', familyProfiles);
+
+      if (familyProfiles && familyProfiles.length > 0) {
+        // For each profile, check if they're a child and get their points
+        const childrenWithPoints = [];
+        
+        for (const familyMember of familyProfiles) {
+          const { data: userProfile } = await supabase
+            .from('user_profiles')
+            .select('role, total_points')
+            .eq('id', familyMember.id)
+            .single();
+          
+          // Only include children
+          if (userProfile?.role === 'child') {
+            childrenWithPoints.push({
+              id: familyMember.id,
+              name: familyMember.full_name,
+              total_points: userProfile.total_points || 0
+            });
+          }
+        }
+        
+        setFamilyChildren(childrenWithPoints);
+        console.log('Children loaded with points:', childrenWithPoints);
+      }
+    } catch (error) {
+      console.error('Error in loadChildren:', error);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -158,11 +224,17 @@ export default function ParentDashboard() {
           assignedTo: task.assigned_to,
           assigned_to: task.assigned_to,
           points: task.points,
-          status: task.status,
+          status: task.approved ? 'approved' : task.completed ? 'completed' : 'pending',
+          completed: task.completed,
+          approved: task.approved || false,
           dueDate: task.due_date,
           due_date: task.due_date,
           created_at: task.created_at,
-          completed_at: task.completed_at
+          completed_at: task.completed_at,
+          help_requested: task.help_requested || false,
+          help_requested_at: task.help_requested_at,
+          help_message: task.help_message,
+          category: task.category
         }));
         setActiveTasks(formattedTasks);
       }
@@ -201,7 +273,9 @@ export default function ParentDashboard() {
           assigned_to: newTaskAssignee,
           created_by: user.id,
           family_id: profile?.family_id,
-          status: 'pending'
+          completed: false,
+          approved: false,
+          category: newTaskCategory
         })
         .select()
         .single();
@@ -221,7 +295,8 @@ export default function ParentDashboard() {
           assignedTo: newTask.assigned_to,
           assigned_to: newTask.assigned_to,
           points: newTask.points,
-          status: newTask.status,
+          status: newTask.completed ? 'completed' : 'pending',
+          completed: newTask.completed,
           dueDate: newTask.due_date,
           due_date: newTask.due_date,
           created_at: newTask.created_at
@@ -234,6 +309,7 @@ export default function ParentDashboard() {
       setNewTaskDescription("");
       setNewTaskPoints("10");
       setNewTaskAssignee("");
+      setNewTaskCategory("general");
       alert("New task added successfully!");
     } catch (error) {
       console.error('Error in handleAddTask:', error);
@@ -242,7 +318,7 @@ export default function ParentDashboard() {
   };
 
   // Complete task
-  const handleCompleteTask = (taskId: number) => {
+  const handleCompleteTask = (taskId: string) => {
     const updatedTasks = activeTasks?.map(task =>
       task.id === taskId ? { ...task, status: "completed" as const } : task
     );
@@ -250,12 +326,171 @@ export default function ParentDashboard() {
     alert("Task marked as completed!");
   };
 
+  // Approve task completion
+  const handleApproveTask = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Get the task to find points and assigned user
+      const task = activeTasks.find(t => t.id === taskId);
+      if (!task) {
+        console.error('Task not found:', taskId);
+        return;
+      }
+
+      console.log('Approving task:', { taskId, assignedTo: task.assigned_to, points: task.points });
+
+      // Update task status to approved
+      const { error: taskError } = await supabase
+        .from('tasks')
+        .update({ completed: true, approved: true })
+        .eq('id', taskId);
+
+      if (taskError) {
+        console.error('Error approving task:', taskError);
+        alert('Failed to approve task');
+        return;
+      }
+
+      // Award points to child
+      console.log('Attempting to award points via RPC...');
+      const { error: pointsError } = await supabase.rpc('increment_user_points', {
+        user_id: task.assigned_to,
+        points_to_add: task.points
+      });
+
+      if (pointsError) {
+        console.log('RPC failed, using manual update. Error:', pointsError);
+        // If RPC doesn't exist, manually update
+        const { data: userProfile, error: fetchError } = await supabase
+          .from('user_profiles')
+          .select('total_points')
+          .eq('id', task.assigned_to)
+          .single();
+
+        console.log('Current user profile:', userProfile, 'Fetch error:', fetchError);
+
+        if (userProfile) {
+          const newTotal = (userProfile.total_points || 0) + task.points;
+          console.log('Updating points from', userProfile.total_points, 'to', newTotal);
+          
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ total_points: newTotal })
+            .eq('id', task.assigned_to);
+            
+          if (updateError) {
+            console.error('Error updating points:', updateError);
+            alert('Task approved but failed to award points');
+            return;
+          }
+          console.log('Points updated successfully!');
+        } else {
+          console.error('User profile not found for:', task.assigned_to);
+          alert('Task approved but user profile not found');
+          return;
+        }
+      } else {
+        console.log('Points awarded successfully via RPC!');
+      }
+
+      // Update local state - remove from list or mark as approved
+      setActiveTasks(activeTasks.filter(t => t.id !== taskId));
+      alert(`Task approved! ${task.points} points awarded to child!`);
+    } catch (error) {
+      console.error('Error in handleApproveTask:', error);
+      alert('Failed to approve task');
+    }
+  };
+
+  // Reject task completion
+  const handleRejectTask = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Set task back to incomplete
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          completed: false,
+          completed_at: null,
+          approved: false
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error rejecting task:', error);
+        alert('Failed to reject task');
+        return;
+      }
+
+      // Update local state
+      setActiveTasks(activeTasks.map(task =>
+        task.id === taskId ? { ...task, status: 'pending', completed: false, completed_at: undefined } : task
+      ));
+      
+      alert('Task rejected and sent back to child');
+    } catch (error) {
+      console.error('Error in handleRejectTask:', error);
+      alert('Failed to reject task');
+    }
+  };
+
   // Delete task
-  const handleDeleteTask = (taskId: number) => {
-    if (confirm("Are you sure you want to delete this task?")) {
-      const updatedTasks = activeTasks?.filter(task => task.id !== taskId);
-      setActiveTasks(updatedTasks);
-      alert("Task deleted successfully!");
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm("Are you sure you want to delete this task?")) return;
+    
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error deleting task:', error);
+        alert('Failed to delete task');
+        return;
+      }
+
+      setActiveTasks(activeTasks.filter(task => task.id !== taskId));
+      alert('Task deleted successfully');
+    } catch (error) {
+      console.error('Error in handleDeleteTask:', error);
+      alert('Failed to delete task');
+    }
+  };
+
+  // Resolve help request
+  const handleResolveHelp = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          help_requested: false,
+          help_requested_at: null,
+          help_message: null
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error resolving help request:', error);
+        alert('Failed to resolve help request');
+        return;
+      }
+
+      // Update local state
+      setActiveTasks(activeTasks.map(task =>
+        task.id === taskId ? { ...task, help_requested: false, help_requested_at: null, help_message: null } : task
+      ));
+      
+      alert('Help request resolved!');
+    } catch (error) {
+      console.error('Error in handleResolveHelp:', error);
+      alert('Failed to resolve help request');
     }
   };
 
@@ -292,9 +527,16 @@ export default function ParentDashboard() {
   };
 
   // Calculate totals
-  const totalPoints = children?.reduce((sum, child) => sum + child.points, 0);
-  const pendingTasks = activeTasks?.filter(task => task.status === "pending").length;
-  const completedTasks = activeTasks?.filter(task => task.status === "completed").length;
+  const totalPoints = familyChildren?.reduce((sum, child) => sum + (child.total_points || 0), 0) || 0;
+  const pendingTasks = activeTasks?.filter(task => !task.completed).length || 0;
+  const completedTasks = activeTasks?.filter(task => task.completed && task.approved).length || 0;
+  
+  console.log('Dashboard stats:', { 
+    totalTasks: activeTasks?.length,
+    pendingTasks, 
+    completedTasks,
+    activeTasks: activeTasks?.map(t => ({ title: t.title, completed: t.completed, approved: t.approved }))
+  });
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to logout?")) {
@@ -423,7 +665,7 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm opacity-90">Active Children</p>
-                    <p className="text-2xl font-bold mt-1">{children?.length}</p>
+                    <p className="text-2xl font-bold mt-1">{familyChildren?.length || 0}</p>
                   </div>
                   <i className="fas fa-users text-2xl opacity-80"></i>
                 </div>
@@ -433,13 +675,167 @@ export default function ParentDashboard() {
 
           {/* Add Child Section */}
           <div className="mb-8">
-            <AddChildSection onChildrenLoaded={(childrenData) => {
-              setFamilyChildren(childrenData.map(child => ({
-                id: child.id,
-                name: child.name
-              })));
+            <AddChildSection onChildrenLoaded={async (childrenData) => {
+              console.log('Parent dashboard received children:', childrenData);
+              
+              // Reload children with points to get fresh data
+              await loadChildren();
             }} />
           </div>
+
+          {/* Pending Approvals Section */}
+          {activeTasks?.filter(t => t.completed && !t.approved).length > 0 && (
+            <div className="mb-8">
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl shadow-lg p-6 border-2 border-amber-200">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center">
+                      <i className="fas fa-clock text-white"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-800">Pending Approvals</h2>
+                      <p className="text-sm text-gray-600">Tasks completed by children awaiting your review</p>
+                    </div>
+                  </div>
+                  <span className="px-4 py-2 bg-amber-500 text-white rounded-full text-sm font-bold">
+                    {activeTasks?.filter(t => t.completed && !t.approved).length} waiting
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {activeTasks?.filter(t => t.completed && !t.approved).map((task) => {
+                    const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || 'Unknown';
+                    return (
+                      <div key={task.id} className="p-5 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <i className="fas fa-check text-green-600"></i>
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-gray-800">{task.title}</h3>
+                                <p className="text-sm text-gray-600">
+                                  Completed by <span className="font-semibold text-amber-700">{childName}</span>
+                                  {task.completed_at && (
+                                    <span className="ml-2">• {new Date(task.completed_at).toLocaleDateString()}</span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            {task.description && (
+                              <p className="text-gray-600 text-sm mt-2 ml-11">{task.description}</p>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-3 ml-4">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                              <i className="fas fa-star text-amber-500"></i>
+                              {task.points}
+                            </span>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleApproveTask(task.id)}
+                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                                title="Approve and award points"
+                              >
+                                <i className="fas fa-check mr-2"></i>
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectTask(task.id)}
+                                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                                title="Reject and send back"
+                              >
+                                <i className="fas fa-times mr-2"></i>
+                                Reject
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Help Requests Section */}
+          {activeTasks?.filter(t => t.help_requested && !t.completed).length > 0 && (
+            <div className="mb-8">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-lg p-6 border-2 border-purple-200">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                      <i className="fas fa-hand-paper text-white"></i>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-800">Help Requests</h2>
+                      <p className="text-sm text-gray-600">Children need assistance with these tasks</p>
+                    </div>
+                  </div>
+                  <span className="px-4 py-2 bg-purple-500 text-white rounded-full text-sm font-bold">
+                    {activeTasks?.filter(t => t.help_requested && !t.completed).length} requests
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {activeTasks?.filter(t => t.help_requested && !t.completed).map((task) => {
+                    const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || 'Unknown';
+                    return (
+                      <div key={task.id} className="p-5 bg-white rounded-xl border-2 border-purple-200 shadow-sm">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                                <i className="fas fa-hand-paper text-purple-600"></i>
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-gray-800">{task.title}</h3>
+                                <p className="text-sm text-gray-600">
+                                  <span className="font-semibold text-purple-700">{childName}</span> needs help
+                                  {task.help_requested_at && (
+                                    <span className="ml-2">• {new Date(task.help_requested_at).toLocaleDateString()}</span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            {task.description && (
+                              <p className="text-gray-600 text-sm mt-2 ml-11">{task.description}</p>
+                            )}
+                            {task.help_message && (
+                              <div className="ml-11 mt-3 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                                <p className="text-xs font-semibold text-purple-700 uppercase mb-1">Help Needed:</p>
+                                <p className="text-sm text-gray-700">{task.help_message}</p>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex flex-col items-end gap-3 ml-4">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                              <i className="fas fa-star text-xs"></i>
+                              {task.points}
+                            </span>
+                            {task.category && task.category !== 'general' && (
+                              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs capitalize">
+                                {task.category}
+                              </span>
+                            )}
+                            <button
+                              onClick={() => handleResolveHelp(task.id)}
+                              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:from-green-600 hover:to-green-700 transition-all shadow-sm flex items-center gap-2"
+                            >
+                              <i className="fas fa-check"></i>
+                              Mark as Resolved
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Left Column */}
@@ -449,24 +845,29 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Active Family Tasks</h2>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                    {activeTasks?.length} tasks
+                    {activeTasks?.filter(t => !t.completed).length} tasks
                   </span>
                 </div>
 
                 <div className="space-y-4">
-                  {activeTasks?.map((task) => (
+                  {activeTasks?.filter(t => !t.completed).map((task) => {
+                    const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || task.assignedTo;
+                    return (
                     <div key={task.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                       <div className="flex items-center justify-between">
                         <div>
                           <h3 className="font-semibold text-gray-800">{task.title}</h3>
                           <p className="text-sm text-gray-600 mt-1">
-                            Assigned to: <span className="font-medium">{task.assignedTo}</span> • 
-                            Due: <span className="font-medium">{task.dueDate}</span>
+                            Assigned to: <span className="font-medium">{childName}</span>
+                            {task.due_date && (
+                              <> • Due: <span className="font-medium">{new Date(task.due_date).toLocaleDateString()}</span></>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                            {task.points} pts
+                          <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                            <i className="fas fa-star text-amber-500"></i>
+                            {task.points}
                           </span>
                           {task.status === "pending" && (
                             <>
@@ -491,7 +892,8 @@ export default function ParentDashboard() {
                         <p className="text-gray-600 text-sm mt-3">{task.description}</p>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="mt-6 p-4 bg-gray-50 rounded-xl">
@@ -512,9 +914,24 @@ export default function ParentDashboard() {
                       className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
                     />
                     <select
+                      value={newTaskCategory}
+                      onChange={(e) => setNewTaskCategory(e.target.value)}
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
+                    >
+                      <option value="general">General</option>
+                      <option value="chores">Chores</option>
+                      <option value="homework">Homework</option>
+                      <option value="school">School</option>
+                      <option value="cleaning">Cleaning</option>
+                      <option value="outdoor">Outdoor</option>
+                      <option value="pets">Pets</option>
+                      <option value="personal">Personal Care</option>
+                      <option value="other">Other</option>
+                    </select>
+                    <select
                       value={newTaskAssignee}
                       onChange={(e) => setNewTaskAssignee(e.target.value)}
-                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0]"
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0] md:col-span-3"
                     >
                       <option value="">Select child</option>
                       {familyChildren.map((child) => (
@@ -528,7 +945,7 @@ export default function ParentDashboard() {
                       onChange={(e) => setNewTaskDescription(e.target.value)}
                       placeholder="Task description (optional)"
                       rows={3}
-                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0] resize-none"
+                      className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0] resize-none md:col-span-3"
                     />
                   </div>
                   <button
@@ -547,37 +964,57 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Children Progress</h2>
                   <div className="text-sm text-gray-600">
-                    <span className="text-[#00C2E0] font-medium">View Only</span> • Parent Access
+                    <span className="text-[#00C2E0] font-medium">{familyChildren.length}</span> children
                   </div>
                 </div>
 
                 <div className="space-y-4">
-                  {children?.map((child) => (
-                    <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white font-bold text-lg">
-                          {child.avatar}
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800">{child.name}</h3>
-                          <div className="flex items-center gap-4 mt-2">
-                            <span className="text-sm text-gray-600">
-                              <i className="fas fa-star text-amber-500 mr-1"></i>
-                              {child.points} points
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              <i className="fas fa-check-circle text-green-500 mr-1"></i>
-                              {child.tasksCompleted} tasks
-                            </span>
+                  {familyChildren.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
+                      <p>No children added yet</p>
+                    </div>
+                  ) : (
+                    familyChildren.map((child) => {
+                      const completedTasks = activeTasks?.filter(t => t.assigned_to === child.id && t.approved).length || 0;
+                      return (
+                        <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white font-bold text-lg">
+                              {child.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-800">{child.name}</h3>
+                              <div className="flex items-center gap-4 mt-2">
+                                <span className="text-sm font-semibold flex items-center gap-1">
+                                  <i className="fas fa-star text-amber-500"></i>
+                                  <span className="text-amber-600">{child.total_points || 0}</span>
+                                </span>
+                                <span className="text-sm text-gray-600">
+                                  <i className="fas fa-check-circle text-green-500 mr-1"></i>
+                                  {completedTasks} completed
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xs text-gray-500 mb-1">Total Progress</div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-gradient-to-r from-green-400 to-green-500"
+                                    style={{ width: `${Math.min((completedTasks / Math.max(activeTasks?.filter(t => t.assigned_to === child.id).length || 1, 1)) * 100, 100)}%` }}
+                                  ></div>
+                                </div>
+                                <span className="text-xs font-semibold text-gray-600">
+                                  {activeTasks?.filter(t => t.assigned_to === child.id).length || 0}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium inline-flex items-center gap-1">
-                          <i className="fas fa-eye"></i>
-                          View Only
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
