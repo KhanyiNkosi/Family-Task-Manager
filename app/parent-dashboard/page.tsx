@@ -17,9 +17,14 @@ interface Task {
   due_date?: string;
   status: "pending" | "completed" | "approved";
   completed?: boolean;
+  approved?: boolean;
   description?: string;
   created_at?: string;
   completed_at?: string;
+  help_requested?: boolean;
+  help_requested_at?: string | null;
+  help_message?: string | null;
+  category?: string;
 }
 
 interface Child {
@@ -44,6 +49,18 @@ interface RewardRequest {
   requester: string;
   points: number;
   status: "pending" | "approved" | "rejected";
+}
+
+interface Reward {
+  id: string;
+  title: string;
+  description: string | null;
+  points_cost: number;
+  family_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
 }
 
 export default function ParentDashboard() {
@@ -101,6 +118,12 @@ export default function ParentDashboard() {
   // State for reward requests
   const [rewardRequests, setRewardRequests] = useState<RewardRequest[]>([]);
 
+  // State for rewards
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [newRewardTitle, setNewRewardTitle] = useState("");
+  const [newRewardDescription, setNewRewardDescription] = useState("");
+  const [newRewardPoints, setNewRewardPoints] = useState("50");
+
   // New task form state
   const [newTaskName, setNewTaskName] = useState("");
   const [newTaskPoints, setNewTaskPoints] = useState("10");
@@ -123,7 +146,46 @@ export default function ParentDashboard() {
   useEffect(() => {
     loadTasks();
     loadChildren();
+    loadRewards();
   }, []);
+
+  const loadRewards = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) return;
+
+      // Load all active rewards for this family
+      const { data: rewardsData, error } = await supabase
+        .from('rewards')
+        .select('*')
+        .eq('family_id', profile.family_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading rewards:', error);
+        return;
+      }
+
+      if (rewardsData) {
+        setRewards(rewardsData);
+        console.log('Rewards loaded:', rewardsData);
+      }
+    } catch (error) {
+      console.error('Error in loadRewards:', error);
+    }
+  };
 
   const loadChildren = async () => {
     try {
@@ -217,14 +279,14 @@ export default function ParentDashboard() {
       }
 
       if (tasks) {
-        const formattedTasks = tasks.map(task => ({
+        const formattedTasks: Task[] = tasks.map(task => ({
           id: task.id,
           title: task.title,
           description: task.description,
           assignedTo: task.assigned_to,
           assigned_to: task.assigned_to,
           points: task.points,
-          status: task.approved ? 'approved' : task.completed ? 'completed' : 'pending',
+          status: (task.approved ? 'approved' : task.completed ? 'completed' : 'pending') as "pending" | "completed" | "approved",
           completed: task.completed,
           approved: task.approved || false,
           dueDate: task.due_date,
@@ -491,6 +553,98 @@ export default function ParentDashboard() {
     } catch (error) {
       console.error('Error in handleResolveHelp:', error);
       alert('Failed to resolve help request');
+
+  // Create a new reward
+  const handleCreateReward = async () => {
+    if (!newRewardTitle.trim()) {
+      alert('Please enter a reward title');
+      return;
+    }
+
+    const pointsCost = parseInt(newRewardPoints);
+    if (isNaN(pointsCost) || pointsCost <= 0) {
+      alert('Please enter a valid points cost');
+      return;
+    }
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        alert('You must be logged in to create rewards');
+        return;
+      }
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        alert('Family ID not found');
+        return;
+      }
+
+      // Insert reward into database
+      const { data: newReward, error } = await supabase
+        .from('rewards')
+        .insert({
+          title: newRewardTitle.trim(),
+          description: newRewardDescription.trim() || null,
+          points_cost: pointsCost,
+          family_id: profile.family_id,
+          created_by: user.id,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating reward:', error);
+        alert('Failed to create reward: ' + error.message);
+        return;
+      }
+
+      if (newReward) {
+        setRewards([newReward, ...rewards]);
+        setNewRewardTitle('');
+        setNewRewardDescription('');
+        setNewRewardPoints('50');
+        alert('Reward created successfully!');
+      }
+    } catch (error) {
+      console.error('Error in handleCreateReward:', error);
+      alert('Failed to create reward');
+    }
+  };
+
+  // Delete a reward
+  const handleDeleteReward = async (rewardId: string) => {
+    if (!confirm('Are you sure you want to delete this reward?')) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Instead of deleting, mark as inactive
+      const { error } = await supabase
+        .from('rewards')
+        .update({ is_active: false })
+        .eq('id', rewardId);
+
+      if (error) {
+        console.error('Error deleting reward:', error);
+        alert('Failed to delete reward');
+        return;
+      }
+
+      setRewards(rewards.filter(r => r.id !== rewardId));
+      alert('Reward deleted successfully');
+    } catch (error) {
+      console.error('Error in handleDeleteReward:', error);
+      alert('Failed to delete reward');
     }
   };
 
@@ -1071,6 +1225,99 @@ export default function ParentDashboard() {
                     <i className="fas fa-paper-plane mr-2"></i>
                     Post Message
                   </button>
+                </div>
+              </div>
+
+              {/* Rewards Management Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-[#006372]">Rewards Store</h2>
+                  <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium flex items-center gap-1">
+                    <i className="fas fa-trophy text-emerald-600"></i>
+                    {rewards.length} rewards
+                  </span>
+                </div>
+
+                {/* Create New Reward Form */}
+                <div className="mb-6 p-4 bg-gradient-to-br from-emerald-50/30 to-white rounded-xl border border-emerald-100/50">
+                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                    <i className="fas fa-plus-circle text-emerald-600"></i>
+                    Create New Reward
+                  </h3>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={newRewardTitle}
+                      onChange={(e) => setNewRewardTitle(e.target.value)}
+                      placeholder="Reward title (e.g., Extra Screen Time)"
+                      className="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    />
+                    <textarea
+                      value={newRewardDescription}
+                      onChange={(e) => setNewRewardDescription(e.target.value)}
+                      placeholder="Description (optional)"
+                      className="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent h-20"
+                    />
+                    <div className="flex items-center gap-2">
+                      <i className="fas fa-star text-amber-500"></i>
+                      <input
+                        type="number"
+                        value={newRewardPoints}
+                        onChange={(e) => setNewRewardPoints(e.target.value)}
+                        placeholder="Points cost"
+                        min="1"
+                        className="flex-1 p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                      <span className="text-sm text-gray-600">points</span>
+                    </div>
+                    <button
+                      onClick={handleCreateReward}
+                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:opacity-90 flex items-center justify-center gap-2"
+                    >
+                      <i className="fas fa-plus"></i>
+                      Create Reward
+                    </button>
+                  </div>
+                </div>
+
+                {/* Active Rewards List */}
+                <div className="space-y-3">
+                  {rewards.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
+                      <p>No rewards created yet</p>
+                      <p className="text-sm">Create your first reward above!</p>
+                    </div>
+                  ) : (
+                    rewards.map((reward) => (
+                      <div key={reward.id} className="p-4 bg-gradient-to-br from-emerald-50/30 to-white rounded-xl border border-emerald-100/50 hover:border-emerald-200 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-800">{reward.title}</h3>
+                            {reward.description && (
+                              <p className="text-sm text-gray-600 mt-1">{reward.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                                <i className="fas fa-star text-amber-500"></i>
+                                {reward.points_cost}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {new Date(reward.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => handleDeleteReward(reward.id)}
+                            className="text-gray-400 hover:text-red-500 transition-colors ml-2 p-2 hover:bg-red-50 rounded"
+                            title="Delete reward"
+                          >
+                            <i className="fas fa-trash text-sm"></i>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
