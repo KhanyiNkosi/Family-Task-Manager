@@ -16,6 +16,29 @@ interface Task {
   created_at: string;
 }
 
+interface Reward {
+  id: string;
+  title: string;
+  description: string | null;
+  points_cost: number;
+  family_id: string;
+  created_by: string;
+  created_at: string;
+  is_active: boolean;
+}
+
+interface RewardRedemption {
+  id: string;
+  reward_id: string;
+  user_id: string;
+  points_spent: number;
+  status: 'pending' | 'approved' | 'rejected';
+  redeemed_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  reward?: Reward;
+}
+
 export default function ChildDashboardPage() {
   // Child avatar state
   const [childAvatar, setChildAvatar] = useState("child");
@@ -49,13 +72,9 @@ export default function ChildDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [points, setPoints] = useState(0);
-  const [tasks, setTasks] = useState([]);;
-  const [rewards, setRewards] = useState([
-    { id: 1, name: "Extra Screen Time", description: "30 minutes extra gaming or TV", points: 50, redeemed: false },
-    { id: 2, name: "Choose Dinner", description: "Pick what we eat for dinner", points: 100, redeemed: false },
-    { id: 3, name: "Stay Up Late", description: "Stay up 30 mins past bedtime", points: 150, redeemed: false },
-    { id: 4, name: "Movie Night", description: "Choose the family movie", points: 200, redeemed: false }
-  ]);
+  const [tasks, setTasks] = useState([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [toast, setToast] = useState({ show: false, message: "" });
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
@@ -89,6 +108,46 @@ export default function ChildDashboardPage() {
         } else if (childTasks) {
           console.log('Loaded tasks:', childTasks);
           setTasks(childTasks);
+        }
+        
+        // Load available rewards for the family
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('family_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.family_id) {
+          const { data: familyRewards, error: rewardsError } = await supabase
+            .from('rewards')
+            .select('*')
+            .eq('family_id', profile.family_id)
+            .eq('is_active', true)
+            .order('points_cost', { ascending: true });
+
+          if (rewardsError) {
+            console.error('Error fetching rewards:', rewardsError);
+          } else if (familyRewards) {
+            console.log('Loaded rewards:', familyRewards);
+            setRewards(familyRewards);
+          }
+
+          // Load child's reward redemptions
+          const { data: userRedemptions, error: redemptionsError } = await supabase
+            .from('reward_redemptions')
+            .select(`
+              *,
+              reward:rewards(*)
+            `)
+            .eq('user_id', user.id)
+            .order('redeemed_at', { ascending: false });
+
+          if (redemptionsError) {
+            console.error('Error fetching redemptions:', redemptionsError);
+          } else if (userRedemptions) {
+            console.log('Loaded redemptions:', userRedemptions);
+            setRedemptions(userRedemptions);
+          }
         }
         
         // Calculate total points from user_profiles
@@ -262,21 +321,67 @@ export default function ChildDashboardPage() {
     }
   };
 
-  const redeemReward = (rewardId: number) => {
+  const redeemReward = async (rewardId: string) => {
     const reward = rewards.find(r => r.id === rewardId);
-    if (reward && points >= reward.points && !reward.redeemed) {
-      setRewards(rewards.map(r => 
-        r.id === rewardId ? { ...r, redeemed: true } : r
-      ));
-      setPoints(prev => prev - reward.points);
+    
+    if (!reward) return;
+
+    // Check if already redeemed (pending or approved)
+    const existingRedemption = redemptions.find(
+      r => r.reward_id === rewardId && (r.status === 'pending' || r.status === 'approved')
+    );
+
+    if (existingRedemption) {
+      alert('You have already requested this reward!');
+      return;
+    }
+
+    if (points < reward.points_cost) {
+      alert(`You need ${reward.points_cost} points to redeem this reward!`);
+      return;
+    }
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
       
-      setToast({ 
-        show: true, 
-        message: `Request for "${reward.name}" sent for approval!` 
-      });
-      setTimeout(() => setToast({ ...toast, show: false }), 4000);
-    } else if (reward && points < reward.points) {
-      alert(`You need ${reward.points} points to redeem this reward!`);
+      if (!user) {
+        alert('You must be logged in to redeem rewards');
+        return;
+      }
+
+      // Create redemption request
+      const { data: newRedemption, error } = await supabase
+        .from('reward_redemptions')
+        .insert({
+          reward_id: rewardId,
+          user_id: user.id,
+          points_spent: reward.points_cost,
+          status: 'pending'
+        })
+        .select(`
+          *,
+          reward:rewards(*)
+        `)
+        .single();
+
+      if (error) {
+        console.error('Error creating redemption:', error);
+        alert('Failed to redeem reward: ' + error.message);
+        return;
+      }
+
+      if (newRedemption) {
+        setRedemptions([newRedemption, ...redemptions]);
+        setToast({ 
+          show: true, 
+          message: `Request for "${reward.title}" sent for parent approval!` 
+        });
+        setTimeout(() => setToast({ show: false, message: "" }), 4000);
+      }
+    } catch (error) {
+      console.error('Error in redeemReward:', error);
+      alert('Failed to redeem reward');
     }
   };
 
@@ -293,7 +398,7 @@ export default function ChildDashboardPage() {
   const stats = {
     todo: tasks.filter(t => !t.completed).length,
     completed: tasks.filter(t => t.completed).length,
-    redeemed: rewards.filter(r => r.redeemed).length
+    redeemed: redemptions.filter(r => r.status === 'approved').length
   };
 
   const todoTasks = tasks.filter(task => !task.completed);
@@ -511,48 +616,96 @@ export default function ChildDashboardPage() {
           <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800">Available Rewards</h2>
-              <span className="text-lg font-bold text-[#006372]">{points} points</span>
+              <span className="text-lg font-bold text-[#006372] flex items-center gap-1">
+                <i className="fas fa-star text-amber-500"></i>
+                {points} points
+              </span>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {rewards.map((reward) => (
-                <div
-                  key={reward.id}
-                  className={`p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow duration-300 ${
-                    reward.redeemed
-                      ? 'bg-gray-50 border-cyan-100'
-                      : 'bg-gradient-to-br from-cyan-50 to-teal-50 border-cyan-200'
-                  }`}
-                >
-                  {reward.redeemed ? (
-                    <div className="text-center py-4">
-                      <i className="fas fa-check-circle text-2xl text-[#00C2E0]/70 mb-2"></i>
-                      <div className="font-bold text-[#006372]">Redeemed</div>
-                      <div className="text-sm text-[#00C2E0]/70">{reward.name}</div>
+            {rewards.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
+                <p>No rewards available yet</p>
+                <p className="text-sm">Ask your parents to create some rewards!</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {rewards.map((reward) => {
+                  const redemption = redemptions.find(
+                    r => r.reward_id === reward.id && (r.status === 'pending' || r.status === 'approved')
+                  );
+                  const isRedeemed = redemption?.status === 'approved';
+                  const isPending = redemption?.status === 'pending';
+                  
+                  return (
+                    <div
+                      key={reward.id}
+                      className={`p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow duration-300 ${
+                        isRedeemed
+                          ? 'bg-green-50 border-green-200'
+                          : isPending
+                          ? 'bg-amber-50 border-amber-200'
+                          : 'bg-gradient-to-br from-cyan-50 to-teal-50 border-cyan-200'
+                      }`}
+                    >
+                      {isRedeemed ? (
+                        <div className="text-center py-4">
+                          <i className="fas fa-check-circle text-2xl text-green-600 mb-2"></i>
+                          <div className="font-bold text-green-700">Approved!</div>
+                          <div className="text-sm text-green-600">{reward.title}</div>
+                          {redemption?.approved_at && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              {new Date(redemption.approved_at).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      ) : isPending ? (
+                        <div className="text-center py-4">
+                          <i className="fas fa-clock text-2xl text-amber-600 mb-2"></i>
+                          <div className="font-bold text-amber-700">Pending Approval</div>
+                          <div className="text-sm text-amber-600">{reward.title}</div>
+                          <div className="text-xs text-gray-500 mt-1">Waiting for parent...</div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-start mb-3">
+                            <h4 className="font-bold text-gray-800">{reward.title}</h4>
+                            <div className="font-bold text-[#00C2E0] flex items-center gap-1">
+                              <i className="fas fa-star text-amber-500 text-sm"></i>
+                              {reward.points_cost}
+                            </div>
+                          </div>
+                          {reward.description && (
+                            <p className="text-sm text-gray-600 mb-4">{reward.description}</p>
+                          )}
+                          <button
+                            onClick={() => redeemReward(reward.id)}
+                            disabled={points < reward.points_cost}
+                            className={`w-full py-2.5 rounded-lg font-medium transition-all ${
+                              points >= reward.points_cost
+                                ? 'bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
+                          >
+                            {points >= reward.points_cost ? (
+                              <>
+                                <i className="fas fa-gift mr-2"></i>
+                                Redeem Reward
+                              </>
+                            ) : (
+                              <>
+                                <i className="fas fa-lock mr-2"></i>
+                                Need {reward.points_cost - points} More Points
+                              </>
+                            )}
+                          </button>
+                        </>
+                      )}
                     </div>
-                  ) : (
-                    <>
-                      <div className="flex justify-between items-start mb-3">
-                        <h4 className="font-bold text-gray-800">{reward.name}</h4>
-                        <div className="font-bold text-[#00C2E0]">{reward.points} pts</div>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-4">{reward.description}</p>
-                      <button
-                        onClick={() => redeemReward(reward.id)}
-                        disabled={points < reward.points}
-                        className={`w-full py-2.5 rounded-lg font-medium ${
-                          points >= reward.points
-                            ? 'bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90'
-                            : 'bg-gray-300 text-[#00C2E0]/70 cursor-not-allowed'
-                        }`}
-                      >
-                        {points >= reward.points ? 'Redeem Reward' : 'Need More Points'}
-                      </button>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

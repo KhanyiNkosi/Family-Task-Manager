@@ -63,6 +63,19 @@ interface Reward {
   is_active: boolean;
 }
 
+interface RewardRedemption {
+  id: string;
+  reward_id: string;
+  user_id: string;
+  points_spent: number;
+  status: 'pending' | 'approved' | 'rejected';
+  redeemed_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  reward?: Reward;
+  user?: { id: string; full_name: string };
+}
+
 export default function ParentDashboard() {
   const router = useRouter();
   const pathname = usePathname();
@@ -117,6 +130,7 @@ export default function ParentDashboard() {
 
   // State for reward requests
   const [rewardRequests, setRewardRequests] = useState<RewardRequest[]>([]);
+  const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
 
   // State for rewards
   const [rewards, setRewards] = useState<Reward[]>([]);
@@ -147,6 +161,7 @@ export default function ParentDashboard() {
     loadTasks();
     loadChildren();
     loadRewards();
+    loadRedemptions();
   }, []);
 
   const loadRewards = async () => {
@@ -184,6 +199,53 @@ export default function ParentDashboard() {
       }
     } catch (error) {
       console.error('Error in loadRewards:', error);
+    }
+  };
+
+  const loadRedemptions = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) return;
+
+      // Load all redemptions for family members
+      const { data: redemptionsData, error } = await supabase
+        .from('reward_redemptions')
+        .select(`
+          *,
+          reward:rewards(*),
+          user:profiles!reward_redemptions_user_id_fkey(id, full_name)
+        `)
+        .in('user_id', 
+          await supabase
+            .from('profiles')
+            .select('id')
+            .eq('family_id', profile.family_id)
+            .then(({ data }) => data?.map(p => p.id) || [])
+        )
+        .order('redeemed_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading redemptions:', error);
+        return;
+      }
+
+      if (redemptionsData) {
+        setRedemptions(redemptionsData);
+        console.log('Redemptions loaded:', redemptionsData);
+      }
+    } catch (error) {
+      console.error('Error in loadRedemptions:', error);
     }
   };
 
@@ -671,7 +733,117 @@ export default function ParentDashboard() {
     }
   };
 
-  // Handle reward request
+  // Handle reward redemption approval
+  const handleApproveRedemption = async (redemptionId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const redemption = redemptions.find(r => r.id === redemptionId);
+      if (!redemption) return;
+
+      // Update redemption status to approved
+      const { error: redemptionError } = await supabase
+        .from('reward_redemptions')
+        .update({ 
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: user.id
+        })
+        .eq('id', redemptionId);
+
+      if (redemptionError) {
+        console.error('Error approving redemption:', redemptionError);
+        alert('Failed to approve redemption');
+        return;
+      }
+
+      // Deduct points from child
+      const { error: pointsError } = await supabase.rpc('increment_user_points', {
+        user_id: redemption.user_id,
+        points_to_add: -redemption.points_spent
+      });
+
+      if (pointsError) {
+        console.log('RPC failed, using manual update. Error:', pointsError);
+        // Manual fallback
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('total_points')
+          .eq('id', redemption.user_id)
+          .single();
+
+        if (userProfile) {
+          const newTotal = Math.max(0, (userProfile.total_points || 0) - redemption.points_spent);
+          const { error: updateError } = await supabase
+            .from('user_profiles')
+            .update({ total_points: newTotal })
+            .eq('id', redemption.user_id);
+            
+          if (updateError) {
+            console.error('Error updating points:', updateError);
+            alert('Redemption approved but failed to deduct points');
+            return;
+          }
+        }
+      }
+
+      // Update local state
+      setRedemptions(redemptions.map(r =>
+        r.id === redemptionId ? { ...r, status: 'approved', approved_at: new Date().toISOString(), approved_by: user.id } : r
+      ));
+      
+      // Reload children to update their points
+      loadChildren();
+      
+      alert(`Redemption approved! ${redemption.points_spent} points deducted from child.`);
+    } catch (error) {
+      console.error('Error in handleApproveRedemption:', error);
+      alert('Failed to approve redemption');
+    }
+  };
+
+  const handleRejectRedemption = async (redemptionId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const redemption = redemptions.find(r => r.id === redemptionId);
+      if (!redemption) return;
+
+      // Update redemption status to rejected
+      const { error } = await supabase
+        .from('reward_redemptions')
+        .update({ 
+          status: 'rejected',
+          approved_at: new Date().toISOString(),
+          approved_by: user.id
+        })
+        .eq('id', redemptionId);
+
+      if (error) {
+        console.error('Error rejecting redemption:', error);
+        alert('Failed to reject redemption');
+        return;
+      }
+
+      // Update local state
+      setRedemptions(redemptions.map(r =>
+        r.id === redemptionId ? { ...r, status: 'rejected', approved_at: new Date().toISOString(), approved_by: user.id } : r
+      ));
+      
+      alert('Redemption rejected.');
+    } catch (error) {
+      console.error('Error in handleRejectRedemption:', error);
+      alert('Failed to reject redemption');
+    }
+  };
+
+  // Handle reward request (legacy - keeping for compatibility)
   const handleRewardRequest = (requestId: number, status: "approved" | "rejected") => {
     const updatedRequests = rewardRequests?.map(request =>
       request.id === requestId ? { ...request, status } : request
@@ -1321,55 +1493,90 @@ export default function ParentDashboard() {
                 </div>
               </div>
 
-              {/* Reward Requests Card */}
+              {/* Reward Redemptions Card */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-[#006372]">Reward Requests</h2>
+                  <h2 className="text-xl font-bold text-[#006372]">Reward Redemptions</h2>
                   <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                    {rewardRequests?.filter(r => r.status === "pending").length} pending
+                    {redemptions?.filter(r => r.status === "pending").length} pending
                   </span>
                 </div>
 
                 <div className="space-y-4">
-                  {rewardRequests?.map((request) => (
-                    <div key={request.id} className="p-4 bg-gradient-to-br from-amber-50/30 to-white rounded-xl border border-amber-100/50">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-gray-800">{request.name}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
-                            Requested by: <span className="font-medium">{request.requester}</span> • 
-                            Points: <span className="font-medium">{request.points}</span>
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {request.status === "pending" ? (
-                            <>
-                              <button
-                                onClick={() => handleRewardRequest(request.id, "approved")}
-                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
-                              >
-                                Approve
-                              </button>
-                              <button
-                                onClick={() => handleRewardRequest(request.id, "rejected")}
-                                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
-                              >
-                                Reject
-                              </button>
-                            </>
-                          ) : (
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                              request.status === "approved" 
-                                ? "bg-green-100 text-green-700" 
-                                : "bg-red-100 text-red-700"
-                            }`}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                  {redemptions.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <i className="fas fa-gift text-4xl text-gray-300 mb-3"></i>
+                      <p>No redemption requests yet</p>
+                      <p className="text-sm">Children can redeem rewards from their dashboard</p>
                     </div>
-                  ))}
+                  ) : (
+                    redemptions.map((redemption) => {
+                      const childName = redemption.user?.full_name || 'Unknown';
+                      const rewardTitle = redemption.reward?.title || 'Unknown Reward';
+                      
+                      return (
+                        <div key={redemption.id} className={`p-4 rounded-xl border shadow-sm ${
+                          redemption.status === 'pending' 
+                            ? 'bg-gradient-to-br from-amber-50/30 to-white border-amber-100/50'
+                            : redemption.status === 'approved'
+                            ? 'bg-gradient-to-br from-green-50/30 to-white border-green-100/50'
+                            : 'bg-gradient-to-br from-red-50/30 to-white border-red-100/50'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-800">{rewardTitle}</h3>
+                              <p className="text-sm text-gray-600 mt-1">
+                                Requested by: <span className="font-medium text-amber-700">{childName}</span>
+                              </p>
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="px-2 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold flex items-center gap-1">
+                                  <i className="fas fa-star text-amber-500"></i>
+                                  {redemption.points_spent}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {new Date(redemption.redeemed_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-4">
+                              {redemption.status === "pending" ? (
+                                <>
+                                  <button
+                                    onClick={() => handleApproveRedemption(redemption.id)}
+                                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                                    title="Approve and deduct points"
+                                  >
+                                    <i className="fas fa-check mr-1"></i>
+                                    Approve
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectRedemption(redemption.id)}
+                                    className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                                    title="Reject request"
+                                  >
+                                    <i className="fas fa-times mr-1"></i>
+                                    Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${
+                                  redemption.status === "approved" 
+                                    ? "bg-green-100 text-green-700" 
+                                    : "bg-red-100 text-red-700"
+                                }`}>
+                                  {redemption.status === "approved" ? (
+                                    <><i className="fas fa-check-circle"></i> Approved</>
+                                  ) : (
+                                    <><i className="fas fa-times-circle"></i> Rejected</>
+                                  )}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>
