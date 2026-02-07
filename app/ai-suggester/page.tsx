@@ -43,13 +43,38 @@ export default function AlSuggestorPage() {
     { id: 1, text: 'Hi! I\'m your FamilyTask AI Assistant. I can help you generate task ideas, suggest family activities, balance points, and solve family management challenges. What would you like help with today?', sender: 'ai', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
   ]);
 
+  // Modal states
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; message: string; onConfirm: () => void }>({ show: false, message: "", onConfirm: () => {} });
+
+  // Modal helper functions
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+          resolve(true);
+        },
+      });
+      setTimeout(() => {
+        (window as any)._confirmCancelHandler = () => resolve(false);
+      }, 0);
+    });
+  };
+
   useEffect(() => {
     // Check if user should be here (parent-only for now)
     const userRole = localStorage.getItem('familytask-user-role') || sessionStorage.getItem('userRole');
     
     if (userRole === 'child') {
-      alert('AI Suggester is for parents only!');
-      router.push('/child-dashboard');
+      showAlert('AI Suggester is for parents only!', "warning");
+      setTimeout(() => router.push('/child-dashboard'), 1500);
       return;
     }
     
@@ -61,7 +86,7 @@ export default function AlSuggestorPage() {
 
   const generateSuggestions = () => {
     if (prompt.trim() === '') {
-      alert('Please enter a prompt first!');
+      showAlert('Please enter a prompt first!', "warning");
       return;
     }
 
@@ -135,11 +160,12 @@ export default function AlSuggestorPage() {
     const saved = JSON.parse(localStorage.getItem('familytask-saved-suggestions') || '[]');
     saved.push({ ...suggestion, savedAt: new Date().toLocaleString() });
     localStorage.setItem('familytask-saved-suggestions', JSON.stringify(saved));
-    alert(`Saved "${suggestion.title}" to your suggestions!`);
+    showAlert(`Saved "${suggestion.title}" to your suggestions!`, "success");
   };
 
-  const deleteSuggestion = (id: number) => {
-    if (confirm('Are you sure you want to delete this suggestion?')) {
+  const deleteSuggestion = async (id: number) => {
+    const confirmed = await showConfirm('Are you sure you want to delete this suggestion?');
+    if (confirmed) {
       setSuggestions(suggestions.filter(s => s.id !== id));
     }
   };
@@ -419,6 +445,82 @@ export default function AlSuggestorPage() {
           </div>
         </div>
       </footer>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setAlertModal({ ...alertModal, show: false })}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+              alertModal.type === \"success\" ? \"bg-green-100\" :
+              alertModal.type === \"error\" ? \"bg-red-100\" :
+              alertModal.type === \"warning\" ? \"bg-yellow-100\" :
+              \"bg-blue-100\"
+            }`}>
+              <span className=\"text-3xl\">{
+                alertModal.type === \"success\" ? \"✓\" :
+                alertModal.type === \"error\" ? \"✕\" :
+                alertModal.type === \"warning\" ? \"⚠\" :
+                \"ℹ\"
+              }</span>
+            </div>
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              alertModal.type === \"success\" ? \"text-green-600\" :
+              alertModal.type === \"error\" ? \"text-red-600\" :
+              alertModal.type === \"warning\" ? \"text-yellow-600\" :
+              \"text-blue-600\"
+            }`}>
+              {alertModal.type === \"success\" ? \"Success!\" :
+               alertModal.type === \"error\" ? \"Error\" :
+               alertModal.type === \"warning\" ? \"Warning\" :
+               \"Information\"}
+            </h3>
+            <p className=\"text-gray-700 text-center mb-6\">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition ${
+                alertModal.type === \"success\" ? \"bg-green-500 hover:bg-green-600\" :
+                alertModal.type === \"error\" ? \"bg-red-500 hover:bg-red-600\" :
+                alertModal.type === \"warning\" ? \"bg-yellow-500 hover:bg-yellow-600\" :
+                \"bg-blue-500 hover:bg-blue-600\"
+              }`}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+            <div className=\"w-16 h-16 rounded-full bg-yellow-100 mx-auto mb-4 flex items-center justify-center\">
+              <span className=\"text-3xl\">?</span>
+            </div>
+            <h3 className=\"text-xl font-bold text-center mb-2 text-gray-800\">Confirm Action</h3>
+            <p className=\"text-gray-700 text-center mb-6\">{confirmModal.message}</p>
+            <div className=\"flex gap-3\">
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: \"\", onConfirm: () => {} });
+                  if ((window as any)._confirmCancelHandler) {
+                    (window as any)._confirmCancelHandler();
+                  }
+                }}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition\"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 transition\"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
