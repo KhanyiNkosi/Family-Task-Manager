@@ -294,11 +294,19 @@ export default function ChildDashboardPage() {
         { event: '*', schema: 'public', table: 'tasks' },
         (payload) => {
           console.log('Task change detected:', payload);
+          console.log('Event type:', payload.eventType);
           
           // Check if this task is assigned to current user
           supabase.auth.getUser().then(({ data: { user } }) => {
             if (user && (payload.new?.assigned_to === user.id || payload.old?.assigned_to === user.id)) {
-              // Show notification
+              // Handle DELETE event
+              if (payload.eventType === 'DELETE') {
+                console.log('Task deleted, removing from child view:', payload.old.id);
+                setTasks(prevTasks => prevTasks.filter(task => task.id !== payload.old.id));
+                return;
+              }
+              
+              // Show notification for INSERT
               if (payload.eventType === 'INSERT') {
                 setToast({
                   show: true,
@@ -313,7 +321,7 @@ export default function ChildDashboardPage() {
                 setTimeout(() => setToast({ show: false, message: "" }), 4000);
               }
               
-              // Reload tasks and points
+              // Reload tasks and points for INSERT/UPDATE
               const fetchUpdatedData = async () => {
                 const { data: childTasks } = await supabase
                   .from('tasks')
