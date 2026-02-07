@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -102,6 +102,8 @@ export default function ChildDashboardPage() {
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
   const [toast, setToast] = useState({ show: false, message: "" });
   const [pepTalkModal, setPepTalkModal] = useState({ show: false, message: "", emoji: "" });
+  const [taskHelperModal, setTaskHelperModal] = useState({ show: false, task: null as Task | null, messages: [] as { text: string, sender: 'user' | 'ai' }[] });
+  const [helperInput, setHelperInput] = useState("");
 
   // Task filter and sort state
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
@@ -787,6 +789,95 @@ export default function ChildDashboardPage() {
     }, 5000);
   };
 
+  const openTaskHelper = (task: Task) => {
+    const welcomeMessage = {
+      text: `Hi! 👋 I'm here to help you with "${task.title}". Ask me questions like:\n• How do I start?\n• Where do I find the tools?\n• Can you break this down into steps?\n• What's the best way to do this?`,
+      sender: 'ai' as const
+    };
+    setTaskHelperModal({ show: true, task, messages: [welcomeMessage] });
+  };
+
+  const sendHelperMessage = () => {
+    if (!helperInput.trim() || !taskHelperModal.task) return;
+
+    const userMessage = { text: helperInput, sender: 'user' as const };
+    const newMessages = [...taskHelperModal.messages, userMessage];
+    
+    // Simulate AI thinking
+    setTaskHelperModal({ ...taskHelperModal, messages: [...newMessages, { text: '🤔 Thinking...', sender: 'ai' }] });
+    
+    setTimeout(() => {
+      const response = generateTaskHelp(helperInput, taskHelperModal.task!);
+      const aiMessage = { text: response, sender: 'ai' as const };
+      setTaskHelperModal({ ...taskHelperModal, messages: [...newMessages, aiMessage] });
+      setHelperInput('');
+    }, 1000);
+  };
+
+  const generateTaskHelp = (question: string, task: Task): string => {
+    const lowerQuestion = question.toLowerCase();
+    const taskTitle = task.title.toLowerCase();
+    const category = task.category?.toLowerCase() || '';
+
+    // Detect question type
+    if (lowerQuestion.includes('start') || lowerQuestion.includes('begin')) {
+      const starts = [
+        `Great question! To start "${task.title}", first gather everything you might need. Take a deep breath, and begin with the easiest part! 🚀`,
+        `Starting is the hardest part! For "${task.title}", break it down: What's the first tiny step? Do that one thing first! 💪`,
+        `Here's how to begin: Look at the task, imagine it's done, then work backwards. What's step 1? Start there! ⭐`,
+      ];
+      return starts[Math.floor(Math.random() * starts.length)];
+    }
+
+    if (lowerQuestion.includes('where') || lowerQuestion.includes('find') || lowerQuestion.includes('tool') || lowerQuestion.includes('supply')) {
+      const locations = [
+        `Good thinking to check first! For "${task.title}", tools are usually in the garage, kitchen, or storage closet. Ask your parent if you're not sure! 🔍`,
+        `Smart question! Check these spots: garage shelves, under the sink, or the utility closet. Still can't find it? Ask your parent where they keep it! 📍`,
+        `For tools and supplies, try: the basement, garage, or ask your parent. They'll know exactly where everything is! 🛠️`,
+      ];
+      return locations[Math.floor(Math.random() * locations.length)];
+    }
+
+    if (lowerQuestion.includes('step') || lowerQuestion.includes('break') || lowerQuestion.includes('how')) {
+      // Category-specific step breakdowns
+      if (category.includes('homework') || category.includes('school')) {
+        return `Here's how to tackle "${task.title}":\n\n1️⃣ Find a quiet spot with good lighting\n2️⃣ Gather all materials (books, pencils, paper)\n3️⃣ Read instructions carefully\n4️⃣ Start with what you know best\n5️⃣ Take short breaks if needed\n6️⃣ Check your work when done\n\nYou've got this! 📚`;
+      } else if (category.includes('clean') || category.includes('chore')) {
+        return `Let's break down "${task.title}" into easy steps:\n\n1️⃣ Pick up and put away items first\n2️⃣ Dust or wipe surfaces\n3️⃣ Vacuum or sweep the floor\n4️⃣ Take out any trash\n5️⃣ Do a final check - does it look good?\n\nOne step at a time! 🧹`;
+      } else if (category.includes('outdoor') || category.includes('yard')) {
+        return `Here's your outdoor game plan for "${task.title}":\n\n1️⃣ Check the weather - dress appropriately!\n2️⃣ Gather tools (rake, hose, etc.)\n3️⃣ Start in one area, work your way around\n4️⃣ Put tools back when finished\n5️⃣ Wash hands when you come inside\n\nEnjoy the fresh air! 🌳`;
+      } else {
+        return `Let me break "${task.title}" into simple steps:\n\n1️⃣ Understand exactly what needs to be done\n2️⃣ Gather what you need\n3️⃣ Start with the easiest part\n4️⃣ Work steadily, take breaks if needed\n5️⃣ Check your work\n6️⃣ Clean up afterward\n\nYou're doing great! ⭐`;
+      }
+    }
+
+    if (lowerQuestion.includes('best way') || lowerQuestion.includes('tips') || lowerQuestion.includes('advice')) {
+      const tips = [
+        `Pro tip for "${task.title}": Put on music you like, set a timer, and race against it! Makes it fun! 🎵`,
+        `Here's a secret: Do "${task.title}" before screen time. You'll work faster knowing fun is coming! 🎮`,
+        `My advice: Break "${task.title}" into 3 parts. After each part, give yourself a mini-reward (snack, stretch, dance break)! 🎉`,
+        `Best way? Start strong! Do "${task.title}" when you're most energetic. Morning person? Do it then! Night owl? Evening works! 🌟`,
+      ];
+      return tips[Math.floor(Math.random() * tips.length)];
+    }
+
+    if (lowerQuestion.includes('hard') || lowerQuestion.includes('difficult') || lowerQuestion.includes('can\'t')) {
+      return `I hear you - "${task.title}" seems tough! Here's what helps:\n\n💪 Remember: Hard things make you stronger\n🎯 Focus on just the next tiny step\n⏰ Set a 10-minute timer - anyone can do 10 minutes!\n🤝 Ask for help if you really need it\n⭐ You've done hard things before - you can do this!\n\nBelieve in yourself! You're more capable than you think! 💫`;
+    }
+
+    if (lowerQuestion.includes('time') || lowerQuestion.includes('long') || lowerQuestion.includes('quick')) {
+      return `For "${task.title}", it usually takes about ${Math.ceil(task.points / 10)}-${Math.ceil(task.points / 5)} minutes if you focus! Put away distractions and you'll be done before you know it! ⏱️`;
+    }
+
+    // Default helpful response
+    const defaults = [
+      `That's a great question about "${task.title}"! My best advice: take it one step at a time, stay focused, and don't be afraid to ask your parent if you get stuck! 🌟`,
+      `For "${task.title}", remember: you're earning ${task.points} points! Think about what you'll redeem those for. That motivation will help you power through! 💎`,
+      `Here's what I know about "${task.title}": It's worth ${task.points} points, which means it's valuable! Take your time, do it well, and feel proud when you're done! 🏆`,
+    ];
+    return defaults[Math.floor(Math.random() * defaults.length)];
+  };
+
   const stats = {
     todo: tasks.filter(t => !t.completed && !t.approved).length,
     completed: tasks.filter(t => t.completed && !t.approved).length,
@@ -1066,6 +1157,13 @@ export default function ChildDashboardPage() {
                       >
                         <i className="fas fa-check mr-2"></i>Mark Complete
                       </button>
+                      <button
+                        onClick={() => openTaskHelper(task)}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                        title="Get AI help with this task"
+                      >
+                        <i className="fas fa-lightbulb"></i>
+                      </button>
                       {!task.help_requested && (
                         <button
                           onClick={() => requestHelp(task.id)}
@@ -1319,6 +1417,74 @@ export default function ChildDashboardPage() {
                   Thanks! 💪
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Helper Modal */}
+      {taskHelperModal.show && taskHelperModal.task && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn p-4"
+          onClick={() => setTaskHelperModal({ show: false, task: null, messages: [] })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="text-3xl">💡</div>
+                <div>
+                  <h3 className="text-white font-bold text-lg">Task Helper AI</h3>
+                  <p className="text-white/80 text-sm">{taskHelperModal.task.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTaskHelperModal({ show: false, task: null, messages: [] })}
+                className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
+              >
+                <i className="fas fa-times text-xl"></i>
+              </button>
+            </div>
+
+            {/* Chat Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {taskHelperModal.messages.map((msg, idx) => (
+                <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[80%] rounded-2xl p-3 ${
+                    msg.sender === 'user' 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-br-none' 
+                      : 'bg-gray-100 text-gray-800 rounded-bl-none'
+                  }`}>
+                    <p className="text-sm whitespace-pre-line">{msg.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 border-t border-gray-200">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={helperInput}
+                  onChange={(e) => setHelperInput(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && sendHelperMessage()}
+                  placeholder="Ask me anything about this task..."
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button
+                  onClick={sendHelperMessage}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-xl font-medium hover:opacity-90 transition-opacity"
+                >
+                  <i className="fas fa-paper-plane"></i>
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Ask about how to start, where to find things, or tips! 🤖
+              </p>
             </div>
           </div>
         </div>
