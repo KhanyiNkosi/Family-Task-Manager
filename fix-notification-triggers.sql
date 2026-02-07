@@ -202,12 +202,64 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================================================
+-- BULLETIN MESSAGE TRIGGER
+-- Notifies all family members when a new bulletin message is posted
+-- ============================================================================
+CREATE OR REPLACE FUNCTION notify_bulletin_message()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_poster_name TEXT;
+  v_family_id UUID;
+  v_member RECORD;
+BEGIN
+  -- Only trigger on new bulletin message
+  IF TG_OP = 'INSERT' THEN
+    
+    v_family_id := NEW.family_id;
+    
+    -- Get poster's name from profiles table
+    SELECT full_name INTO v_poster_name
+    FROM profiles
+    WHERE id = NEW.posted_by;
+    
+    -- Notify all family members except the poster
+    FOR v_member IN 
+      SELECT p.id 
+      FROM profiles p
+      WHERE p.family_id = v_family_id
+        AND p.id != NEW.posted_by
+    LOOP
+      INSERT INTO notifications (user_id, family_id, title, message, type, action_url, action_text)
+      VALUES (
+        v_member.id,
+        v_family_id,
+        'New Family Message',
+        COALESCE(v_poster_name, 'A family member') || ' posted: "' || 
+        CASE 
+          WHEN LENGTH(NEW.message) > 100 THEN SUBSTRING(NEW.message, 1, 100) || '...'
+          ELSE NEW.message
+        END || '"',
+        'info',
+        '/parent-dashboard',
+        'View Bulletin'
+      );
+      
+      RAISE NOTICE 'Notification created for family member % about bulletin message', v_member.id;
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================================
 -- DROP AND RECREATE ALL TRIGGERS
 -- ============================================================================
 DROP TRIGGER IF EXISTS task_completed_notification ON tasks;
 DROP TRIGGER IF EXISTS task_approved_notification ON tasks;
 DROP TRIGGER IF EXISTS task_assigned_notification ON tasks;
 DROP TRIGGER IF EXISTS help_requested_notification ON tasks;
+DROP TRIGGER IF EXISTS bulletin_message_notification ON bulletin_messages;
 
 CREATE TRIGGER task_completed_notification
   AFTER UPDATE ON tasks
@@ -229,6 +281,11 @@ CREATE TRIGGER help_requested_notification
   FOR EACH ROW
   EXECUTE FUNCTION notify_help_requested();
 
+CREATE TRIGGER bulletin_message_notification
+  AFTER INSERT ON bulletin_messages
+  FOR EACH ROW
+  EXECUTE FUNCTION notify_bulletin_message();
+
 -- ============================================================================
 -- VERIFY TRIGGERS CREATED
 -- ============================================================================
@@ -247,11 +304,12 @@ BEGIN
   RAISE NOTICE '';
   RAISE NOTICE '✅ NOTIFICATION TRIGGERS FIXED AND RECREATED!';
   RAISE NOTICE '';
-  RAISE NOTICE 'All 4 triggers have been updated to use the correct columns:';
+  RAISE NOTICE 'All 5 triggers have been updated to use the correct columns:';
   RAISE NOTICE '  • task_completed_notification (uses completed boolean)';
   RAISE NOTICE '  • task_approved_notification (uses approved boolean)';
   RAISE NOTICE '  • task_assigned_notification (for new tasks)';
   RAISE NOTICE '  • help_requested_notification (uses help_requested boolean)';
+  RAISE NOTICE '  • bulletin_message_notification (notifies all family members)';
   RAISE NOTICE '';
   RAISE NOTICE 'Fixed to use:';
   RAISE NOTICE '  • profiles.full_name (not name)';
@@ -262,5 +320,7 @@ BEGIN
   RAISE NOTICE '   2. Check notifications table for parent notification';
   RAISE NOTICE '   3. Approve the task (parent approves it)';
   RAISE NOTICE '   4. Check notifications table for child notification';
+  RAISE NOTICE '   5. Post a bulletin message from parent dashboard';
+  RAISE NOTICE '   6. Check notifications table for family member notifications';
   RAISE NOTICE '';
 END $$;

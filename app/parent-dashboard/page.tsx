@@ -37,7 +37,7 @@ interface Child {
 }
 
 interface BulletinMessage {
-  id: number;
+  id: string | number;
   avatar: string;
   message: string;
   timestamp: string;
@@ -163,7 +163,8 @@ export default function ParentDashboard() {
           await Promise.all([
             loadTasks(),
             loadChildren(),
-            loadRedemptions()
+            loadRedemptions(),
+            loadBulletinMessages()
           ]);
         }
       } finally {
@@ -249,10 +250,30 @@ export default function ParentDashboard() {
       )
       .subscribe();
 
+    // Subscribe to bulletin message changes
+    const bulletinSubscription = supabase
+      .channel('parent-bulletin-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bulletin_messages' },
+        (payload) => {
+          console.log('Bulletin message change detected:', payload);
+          
+          // Show notification for new bulletin messages (from notification system)
+          // Note: The database trigger handles creating notifications for family members
+          
+          // Reload bulletin messages (only if not already loading)
+          if (!isLoadingData) {
+            loadBulletinMessages();
+          }
+        }
+      )
+      .subscribe();
+
     // Cleanup subscriptions on unmount
     return () => {
       supabase.removeChannel(tasksSubscription);
       supabase.removeChannel(redemptionsSubscription);
+      supabase.removeChannel(bulletinSubscription);
     };
   }, [isLoadingData]);
 
@@ -318,6 +339,59 @@ export default function ParentDashboard() {
       // Ignore AbortError - it's expected during cleanup/re-renders
       if (error?.name === 'AbortError') return;
       console.error('Error in loadRedemptions:', error);
+    }
+  };
+
+  const loadBulletinMessages = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) return;
+
+      // Load bulletin messages for the family
+      const { data: messagesData, error } = await supabase
+        .from('bulletin_messages')
+        .select('*, profiles:posted_by(full_name)')
+        .eq('family_id', profile.family_id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading bulletin messages:', error);
+        // If table doesn't exist yet, just set empty array
+        if (error.code === '42P01') {
+          setBulletinMessages([]);
+        }
+        return;
+      }
+
+      // Transform database messages to UI format
+      const transformedMessages = (messagesData || []).map((msg: any) => ({
+        id: msg.id,
+        avatar: msg.profiles?.full_name?.charAt(0).toUpperCase() || 'U',
+        message: msg.message,
+        timestamp: new Date(msg.created_at).toLocaleTimeString([], { 
+          hour: '2-digit', 
+          minute: '2-digit',
+          month: 'short',
+          day: 'numeric'
+        })
+      }));
+
+      setBulletinMessages(transformedMessages);
+      console.log('Bulletin messages loaded:', transformedMessages.length);
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
+      console.error('Error in loadBulletinMessages:', error);
     }
   };
 
@@ -741,25 +815,86 @@ export default function ParentDashboard() {
 
   // Create a new reward
   // Add bulletin message
-  const handleAddBulletinMessage = () => {
+  const handleAddBulletinMessage = async () => {
     if (!newBulletinMessage.trim()) return;
 
-    const newMessage: BulletinMessage = {
-      id: bulletinMessages?.length + 1,
-      avatar: "P",
-      message: newBulletinMessage,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        alert('You must be logged in to post a message');
+        return;
+      }
 
-    setBulletinMessages([newMessage, ...bulletinMessages]);
-    setNewBulletinMessage("");
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        alert('Family ID not found');
+        return;
+      }
+
+      // Insert bulletin message to database
+      const { data, error } = await supabase
+        .from('bulletin_messages')
+        .insert({
+          family_id: profile.family_id,
+          posted_by: user.id,
+          message: newBulletinMessage.trim()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding bulletin message:', error);
+        alert('Failed to post message. Please try again.');
+        return;
+      }
+
+      // Clear input
+      setNewBulletinMessage("");
+      
+      // Reload bulletin messages to show the new one
+      await loadBulletinMessages();
+      
+      console.log('Bulletin message posted successfully');
+    } catch (error: any) {
+      console.error('Error in handleAddBulletinMessage:', error);
+      alert(`Failed to post message: ${error.message}`);
+    }
   };
 
   // Delete bulletin message
-  const handleDeleteBulletinMessage = (messageId: number) => {
-    if (confirm("Are you sure you want to delete this message?")) {
-      const updatedMessages = bulletinMessages?.filter(msg => msg.id !== messageId);
-      setBulletinMessages(updatedMessages);
+  const handleDeleteBulletinMessage = async (messageId: string | number) => {
+    if (!confirm("Are you sure you want to delete this message?")) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Delete from database
+      const { error } = await supabase
+        .from('bulletin_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error deleting bulletin message:', error);
+        alert('Failed to delete message. Please try again.');
+        return;
+      }
+
+      // Reload bulletin messages to reflect the deletion
+      await loadBulletinMessages();
+      
+      console.log('Bulletin message deleted successfully');
+    } catch (error: any) {
+      console.error('Error in handleDeleteBulletinMessage:', error);
+      alert(`Failed to delete message: ${error.message}`);
     }
   };
 
