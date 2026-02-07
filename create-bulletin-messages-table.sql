@@ -7,7 +7,7 @@
 CREATE TABLE IF NOT EXISTS bulletin_messages (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   family_id UUID NOT NULL,
-  posted_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  posted_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   message TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
