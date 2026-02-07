@@ -101,6 +101,7 @@ export default function ChildDashboardPage() {
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
   const [toast, setToast] = useState({ show: false, message: "" });
+  const [pepTalkModal, setPepTalkModal] = useState({ show: false, message: "", emoji: "" });
 
   // Task filter and sort state
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
@@ -678,13 +679,112 @@ export default function ChildDashboardPage() {
   };
 
   const getPepTalk = () => {
-    const pepTalks = [
-      "You're doing amazing! Keep up the great work!",
-      "Every task you complete brings you closer to awesome rewards!",
-      "Your consistency is inspiring!",
-      "Keep going, superstar! You've got this!"
+    const hour = new Date().getHours();
+    const completedCount = tasks.filter(t => t.completed && !t.approved).length;
+    const totalPoints = points;
+    
+    // Time-based greetings
+    const timeGreeting = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+    
+    // Context-aware message categories
+    const morningMessages = [
+      { text: "Good morning, champion! 🌅 You've got this!", emoji: "🌅" },
+      { text: "Rise and shine! ☀️ Today's tasks are waiting for you!", emoji: "☀️" },
+      { text: "Morning superstar! 🌟 Let's make today amazing!", emoji: "🌟" },
+      { text: "A new day, a new adventure! 🚀 Let's go!", emoji: "🚀" }
     ];
-    alert(pepTalks[Math.floor(Math.random() * pepTalks.length)]);
+    
+    const afternoonMessages = [
+      { text: "Keep that energy up! ⚡ You're doing great!", emoji: "⚡" },
+      { text: "Afternoon power boost! 💪 You're on fire!", emoji: "💪" },
+      { text: "Look at you go! 🎯 Keep crushing it!", emoji: "🎯" },
+      { text: "You're unstoppable today! 🔥 Keep going!", emoji: "🔥" }
+    ];
+    
+    const eveningMessages = [
+      { text: "Evening warrior! 🌙 Finish strong!", emoji: "🌙" },
+      { text: "You've got this! ✨ One more push!", emoji: "✨" },
+      { text: "Almost there! 🌟 You're amazing!", emoji: "🌟" },
+      { text: "End the day like a champion! 🏆 You can do it!", emoji: "🏆" }
+    ];
+    
+    // Progress-based messages
+    const noTasksMessages = [
+      { text: "Ready to start your adventure? 🎮 Let's tackle some tasks!", emoji: "🎮" },
+      { text: "Fresh start! 🌱 Every journey begins with one task!", emoji: "🌱" },
+      { text: "Time to shine! 💫 Pick a task and show what you can do!", emoji: "💫" }
+    ];
+    
+    const fewTasksMessages = [
+      { text: "You're on a roll! 🎲 Keep that momentum going!", emoji: "🎲" },
+      { text: "Awesome progress! 🌈 You're building something great!", emoji: "🌈" },
+      { text: "Look at you! 🎪 Every task makes you stronger!", emoji: "🎪" }
+    ];
+    
+    const manyTasksMessages = [
+      { text: "WOW! You're a task-completing LEGEND! 🏆", emoji: "🏆" },
+      { text: "Incredible work! 🎉 You're absolutely crushing it!", emoji: "🎉" },
+      { text: "SUPERSTAR ALERT! ⭐ You're on fire today!", emoji: "⭐" },
+      { text: "You're UNSTOPPABLE! 🚀 Keep soaring!", emoji: "🚀" }
+    ];
+    
+    // Points-based encouragement
+    const pointsMessages = [
+      { text: `${totalPoints} points and counting! 💎 You're a point-earning machine!`, emoji: "💎" },
+      { text: `Your ${totalPoints} points show your dedication! 🎖️ Keep it up!`, emoji: "🎖️" },
+      { text: `${totalPoints} points of pure awesomeness! 🌟 You rock!`, emoji: "🌟" }
+    ];
+    
+    // General motivation
+    const generalMessages = [
+      { text: "You're doing AMAZING! 🎨 Keep painting your success!", emoji: "🎨" },
+      { text: "Believe in yourself! 🦋 You're capable of great things!", emoji: "🦋" },
+      { text: "Every small step is a BIG victory! 🎯 You're winning!", emoji: "🎯" },
+      { text: "Your hard work is noticed! 👀 Keep being awesome!", emoji: "👀" },
+      { text: "You make it look easy! 🎭 That's how talented you are!", emoji: "🎭" },
+      { text: "Consistency is your superpower! 💪 Use it wisely!", emoji: "💪" },
+      { text: "You're an inspiration! 🌺 Never stop being you!", emoji: "🌺" },
+      { text: "Challenge accepted and CRUSHED! 🎮 Level up!", emoji: "🎮" },
+      { text: "Your future self will thank you! 🔮 Keep going!", emoji: "🔮" },
+      { text: "You're writing your own success story! 📖 What a tale!", emoji: "📖" }
+    ];
+    
+    // Select message based on context
+    let selectedMessages;
+    
+    if (completedCount === 0) {
+      selectedMessages = noTasksMessages;
+    } else if (completedCount <= 3) {
+      selectedMessages = fewTasksMessages;
+    } else {
+      selectedMessages = manyTasksMessages;
+    }
+    
+    // Mix in time-based messages
+    if (timeGreeting === "morning") {
+      selectedMessages = [...selectedMessages, ...morningMessages];
+    } else if (timeGreeting === "afternoon") {
+      selectedMessages = [...selectedMessages, ...afternoonMessages];
+    } else {
+      selectedMessages = [...selectedMessages, ...eveningMessages];
+    }
+    
+    // Add points and general messages for more variety
+    if (totalPoints > 0) {
+      selectedMessages = [...selectedMessages, ...pointsMessages];
+    }
+    selectedMessages = [...selectedMessages, ...generalMessages];
+    
+    // Pick a random message
+    const randomMessage = selectedMessages[Math.floor(Math.random() * selectedMessages.length)];
+    
+    // Show modal with animation
+    setPepTalkModal({ show: true, message: randomMessage.text, emoji: randomMessage.emoji });
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+      setPepTalkModal({ show: false, message: "", emoji: "" });
+    }, 5000);
   };
 
   const stats = {
@@ -1183,6 +1283,44 @@ export default function ChildDashboardPage() {
         <div className="fixed bottom-6 right-6 bg-white p-4 rounded-xl shadow-2xl border-l-4 border-[#00C2E0] animate-slideIn z-50 max-w-md">
           <div className="font-bold text-gray-800 mb-1">Great Job! 🎉</div>
           <div className="text-sm text-gray-600">{toast.message}</div>
+        </div>
+      )}
+
+      {/* Pep Talk Modal */}
+      {pepTalkModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setPepTalkModal({ show: false, message: "", emoji: "" })}
+        >
+          <div 
+            className="bg-gradient-to-br from-purple-500 via-pink-500 to-yellow-400 p-1 rounded-3xl shadow-2xl max-w-md mx-4 animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-white rounded-3xl p-8 relative overflow-hidden">
+              {/* Sparkle Effects */}
+              <div className="absolute top-4 left-4 text-4xl animate-bounce">✨</div>
+              <div className="absolute top-4 right-4 text-4xl animate-bounce delay-100">⭐</div>
+              <div className="absolute bottom-4 left-8 text-3xl animate-bounce delay-200">💫</div>
+              <div className="absolute bottom-4 right-8 text-3xl animate-bounce delay-300">🌟</div>
+              
+              {/* Main Content */}
+              <div className="relative z-10 text-center">
+                <div className="text-7xl mb-4 animate-pulse">{pepTalkModal.emoji}</div>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+                  Pep Talk!
+                </h3>
+                <p className="text-lg text-gray-700 leading-relaxed mb-6">
+                  {pepTalkModal.message}
+                </p>
+                <button
+                  onClick={() => setPepTalkModal({ show: false, message: "", emoji: "" })}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
+                >
+                  Thanks! 💪
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
