@@ -96,6 +96,7 @@ export default function ChildDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [points, setPoints] = useState(0);
+  const [userName, setUserName] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
@@ -199,11 +200,16 @@ export default function ChildDashboardPage() {
         // Load available rewards for the family
         const { data: profile } = await supabase
           .from('profiles')
-          .select('family_id')
+          .select('family_id, full_name')
           .eq('id', user.id)
           .single();
 
         console.log('User profile:', profile);
+        
+        // Set user name
+        if (profile?.full_name) {
+          setUserName(profile.full_name);
+        }
 
         if (profile?.family_id) {
           console.log('Family ID found:', profile.family_id);
@@ -981,7 +987,9 @@ export default function ChildDashboardPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold text-[#006372]">Child Dashboard</h1>
+              <h1 className="text-3xl font-bold text-[#006372]">
+                {userName ? `${userName}'s Dashboard` : 'Child Dashboard'}
+              </h1>
               <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                 <i className="fas fa-child mr-1"></i> Child Account
               </span>

@@ -82,6 +82,7 @@ export default function ParentDashboard() {
   const pathname = usePathname();
   const [isClient, setIsClient] = useState(false);
   const [parentProfileImage, setParentProfileImage] = useState("");
+  const [userName, setUserName] = useState("");
 
   // Use the notifications hook for real-time notifications
   const { 
@@ -161,6 +162,7 @@ export default function ParentDashboard() {
       try {
         if (isMounted) {
           await Promise.all([
+            loadUserName(),
             loadTasks(),
             loadChildren(),
             loadRedemptions(),
@@ -367,6 +369,27 @@ export default function ParentDashboard() {
     } catch (error: any) {
       if (error?.name === 'AbortError') return;
       console.error('Error in loadBulletinMessages:', error);
+    }
+  };
+
+  const loadUserName = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.full_name) {
+        setUserName(profile.full_name);
+      }
+    } catch (error) {
+      console.error('Error loading user name:', error);
     }
   };
 
@@ -1077,7 +1100,9 @@ export default function ParentDashboard() {
           <header className="mb-10">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-[#006372]">Family Dashboard</h1>
+                <h1 className="text-3xl font-bold text-[#006372]">
+                  {userName ? `${userName}'s Family Dashboard` : 'Family Dashboard'}
+                </h1>
                 <p className="text-gray-600 mt-2">Monitor your family's tasks, rewards, and activities</p>
               </div>
               <div className="flex items-center gap-4">
