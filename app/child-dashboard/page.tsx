@@ -192,7 +192,7 @@ export default function ChildDashboardPage() {
           // Load bulletin messages for the family
           const { data: bulletinData, error: bulletinError } = await supabase
             .from('bulletin_messages')
-            .select('*, profiles:posted_by(full_name)')
+            .select('*, poster:profiles!posted_by(full_name)')
             .eq('family_id', profile.family_id)
             .order('created_at', { ascending: false });
 
@@ -208,7 +208,7 @@ export default function ChildDashboardPage() {
               id: msg.id,
               message: msg.message,
               posted_by: msg.posted_by,
-              poster_name: msg.profiles?.full_name || 'Family Member',
+              poster_name: msg.poster?.full_name || 'Family Member',
               created_at: msg.created_at
             }));
             setBulletinMessages(transformedBulletin);
@@ -398,7 +398,7 @@ export default function ChildDashboardPage() {
                   if (profile?.family_id) {
                     supabase
                       .from('bulletin_messages')
-                      .select('*, profiles:posted_by(full_name)')
+                      .select('*, poster:profiles!posted_by(full_name)')
                       .eq('family_id', profile.family_id)
                       .order('created_at', { ascending: false })
                       .then(({ data: bulletinData }) => {
@@ -407,7 +407,7 @@ export default function ChildDashboardPage() {
                             id: msg.id,
                             message: msg.message,
                             posted_by: msg.posted_by,
-                            poster_name: msg.profiles?.full_name || 'Family Member',
+                            poster_name: msg.poster?.full_name || 'Family Member',
                             created_at: msg.created_at
                           }));
                           setBulletinMessages(transformedBulletin);

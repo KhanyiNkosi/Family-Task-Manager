@@ -361,7 +361,7 @@ export default function ParentDashboard() {
       // Load bulletin messages for the family
       const { data: messagesData, error } = await supabase
         .from('bulletin_messages')
-        .select('*, profiles:posted_by(full_name)')
+        .select('*, poster:profiles!posted_by(full_name)')
         .eq('family_id', profile.family_id)
         .order('created_at', { ascending: false });
 
@@ -377,7 +377,7 @@ export default function ParentDashboard() {
       // Transform database messages to UI format
       const transformedMessages = (messagesData || []).map((msg: any) => ({
         id: msg.id,
-        avatar: msg.profiles?.full_name?.charAt(0).toUpperCase() || 'U',
+        avatar: msg.poster?.full_name?.charAt(0).toUpperCase() || 'U',
         message: msg.message,
         timestamp: new Date(msg.created_at).toLocaleTimeString([], { 
           hour: '2-digit', 
