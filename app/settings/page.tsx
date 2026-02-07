@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -29,6 +29,31 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
 
+  // Modal states
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; message: string; onConfirm: () => void }>({ show: false, message: "", onConfirm: () => {} });
+
+  // Modal helper functions
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+          resolve(true);
+        },
+      });
+      setTimeout(() => {
+        (window as any)._confirmCancelHandler = () => resolve(false);
+      }, 0);
+    });
+  };
+
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({
       ...prev,
@@ -46,18 +71,19 @@ export default function SettingsPage() {
     }, 1000);
   };
 
-  const handleResetPoints = () => {
-    if (confirm("Are you sure you want to reset all points? This cannot be undone.")) {
+  const handleResetPoints = async () => {
+    const confirmed = await showConfirm("Are you sure you want to reset all points? This cannot be undone.");
+    if (confirmed) {
       setFamilyMembers(members => 
         members.map(member => ({ ...member, points: 0 }))
       );
-      alert("All points have been reset to zero.");
+      showAlert("All points have been reset to zero.", "success");
     }
   };
 
   const handleAddFamilyMember = () => {
     if (!newMemberName.trim()) {
-      alert("Please enter a name for the family member.");
+      showAlert("Please enter a name for the family member.", "warning");
       return;
     }
 
@@ -73,7 +99,7 @@ export default function SettingsPage() {
     setNewMemberName("");
     setNewMemberRole("child");
     
-    alert(`${newMember.name} has been added to the family!`);
+    showAlert(`${newMember.name} has been added to the family!`, "success");
   };
 
   const handleToggleMemberStatus = (id: number) => {
@@ -86,8 +112,9 @@ export default function SettingsPage() {
     );
   };
 
-  const handleRemoveMember = (id: number, name: string) => {
-    if (confirm(`Are you sure you want to remove ${name} from the family?`)) {
+  const handleRemoveMember = async (id: number, name: string) => {
+    const confirmed = await showConfirm(`Are you sure you want to remove ${name} from the family?`);
+    if (confirmed) {
       setFamilyMembers(members => members.filter(member => member.id !== id));
     }
   };
@@ -109,7 +136,7 @@ export default function SettingsPage() {
     link.click();
     document.body.removeChild(link);
     
-    alert("Data exported successfully!");
+    showAlert("Data exported successfully!", "success");
   };
 
   return (
@@ -372,7 +399,7 @@ export default function SettingsPage() {
                 </button>
                 
                 <button
-                  onClick={() => alert("This would open a file picker in a real app")}
+                  onClick={() => showAlert("This would open a file picker in a real app", "info")}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-100 text-green-700 rounded-xl font-medium hover:bg-green-200 transition-colors"
                 >
                   <i className="fas fa-upload"></i>
@@ -380,9 +407,10 @@ export default function SettingsPage() {
                 </button>
                 
                 <button
-                  onClick={() => {
-                    if (confirm("This will delete all your data. This action cannot be undone!")) {
-                      alert("Data deletion would happen here in a real app");
+                  onClick={async () => {
+                    const confirmed = await showConfirm("This will delete all your data. This action cannot be undone!");
+                    if (confirmed) {
+                      showAlert("Data deletion would happen here in a real app", "info");
                     }
                   }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200 transition-colors"
@@ -454,6 +482,82 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setAlertModal({ ...alertModal, show: false })}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+              alertModal.type === \"success\" ? \"bg-green-100\" :
+              alertModal.type === \"error\" ? \"bg-red-100\" :
+              alertModal.type === \"warning\" ? \"bg-yellow-100\" :
+              \"bg-blue-100\"
+            }`}>
+              <span className=\"text-3xl\">{
+                alertModal.type === \"success\" ? \"✓\" :
+                alertModal.type === \"error\" ? \"✕\" :
+                alertModal.type === \"warning\" ? \"⚠\" :
+                \"ℹ\"
+              }</span>
+            </div>
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              alertModal.type === \"success\" ? \"text-green-600\" :
+              alertModal.type === \"error\" ? \"text-red-600\" :
+              alertModal.type === \"warning\" ? \"text-yellow-600\" :
+              \"text-blue-600\"
+            }`}>
+              {alertModal.type === \"success\" ? \"Success!\" :
+               alertModal.type === \"error\" ? \"Error\" :
+               alertModal.type === \"warning\" ? \"Warning\" :
+               \"Information\"}
+            </h3>
+            <p className=\"text-gray-700 text-center mb-6\">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition ${
+                alertModal.type === \"success\" ? \"bg-green-500 hover:bg-green-600\" :
+                alertModal.type === \"error\" ? \"bg-red-500 hover:bg-red-600\" :
+                alertModal.type === \"warning\" ? \"bg-yellow-500 hover:bg-yellow-600\" :
+                \"bg-blue-500 hover:bg-blue-600\"
+              }`}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+            <div className=\"w-16 h-16 rounded-full bg-yellow-100 mx-auto mb-4 flex items-center justify-center\">
+              <span className=\"text-3xl\">?</span>
+            </div>
+            <h3 className=\"text-xl font-bold text-center mb-2 text-gray-800\">Confirm Action</h3>
+            <p className=\"text-gray-700 text-center mb-6\">{confirmModal.message}</p>
+            <div className=\"flex gap-3\">
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: \"\", onConfirm: () => {} });
+                  if ((window as any)._confirmCancelHandler) {
+                    (window as any)._confirmCancelHandler();
+                  }
+                }}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition\"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 transition\"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
