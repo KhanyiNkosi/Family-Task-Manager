@@ -25,6 +25,34 @@ export default function RewardsStorePage() {
   const [newRewardDescription, setNewRewardDescription] = useState("");
   const [newRewardPoints, setNewRewardPoints] = useState("50");
 
+  // Modal states
+  const [alertModal, setAlertModal] = useState<{show:boolean; message:string; type:"success"|"error"|"warning"|"info"}>({show:false, message:"", type:"info"});
+  const [confirmModal, setConfirmModal] = useState<{show:boolean; message:string; onConfirm:()=>void}>({show:false, message:"", onConfirm:()=>{}});
+
+  // Helper functions for modals
+  const showAlert = (message: string, type: "success"|"error"|"warning"|"info" = "info") => {
+    setAlertModal({show: true, message, type});
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({show: false, message: "", onConfirm: () => {}});
+          resolve(true);
+        }
+      });
+      setTimeout(() => {
+        if (confirmModal.show) {
+          setConfirmModal({show: false, message: "", onConfirm: () => {}});
+          resolve(false);
+        }
+      }, 30000);
+    });
+  };
+
   useEffect(() => {
     loadRewards();
   }, []);
@@ -68,13 +96,13 @@ export default function RewardsStorePage() {
 
   const handleCreateReward = async () => {
     if (!newRewardTitle.trim()) {
-      alert('Please enter a reward title');
+      showAlert('Please enter a reward title', "warning");
       return;
     }
 
     const pointsCost = parseInt(newRewardPoints);
     if (isNaN(pointsCost) || pointsCost <= 0) {
-      alert('Please enter a valid points cost');
+      showAlert('Please enter a valid points cost', "warning");
       return;
     }
 
@@ -83,7 +111,7 @@ export default function RewardsStorePage() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        alert('You must be logged in to create rewards');
+        showAlert('You must be logged in to create rewards', "error");
         return;
       }
 
@@ -95,7 +123,7 @@ export default function RewardsStorePage() {
         .single();
 
       if (!profile?.family_id) {
-        alert('Family ID not found');
+        showAlert('Family ID not found', "error");
         return;
       }
 
@@ -115,7 +143,7 @@ export default function RewardsStorePage() {
 
       if (error) {
         console.error('Error creating reward:', error);
-        alert('Failed to create reward: ' + error.message);
+        showAlert('Failed to create reward: ' + error.message, "error");
         return;
       }
 
@@ -124,16 +152,17 @@ export default function RewardsStorePage() {
         setNewRewardTitle('');
         setNewRewardDescription('');
         setNewRewardPoints('50');
-        alert('Reward created successfully!');
+        showAlert('Reward created successfully!', "success");
       }
     } catch (error) {
       console.error('Error in handleCreateReward:', error);
-      alert('Failed to create reward');
+      showAlert('Failed to create reward', "error");
     }
   };
 
   const handleDeleteReward = async (rewardId: string) => {
-    if (!confirm('Are you sure you want to delete this reward?')) return;
+    const confirmed = await showConfirm('Are you sure you want to delete this reward?');
+    if (!confirmed) return;
 
     try {
       const supabase = createClientSupabaseClient();
@@ -146,15 +175,15 @@ export default function RewardsStorePage() {
 
       if (error) {
         console.error('Error deleting reward:', error);
-        alert('Failed to delete reward');
+        showAlert('Failed to delete reward', "error");
         return;
       }
 
       setRewards(rewards.filter(r => r.id !== rewardId));
-      alert('Reward deleted successfully');
+      showAlert('Reward deleted successfully', "success");
     } catch (error) {
       console.error('Error in handleDeleteReward:', error);
-      alert('Failed to delete reward');
+      showAlert('Failed to delete reward', "error");
     }
   };
 
@@ -358,6 +387,71 @@ export default function RewardsStorePage() {
           </div>
         </div>
       </main>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={() => setAlertModal({...alertModal, show: false})}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`p-6 rounded-t-2xl ${
+              alertModal.type === "success" ? "bg-gradient-to-r from-green-500 to-emerald-500" :
+              alertModal.type === "error" ? "bg-gradient-to-r from-red-500 to-rose-500" :
+              alertModal.type === "warning" ? "bg-gradient-to-r from-yellow-500 to-orange-500" :
+              "bg-gradient-to-r from-[#006372] to-[#00C2E0]"
+            }`}>
+              <div className="flex items-center gap-3 text-white">
+                <div className="text-4xl">
+                  {alertModal.type === "success" ? "✅" : alertModal.type === "error" ? "❌" : alertModal.type === "warning" ? "⚠️" : "ℹ️"}
+                </div>
+                <div className="text-xl font-bold">
+                  {alertModal.type === "success" ? "Success" : alertModal.type === "error" ? "Error" : alertModal.type === "warning" ? "Warning" : "Notice"}
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 text-lg">{alertModal.message}</p>
+              <button
+                onClick={() => setAlertModal({...alertModal, show: false})}
+                className="mt-6 w-full bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 px-6 rounded-xl font-bold hover:opacity-90 transition-all"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scaleIn">
+            <div className="p-6 rounded-t-2xl bg-gradient-to-r from-[#006372] to-[#00C2E0]">
+              <div className="flex items-center gap-3 text-white">
+                <div className="text-4xl">❓</div>
+                <div className="text-xl font-bold">Confirm Action</div>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 text-lg mb-6">{confirmModal.message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setConfirmModal({show: false, message: "", onConfirm: () => {}});
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-bold hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 px-6 rounded-xl font-bold hover:opacity-90 transition-all"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
