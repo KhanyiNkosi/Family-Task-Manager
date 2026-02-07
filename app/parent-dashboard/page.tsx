@@ -141,9 +141,35 @@ export default function ParentDashboard() {
   // Loading state to prevent concurrent calls
   const [isLoadingData, setIsLoadingData] = useState(false);
 
+  // Modal states
+  const [alertModal, setAlertModal] = useState({ show: false, message: "", type: "info" as "info" | "success" | "error" | "warning" });
+  const [confirmModal, setConfirmModal] = useState({ show: false, message: "", onConfirm: () => {} });
+
   // Permission check for child modifications
   const canModifyChild = false;
   const canViewChild = true;
+
+  // Modal helpers
+  const showAlert = (message: string, type: "info" | "success" | "error" | "warning" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+          resolve(true);
+        }
+      });
+      // Handle cancel - resolve false after a short delay
+      setTimeout(() => {
+        if (confirmModal.show) resolve(false);
+      }, 100);
+    });
+  };
 
   const handleChildAction = (action: string) => {
     if (!canModifyChild) {
@@ -616,10 +642,10 @@ export default function ParentDashboard() {
       setNewTaskPoints("10");
       setNewTaskAssignee("");
       setNewTaskCategory("general");
-      alert("New task added successfully!");
+      showAlert("New task added successfully!", "success");
     } catch (error) {
       console.error('Error in handleAddTask:', error);
-      alert('Failed to create task');
+      showAlert('Failed to create task', "error");
     }
   };
 
@@ -629,7 +655,7 @@ export default function ParentDashboard() {
       task.id === taskId ? { ...task, status: "completed" as const } : task
     );
     setActiveTasks(updatedTasks);
-    alert("Task marked as completed!");
+    showAlert("Task marked as completed!", "success");
   };
 
   // Approve task completion
@@ -708,10 +734,10 @@ export default function ParentDashboard() {
 
       // Update local state - remove from list or mark as approved
       setActiveTasks(activeTasks.filter(t => t.id !== taskId));
-      alert(`Task approved! ${task.points} points awarded to child!`);
+      showAlert(`Task approved! ${task.points} points awarded to child!`, "success");
     } catch (error) {
       console.error('Error in handleApproveTask:', error);
-      alert(`Failed to approve task: ${error.message}`);
+      showAlert(`Failed to approve task: ${error.message}`, "error");
     }
   };
 
@@ -750,7 +776,8 @@ export default function ParentDashboard() {
 
   // Delete task
   const handleDeleteTask = async (taskId: string) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
+    const confirmed = await showConfirm("Are you sure you want to delete this task?");
+    if (!confirmed) return;
     
     try {
       const supabase = createClientSupabaseClient();
@@ -762,15 +789,15 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error deleting task:', error);
-        alert('Failed to delete task');
+        showAlert('Failed to delete task', "error");
         return;
       }
 
       setActiveTasks(activeTasks.filter(task => task.id !== taskId));
-      alert('Task deleted successfully');
+      showAlert('Task deleted successfully', "success");
     } catch (error) {
       console.error('Error in handleDeleteTask:', error);
-      alert('Failed to delete task');
+      showAlert('Failed to delete task', "error");
     }
   };
 
@@ -1736,6 +1763,97 @@ export default function ParentDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`p-6 rounded-t-2xl ${
+              alertModal.type === "error" ? "bg-red-50" :
+              alertModal.type === "success" ? "bg-green-50" :
+              alertModal.type === "warning" ? "bg-yellow-50" :
+              "bg-blue-50"
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`text-3xl ${
+                  alertModal.type === "error" ? "text-red-500" :
+                  alertModal.type === "success" ? "text-green-500" :
+                  alertModal.type === "warning" ? "text-yellow-500" :
+                  "text-blue-500"
+                }`}>
+                  {alertModal.type === "error" && "❌"}
+                  {alertModal.type === "success" && "✅"}
+                  {alertModal.type === "warning" && "⚠️"}
+                  {alertModal.type === "info" && "ℹ️"}
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  {alertModal.type === "error" && "Error"}
+                  {alertModal.type === "success" && "Success"}
+                  {alertModal.type === "warning" && "Warning"}
+                  {alertModal.type === "info" && "Notice"}
+                </h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-6 whitespace-pre-line">{alertModal.message}</p>
+              <button
+                onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+                className={`w-full py-3 rounded-xl font-bold text-white hover:opacity-90 transition-all ${
+                  alertModal.type === "error" ? "bg-red-500" :
+                  alertModal.type === "success" ? "bg-green-500" :
+                  alertModal.type === "warning" ? "bg-yellow-500" :
+                  "bg-blue-500"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setConfirmModal({ show: false, message: "", onConfirm: () => {} })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 bg-gradient-to-r from-[#006372] to-[#00C2E0] rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="text-3xl">❓</div>
+                <h3 className="text-lg font-bold">Confirm Action</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-6">{confirmModal.message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmModal({ show: false, message: "", onConfirm: () => {} })}
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-[#006372] to-[#00C2E0] hover:opacity-90 transition-all"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
