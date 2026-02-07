@@ -192,27 +192,10 @@ export default function ParentDashboard() {
         { event: '*', schema: 'public', table: 'tasks' },
         (payload) => {
           console.log('Task change detected:', payload);
+          console.log('Event type:', payload.eventType);
           
-          // Show notification
-          if (payload.eventType === 'INSERT') {
-            setNotifications(prev => [...prev, {
-              id: Date.now().toString(),
-              title: 'New Task',
-              type: 'task' as NotificationType,
-              message: `New task created: ${payload.new.title}`,
-              timestamp: new Date(),
-              read: false
-            }]);
-          } else if (payload.eventType === 'UPDATE' && payload.new.completed && !payload.old.completed) {
-            setNotifications(prev => [...prev, {
-              id: Date.now().toString(),
-              title: 'Task Completed',
-              type: 'success' as NotificationType,
-              message: `Task completed: ${payload.new.title}`,
-              timestamp: new Date(),
-              read: false
-            }]);
-          }
+          // Note: Notifications are handled by database triggers and useNotifications hook
+          // No need to manually create notifications here
           
           // Reload tasks (only if not already loading)
           if (!isLoadingData) {
@@ -229,18 +212,10 @@ export default function ParentDashboard() {
         { event: '*', schema: 'public', table: 'reward_redemptions' },
         (payload) => {
           console.log('Redemption change detected:', payload);
+          console.log('Event type:', payload.eventType);
           
-          // Show notification for new redemption requests
-          if (payload.eventType === 'INSERT') {
-            setNotifications(prev => [...prev, {
-              id: Date.now().toString(),
-              title: 'Reward Request',
-              type: 'reward' as NotificationType,
-              message: 'New reward redemption request received!',
-              timestamp: new Date(),
-              read: false
-            }]);
-          }
+          // Note: Notifications are handled by database triggers and useNotifications hook
+          // No need to manually create notifications here
           
           // Reload redemptions (only if not already loading)
           if (!isLoadingData) {
@@ -1369,6 +1344,7 @@ export default function ParentDashboard() {
                         <option value="school">School</option>
                         <option value="cleaning">Cleaning</option>
                         <option value="outdoor">Outdoor</option>
+                        <option value="sport">Sport</option>
                         <option value="pets">Pets</option>
                         <option value="personal">Personal Care</option>
                         <option value="other">Other</option>
@@ -1484,6 +1460,7 @@ export default function ParentDashboard() {
                       <option value="school">School</option>
                       <option value="cleaning">Cleaning</option>
                       <option value="outdoor">Outdoor</option>
+                      <option value="sport">Sport</option>
                       <option value="pets">Pets</option>
                       <option value="personal">Personal Care</option>
                       <option value="other">Other</option>

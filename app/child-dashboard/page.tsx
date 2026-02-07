@@ -863,6 +863,7 @@ export default function ChildDashboardPage() {
                     <option value="school">School</option>
                     <option value="cleaning">Cleaning</option>
                     <option value="outdoor">Outdoor</option>
+                    <option value="sport">Sport</option>
                     <option value="pets">Pets</option>
                     <option value="personal">Personal Care</option>
                     <option value="other">Other</option>
