@@ -485,13 +485,14 @@ export default function ChildDashboardPage() {
 
   // Filter and sort tasks
   const getFilteredAndSortedTasks = () => {
-    let filtered = [...tasks];
+    // ALWAYS exclude approved tasks first (baseline filter)
+    let filtered = tasks.filter(t => !t.approved);
 
     // Apply status filter
     if (taskStatusFilter === "pending") {
-      filtered = filtered.filter(t => !t.completed && !t.approved);
+      filtered = filtered.filter(t => !t.completed);
     } else if (taskStatusFilter === "completed") {
-      filtered = filtered.filter(t => t.completed || t.approved);
+      filtered = filtered.filter(t => t.completed);
     }
 
     // Apply category filter
@@ -680,13 +681,13 @@ export default function ChildDashboardPage() {
   };
 
   const stats = {
-    todo: tasks.filter(t => !t.completed).length,
-    completed: tasks.filter(t => t.completed).length,
+    todo: tasks.filter(t => !t.completed && !t.approved).length,
+    completed: tasks.filter(t => t.completed && !t.approved).length,
     redeemed: redemptions.filter(r => r.status === 'approved').length
   };
 
-  const todoTasks = tasks.filter(task => !task.completed);
-  const completedTasks = tasks.filter(task => task.completed);
+  const todoTasks = tasks.filter(task => !task.completed && !task.approved);
+  const completedTasks = tasks.filter(task => task.completed && !task.approved);
 
   return (
     <div className="dashboard-container flex min-h-screen bg-gray-50">
