@@ -55,6 +55,31 @@ export default function ParentProfilePage() {
 
   const [editedProfile, setEditedProfile] = useState<ParentProfile>({ ...profile });
   
+  // Modal states
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; message: string; onConfirm: () => void }>({ show: false, message: "", onConfirm: () => {} });
+
+  // Modal helper functions
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+          resolve(true);
+        },
+      });
+      setTimeout(() => {
+        (window as any)._confirmCancelHandler = () => resolve(false);
+      }, 0);
+    });
+  };
+  
   // Load profile image from localStorage on component mount
   useEffect(() => {
     const savedImage = localStorage.getItem("parentProfileImage") || "";
@@ -211,14 +236,14 @@ export default function ParentProfilePage() {
       setProfile({ ...editedProfile });
       
       setIsEditing(false);
-      alert("Profile updated successfully!");
+      showAlert("Profile updated successfully!", "success");
       
       // Refresh data
       fetchProfileFromSupabase();
       
     } catch (error: any) {
       console.error("Detailed save error:", error);
-      alert(`Error saving profile: ${error.message || "Please try again."}`);
+      showAlert(`Error saving profile: ${error.message || "Please try again."}`, "error");
     }
   };
 
@@ -246,7 +271,8 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 
   // Remove profile picture
   const handleRemoveparentProfileImage = async () => {
-    if (confirm("Remove profile picture?")) {
+    const confirmed = await showConfirm("Remove profile picture?");
+    if (confirmed) {
       try {
         // Get current user session
         const { data: { session } } = await supabase.auth.getSession();
@@ -264,11 +290,11 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         // Update local state
         setProfileImage("");
         localStorage.removeItem("parentProfileImage");
-        alert("Profile picture removed!");
+        showAlert("Profile picture removed!", "success");
         
       } catch (error) {
         console.error("Error removing profile image:", error);
-        alert("Error removing profile picture. Please try again.");
+        showAlert("Error removing profile picture. Please try again.", "error");
       }
     }
   };
@@ -338,7 +364,8 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 
             <button
               onClick={async () => {
-                if (confirm("Are you sure you want to logout?")) {
+                const confirmed = await showConfirm("Are you sure you want to logout?");
+                if (confirmed) {
                   await supabase.auth.signOut();
                   sessionStorage.removeItem('userRole');
                   sessionStorage.removeItem('userEmail');
@@ -682,6 +709,82 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setAlertModal({ ...alertModal, show: false })}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+              alertModal.type === \"success\" ? \"bg-green-100\" :
+              alertModal.type === \"error\" ? \"bg-red-100\" :
+              alertModal.type === \"warning\" ? \"bg-yellow-100\" :
+              \"bg-blue-100\"
+            }`}>
+              <span className=\"text-3xl\">{
+                alertModal.type === \"success\" ? \"✓\" :
+                alertModal.type === \"error\" ? \"✕\" :
+                alertModal.type === \"warning\" ? \"⚠\" :
+                \"ℹ\"
+              }</span>
+            </div>
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              alertModal.type === \"success\" ? \"text-green-600\" :
+              alertModal.type === \"error\" ? \"text-red-600\" :
+              alertModal.type === \"warning\" ? \"text-yellow-600\" :
+              \"text-blue-600\"
+            }`}>
+              {alertModal.type === \"success\" ? \"Success!\" :
+               alertModal.type === \"error\" ? \"Error\" :
+               alertModal.type === \"warning\" ? \"Warning\" :
+               \"Information\"}
+            </h3>
+            <p className=\"text-gray-700 text-center mb-6\">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition ${
+                alertModal.type === \"success\" ? \"bg-green-500 hover:bg-green-600\" :
+                alertModal.type === \"error\" ? \"bg-red-500 hover:bg-red-600\" :
+                alertModal.type === \"warning\" ? \"bg-yellow-500 hover:bg-yellow-600\" :
+                \"bg-blue-500 hover:bg-blue-600\"
+              }`}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+            <div className=\"w-16 h-16 rounded-full bg-yellow-100 mx-auto mb-4 flex items-center justify-center\">
+              <span className=\"text-3xl\">?</span>
+            </div>
+            <h3 className=\"text-xl font-bold text-center mb-2 text-gray-800\">Confirm Action</h3>
+            <p className=\"text-gray-700 text-center mb-6\">{confirmModal.message}</p>
+            <div className=\"flex gap-3\">
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: \"\", onConfirm: () => {} });
+                  if ((window as any)._confirmCancelHandler) {
+                    (window as any)._confirmCancelHandler();
+                  }
+                }}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition\"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 transition\"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
