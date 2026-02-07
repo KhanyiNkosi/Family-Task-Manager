@@ -109,6 +109,52 @@ export default function ChildDashboardPage() {
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
 
+  // Load bulletin messages function (can be called from subscription)
+  const loadBulletinMessages = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) return;
+
+      const { data: bulletinData, error: bulletinError } = await supabase
+        .from('bulletin_messages')
+        .select('*, poster:profiles!posted_by(full_name)')
+        .eq('family_id', profile.family_id)
+        .order('created_at', { ascending: false });
+
+      if (bulletinError) {
+        console.error('Error loading bulletin messages:', bulletinError);
+        if (bulletinError.code === '42P01') {
+          setBulletinMessages([]);
+        }
+        return;
+      }
+
+      if (bulletinData) {
+        const transformedBulletin = bulletinData.map((msg: any) => ({
+          id: msg.id,
+          message: msg.message,
+          posted_by: msg.posted_by,
+          poster_name: msg.poster?.full_name || 'Family Member',
+          created_at: msg.created_at
+        }));
+        setBulletinMessages(transformedBulletin);
+        console.log('Bulletin messages loaded:', transformedBulletin.length);
+      }
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
+      console.error('Error in loadBulletinMessages:', error);
+    }
+  };
 
   // === SUPABASE DATA FETCHING ===
   useEffect(() => {
@@ -190,29 +236,7 @@ export default function ChildDashboardPage() {
           }
 
           // Load bulletin messages for the family
-          const { data: bulletinData, error: bulletinError } = await supabase
-            .from('bulletin_messages')
-            .select('*, poster:profiles!posted_by(full_name)')
-            .eq('family_id', profile.family_id)
-            .order('created_at', { ascending: false });
-
-          if (bulletinError) {
-            console.error('Error fetching bulletin messages:', bulletinError);
-            // If table doesn't exist yet, just continue
-            if (bulletinError.code !== '42P01') {
-              console.log('Bulletin messages error (not table missing):', bulletinError);
-            }
-          } else if (bulletinData) {
-            console.log('Loaded bulletin messages:', bulletinData.length, 'messages found');
-            const transformedBulletin = bulletinData.map((msg: any) => ({
-              id: msg.id,
-              message: msg.message,
-              posted_by: msg.posted_by,
-              poster_name: msg.poster?.full_name || 'Family Member',
-              created_at: msg.created_at
-            }));
-            setBulletinMessages(transformedBulletin);
-          }
+          await loadBulletinMessages();
         }
         
         // Calculate total points from user_profiles
@@ -385,38 +409,10 @@ export default function ChildDashboardPage() {
         { event: '*', schema: 'public', table: 'bulletin_messages' },
         (payload) => {
           console.log('Bulletin message change detected:', payload);
+          console.log('Event type:', payload.eventType);
           
-          // Reload bulletin messages when changes occur
-          supabase.auth.getUser().then(({ data: { user } }) => {
-            if (user) {
-              supabase
-                .from('profiles')
-                .select('family_id')
-                .eq('id', user.id)
-                .single()
-                .then(({ data: profile }) => {
-                  if (profile?.family_id) {
-                    supabase
-                      .from('bulletin_messages')
-                      .select('*, poster:profiles!posted_by(full_name)')
-                      .eq('family_id', profile.family_id)
-                      .order('created_at', { ascending: false })
-                      .then(({ data: bulletinData }) => {
-                        if (bulletinData) {
-                          const transformedBulletin = bulletinData.map((msg: any) => ({
-                            id: msg.id,
-                            message: msg.message,
-                            posted_by: msg.posted_by,
-                            poster_name: msg.poster?.full_name || 'Family Member',
-                            created_at: msg.created_at
-                          }));
-                          setBulletinMessages(transformedBulletin);
-                        }
-                      });
-                  }
-                });
-            }
-          });
+          // Reload bulletin messages when any change occurs (INSERT, UPDATE, DELETE)
+          loadBulletinMessages();
         }
       )
       .subscribe();
