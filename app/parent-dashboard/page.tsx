@@ -584,7 +584,7 @@ export default function ParentDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        alert('You must be logged in to create tasks');
+        showAlert('You must be logged in to create tasks', "error");
         return;
       }
 
@@ -614,7 +614,7 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error creating task:', error);
-        alert('Failed to create task: ' + error.message);
+        showAlert('Failed to create task: ' + error.message, "error");
         return;
       }
 
@@ -667,7 +667,7 @@ export default function ParentDashboard() {
       const task = activeTasks.find(t => t.id === taskId);
       if (!task) {
         console.error('Task not found:', taskId);
-        alert('Task not found');
+        showAlert('Task not found', "error");
         return;
       }
 
@@ -684,7 +684,7 @@ export default function ParentDashboard() {
 
       if (taskError) {
         console.error('Error approving task:', taskError);
-        alert(`Failed to approve task: ${taskError.message}`);
+        showAlert(`Failed to approve task: ${taskError.message}`, "error");
         return;
       }
 
@@ -719,13 +719,13 @@ export default function ParentDashboard() {
             
           if (updateError) {
             console.error('Error updating points:', updateError);
-            alert('Task approved but failed to award points');
+            showAlert('Task approved but failed to award points', "warning");
             return;
           }
           console.log('Points updated successfully!');
         } else {
           console.error('User profile not found for:', task.assigned_to);
-          alert('Task approved but user profile not found');
+          showAlert('Task approved but user profile not found', "warning");
           return;
         }
       } else {
@@ -758,7 +758,7 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error rejecting task:', error);
-        alert('Failed to reject task');
+        showAlert('Failed to reject task', "error");
         return;
       }
 
@@ -767,10 +767,10 @@ export default function ParentDashboard() {
         task.id === taskId ? { ...task, status: 'pending', completed: false, completed_at: undefined } : task
       ));
       
-      alert('Task rejected and sent back to child');
+      showAlert('Task rejected and sent back to child', "success");
     } catch (error) {
       console.error('Error in handleRejectTask:', error);
-      alert('Failed to reject task');
+      showAlert('Failed to reject task', "error");
     }
   };
 
@@ -820,7 +820,7 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error resolving help request:', error);
-        alert(`Failed to resolve help request: ${error.message}`);
+        showAlert(`Failed to resolve help request: ${error.message}`, "error");
         return;
       }
 
@@ -831,10 +831,10 @@ export default function ParentDashboard() {
         task.id === taskId ? { ...task, help_requested: false, help_requested_at: null, help_message: null } : task
       ));
       
-      alert('Help request resolved!');
+      showAlert('Help request resolved!', "success");
     } catch (error) {
       console.error('Error in handleResolveHelp:', error);
-      alert(`Failed to resolve help request: ${error.message}`);
+      showAlert(`Failed to resolve help request: ${error.message}`, "error");
     }
   };
 
@@ -848,7 +848,7 @@ export default function ParentDashboard() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        alert('You must be logged in to post a message');
+        showAlert('You must be logged in to post a message', "error");
         return;
       }
 
@@ -860,7 +860,7 @@ export default function ParentDashboard() {
         .single();
 
       if (!profile?.family_id) {
-        alert('Family ID not found');
+        showAlert('Family ID not found', "error");
         return;
       }
 
@@ -877,7 +877,7 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error adding bulletin message:', error);
-        alert('Failed to post message. Please try again.');
+        showAlert('Failed to post message. Please try again.', "error");
         return;
       }
 
@@ -890,13 +890,14 @@ export default function ParentDashboard() {
       console.log('Bulletin message posted successfully');
     } catch (error: any) {
       console.error('Error in handleAddBulletinMessage:', error);
-      alert(`Failed to post message: ${error.message}`);
+      showAlert(`Failed to post message: ${error.message}`, "error");
     }
   };
 
   // Delete bulletin message
   const handleDeleteBulletinMessage = async (messageId: string | number) => {
-    if (!confirm("Are you sure you want to delete this message?")) return;
+    const confirmed = await showConfirm("Are you sure you want to delete this message?");
+    if (!confirmed) return;
 
     try {
       const supabase = createClientSupabaseClient();
@@ -909,7 +910,7 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error deleting bulletin message:', error);
-        alert('Failed to delete message. Please try again.');
+        showAlert('Failed to delete message. Please try again.', "error");
         return;
       }
 
@@ -919,7 +920,7 @@ export default function ParentDashboard() {
       console.log('Bulletin message deleted successfully');
     } catch (error: any) {
       console.error('Error in handleDeleteBulletinMessage:', error);
-      alert(`Failed to delete message: ${error.message}`);
+      showAlert(`Failed to delete message: ${error.message}`, "error");
     }
   };
 
@@ -946,7 +947,7 @@ export default function ParentDashboard() {
 
       if (redemptionError) {
         console.error('Error approving redemption:', redemptionError);
-        alert('Failed to approve redemption');
+        showAlert('Failed to approve redemption', "error");
         return;
       }
 
@@ -974,7 +975,7 @@ export default function ParentDashboard() {
             
           if (updateError) {
             console.error('Error updating points:', updateError);
-            alert('Redemption approved but failed to deduct points');
+            showAlert('Redemption approved but failed to deduct points', "warning");
             return;
           }
         }
@@ -988,10 +989,10 @@ export default function ParentDashboard() {
       // Reload children to update their points
       loadChildren();
       
-      alert(`Redemption approved! ${redemption.points_spent} points deducted from child.`);
+      showAlert(`Redemption approved! ${redemption.points_spent} points deducted from child.`, "success");
     } catch (error) {
       console.error('Error in handleApproveRedemption:', error);
-      alert('Failed to approve redemption');
+      showAlert('Failed to approve redemption', "error");
     }
   };
 
@@ -1017,7 +1018,7 @@ export default function ParentDashboard() {
 
       if (error) {
         console.error('Error rejecting redemption:', error);
-        alert('Failed to reject redemption');
+        showAlert('Failed to reject redemption', "error");
         return;
       }
 
@@ -1026,10 +1027,10 @@ export default function ParentDashboard() {
         r.id === redemptionId ? { ...r, status: 'rejected', approved_at: new Date().toISOString(), approved_by: user.id } : r
       ));
       
-      alert('Redemption rejected.');
+      showAlert('Redemption rejected.', "success");
     } catch (error) {
       console.error('Error in handleRejectRedemption:', error);
-      alert('Failed to reject redemption');
+      showAlert('Failed to reject redemption', "error");
     }
   };
 
@@ -1039,7 +1040,7 @@ export default function ParentDashboard() {
       request.id === requestId ? { ...request, status } : request
     );
     setRewardRequests(updatedRequests);
-    alert(`Reward request ${status === "approved" ? "approved" : "rejected"}!`);
+    showAlert(`Reward request ${status === "approved" ? "approved" : "rejected"}!`, "success");
   };
 
   // Calculate totals
@@ -1054,8 +1055,9 @@ export default function ParentDashboard() {
     activeTasks: activeTasks?.map(t => ({ title: t.title, completed: t.completed, approved: t.approved }))
   });
 
-  const handleLogout = () => {
-    if (confirm("Are you sure you want to logout?")) {
+  const handleLogout = async () => {
+    const confirmed = await showConfirm("Are you sure you want to logout?");
+    if (confirmed) {
       sessionStorage.removeItem('userRole');
       sessionStorage.removeItem('userEmail');
       sessionStorage.removeItem('userName');
