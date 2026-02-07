@@ -47,6 +47,14 @@ interface RewardRedemption {
   reward?: Reward;
 }
 
+interface BulletinMessage {
+  id: string;
+  message: string;
+  posted_by: string;
+  poster_name: string;
+  created_at: string;
+}
+
 export default function ChildDashboardPage() {
   // Child avatar state
   const [childAvatar, setChildAvatar] = useState("child");
@@ -91,6 +99,7 @@ export default function ChildDashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
+  const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
   const [toast, setToast] = useState({ show: false, message: "" });
 
   // Task filter and sort state
@@ -178,6 +187,31 @@ export default function ChildDashboardPage() {
             setRedemptions(userRedemptions);
           } else {
             console.log('No redemptions data returned');
+          }
+
+          // Load bulletin messages for the family
+          const { data: bulletinData, error: bulletinError } = await supabase
+            .from('bulletin_messages')
+            .select('*, profiles:posted_by(full_name)')
+            .eq('family_id', profile.family_id)
+            .order('created_at', { ascending: false });
+
+          if (bulletinError) {
+            console.error('Error fetching bulletin messages:', bulletinError);
+            // If table doesn't exist yet, just continue
+            if (bulletinError.code !== '42P01') {
+              console.log('Bulletin messages error (not table missing):', bulletinError);
+            }
+          } else if (bulletinData) {
+            console.log('Loaded bulletin messages:', bulletinData.length, 'messages found');
+            const transformedBulletin = bulletinData.map((msg: any) => ({
+              id: msg.id,
+              message: msg.message,
+              posted_by: msg.posted_by,
+              poster_name: msg.profiles?.full_name || 'Family Member',
+              created_at: msg.created_at
+            }));
+            setBulletinMessages(transformedBulletin);
           }
         }
         
@@ -344,10 +378,54 @@ export default function ChildDashboardPage() {
       )
       .subscribe();
 
+    // Subscribe to bulletin message changes
+    const bulletinSubscription = supabase
+      .channel('child-bulletin-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'bulletin_messages' },
+        (payload) => {
+          console.log('Bulletin message change detected:', payload);
+          
+          // Reload bulletin messages when changes occur
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user) {
+              supabase
+                .from('profiles')
+                .select('family_id')
+                .eq('id', user.id)
+                .single()
+                .then(({ data: profile }) => {
+                  if (profile?.family_id) {
+                    supabase
+                      .from('bulletin_messages')
+                      .select('*, profiles:posted_by(full_name)')
+                      .eq('family_id', profile.family_id)
+                      .order('created_at', { ascending: false })
+                      .then(({ data: bulletinData }) => {
+                        if (bulletinData) {
+                          const transformedBulletin = bulletinData.map((msg: any) => ({
+                            id: msg.id,
+                            message: msg.message,
+                            posted_by: msg.posted_by,
+                            poster_name: msg.profiles?.full_name || 'Family Member',
+                            created_at: msg.created_at
+                          }));
+                          setBulletinMessages(transformedBulletin);
+                        }
+                      });
+                  }
+                });
+            }
+          });
+        }
+      )
+      .subscribe();
+
     // Cleanup subscriptions on unmount
     return () => {
       supabase.removeChannel(tasksSubscription);
       supabase.removeChannel(redemptionsSubscription);
+      supabase.removeChannel(bulletinSubscription);
     };
   }, [isClient]);
 
@@ -1006,6 +1084,66 @@ export default function ChildDashboardPage() {
             </div>
             <div className="text-center text-gray-600 text-sm">
               Complete {tasks.length - stats.completed} more tasks this week to reach 100%!
+            </div>
+          </div>
+        </div>
+
+        {/* Family Bulletin Board */}
+        <div className="mt-8 bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <i className="fas fa-bullhorn text-2xl text-purple-500"></i>
+              <h2 className="text-xl font-bold text-gray-800">Family Bulletin</h2>
+            </div>
+            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+              {bulletinMessages.length} messages
+            </span>
+          </div>
+
+          {bulletinMessages.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <i className="fas fa-clipboard text-5xl text-gray-300 mb-4"></i>
+              <p className="text-lg">No family messages yet</p>
+              <p className="text-sm mt-2">Messages from parents will appear here</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {bulletinMessages.map((message) => {
+                const messageDate = new Date(message.created_at);
+                const isToday = messageDate.toDateString() === new Date().toDateString();
+                const timeStr = messageDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = isToday ? 'Today' : messageDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                
+                return (
+                  <div 
+                    key={message.id} 
+                    className="p-4 bg-gradient-to-br from-purple-50/50 to-white rounded-xl border border-purple-100/50 hover:border-purple-200 transition-all"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-400 to-purple-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        {message.poster_name.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <div className="font-semibold text-gray-800">{message.poster_name}</div>
+                            <div className="text-xs text-gray-500">{dateStr} at {timeStr}</div>
+                          </div>
+                          <i className="fas fa-thumbtack text-purple-400 text-sm"></i>
+                        </div>
+                        <p className="text-gray-700 leading-relaxed">{message.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <i className="fas fa-info-circle text-purple-500"></i>
+              <span>Messages are posted by parents and stay until they remove them.</span>
             </div>
           </div>
         </div>
