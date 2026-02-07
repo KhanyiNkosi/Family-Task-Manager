@@ -185,7 +185,10 @@ export default function ChildDashboardPage() {
         } else if (childTasks) {
           console.log('Loaded tasks:', childTasks.length, 'tasks found');
           console.log('Task data:', childTasks);
-          setTasks(childTasks);
+          // CRITICAL: Filter out approved tasks before setting state
+          const unapprovedTasks = childTasks.filter(task => !task.approved);
+          console.log('After filtering approved:', unapprovedTasks.length, 'tasks remaining');
+          setTasks(unapprovedTasks);
         } else {
           console.log('No tasks data returned (null/undefined)');
         }
@@ -332,7 +335,11 @@ export default function ChildDashboardPage() {
                   .order('created_at', { ascending: false });
                 
                 if (childTasks) {
-                  setTasks(childTasks);
+                  console.log('Real-time: Loaded', childTasks.length, 'tasks');
+                  // CRITICAL: Filter out approved tasks before setting state
+                  const unapprovedTasks = childTasks.filter(task => !task.approved);
+                  console.log('Real-time: After filtering approved:', unapprovedTasks.length, 'tasks');
+                  setTasks(unapprovedTasks);
                 }
 
                 const { data: userProfile } = await supabase
