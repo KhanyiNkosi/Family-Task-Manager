@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 export default function MyRewardsPage() {
   const [userRole, setUserRole] = useState("child");
@@ -25,26 +26,108 @@ export default function MyRewardsPage() {
   // --- Data Fetching from Supabase ---
   useEffect(() => {
     const fetchData = async () => {
-      // Replace these example calls with your actual Supabase functions from app/lib/supabase.ts
-      // Example: Fetch points from completed tasks
-      // const { totalPoints } = await calculateUserPoints(authUserId);
-      // setMyPoints(totalPoints);
+      try {
+        const supabase = createClientSupabaseClient();
+        
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.error('No user found');
+          return;
+        }
 
-      // Example: Fetch available rewards for the user's family
-      // const rewards = await fetchFamilyRewards(familyId);
-      // setAvailableRewards(rewards);
+        // Fetch user's points from user_profiles
+        const { data: userProfile, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('total_points')
+          .eq('id', user.id)
+          .single();
 
-      // TODO: Connect to Supabase here
-    // Example:
-    // const points = await calculateUserPoints();
-    // setMyPoints(points);
-    // 
-    // const rewards = await fetchAvailableRewards();
-    // setAvailableRewards(rewards);
+        if (profileError) {
+          console.error('Error fetching user profile:', profileError);
+        } else if (userProfile) {
+          setMyPoints(userProfile.total_points || 0);
+          console.log('Loaded user points:', userProfile.total_points);
+        }
+
+        // Fetch user's family to get available rewards
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('family_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.family_id) {
+          // Fetch available rewards for the family
+          const { data: familyRewards, error: rewardsError } = await supabase
+            .from('rewards')
+            .select('*')
+            .eq('family_id', profile.family_id)
+            .eq('is_active', true)
+            .order('points_cost', { ascending: true });
+
+          if (rewardsError) {
+            console.error('Error fetching rewards:', rewardsError);
+          } else if (familyRewards) {
+            setAvailableRewards(familyRewards.map(r => ({
+              name: r.title,
+              description: r.description || '',
+              cost: r.points_cost,
+              id: r.id
+            })));
+            console.log('Loaded rewards:', familyRewards.length);
+          }
+        }
+      } catch (error) {
+        console.error('Error in fetchData:', error);
+      }
     };
     fetchData();
   }, []); // Empty dependency array means this runs once on component mount
   // --- End of Data Fetching ---
+
+  // Function to redeem a reward
+  const redeemReward = async (rewardId: string, rewardName: string, rewardCost: number) => {
+    if (myPoints < rewardCost) {
+      alert(`You need ${rewardCost} points to redeem this reward!`);
+      return;
+    }
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        alert('You must be logged in to redeem rewards');
+        return;
+      }
+
+      // Create redemption request
+      const { error } = await supabase
+        .from('reward_redemptions')
+        .insert({
+          reward_id: rewardId,
+          user_id: user.id,
+          points_spent: rewardCost,
+          status: 'pending'
+        });
+
+      if (error) {
+        console.error('Error creating redemption:', error);
+        alert('Failed to redeem reward: ' + error.message);
+        return;
+      }
+
+      alert(`Request sent to parents for: ${rewardName}\\nParents will review and approve.`);
+      
+      // Redirect back to child dashboard
+      router.push('/child-dashboard');
+    } catch (error) {
+      console.error('Error in redeemReward:', error);
+      alert('Failed to redeem reward');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -112,7 +195,7 @@ export default function MyRewardsPage() {
                     disabled={myPoints < reward.cost}
                     onClick={() => {
                       if (myPoints >= reward.cost) {
-                        alert(`Request sent to parents for: ${reward.name}\nParents will review and approve.`);
+                        redeemReward(reward.id, reward.name, reward.cost);
                       }
                     }}
                   >
@@ -122,6 +205,14 @@ export default function MyRewardsPage() {
               </div>
             ))}
           </div>
+          
+          {availableRewards.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
+              <p>No rewards available yet</p>
+              <p className="text-sm">Ask your parents to create some rewards!</p>
+            </div>
+          )}
           
           {/* INFO BOX - Changed to teal/cyan theme */}
           <div className="mt-8 p-4 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl border border-[#00C2E0]/30">

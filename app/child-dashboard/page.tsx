@@ -172,11 +172,12 @@ export default function ChildDashboardPage() {
 
         console.log('Loading tasks for child:', user.id);
         
-        // Fetch child's assigned tasks
+        // Fetch child's assigned tasks (exclude approved tasks)
         const { data: childTasks, error: tasksError } = await supabase
           .from('tasks')
           .select('*')
           .eq('assigned_to', user.id)
+          .or('approved.is.null,approved.eq.false')
           .order('created_at', { ascending: false });
 
         if (tasksError) {
@@ -327,6 +328,7 @@ export default function ChildDashboardPage() {
                   .from('tasks')
                   .select('*')
                   .eq('assigned_to', user.id)
+                  .or('approved.is.null,approved.eq.false')
                   .order('created_at', { ascending: false });
                 
                 if (childTasks) {
