@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
+interface Reward {
+  id: string;
+  name: string;
+  description: string;
+  cost: number;
+}
+
 export default function MyRewardsPage() {
   const [userRole, setUserRole] = useState("child");
   const router = useRouter();
@@ -18,7 +25,7 @@ export default function MyRewardsPage() {
     
   }, [router]);
 
-  const [availableRewards, setAvailableRewards] = useState([]);
+  const [availableRewards, setAvailableRewards] = useState<Reward[]>([]);
 
   const [myPoints, setMyPoints] = useState(0);
 
