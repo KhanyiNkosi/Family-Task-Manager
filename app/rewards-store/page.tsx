@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -26,12 +26,12 @@ export default function RewardsStorePage() {
   const [newRewardPoints, setNewRewardPoints] = useState("50");
 
   // Modal states
-  const [alertModal, setAlertModal] = useState<{show:boolean; message:string; type:"success"|"error"|"warning"|"info"}>({show:false, message:"", type:"info"});
-  const [confirmModal, setConfirmModal] = useState<{show:boolean; message:string; onConfirm:()=>void}>({show:false, message:"", onConfirm:()=>{}});
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; message: string; onConfirm: () => void }>({ show: false, message: "", onConfirm: () => {} });
 
-  // Helper functions for modals
-  const showAlert = (message: string, type: "success"|"error"|"warning"|"info" = "info") => {
-    setAlertModal({show: true, message, type});
+  // Modal helper functions
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
   };
 
   const showConfirm = (message: string): Promise<boolean> => {
@@ -40,16 +40,17 @@ export default function RewardsStorePage() {
         show: true,
         message,
         onConfirm: () => {
-          setConfirmModal({show: false, message: "", onConfirm: () => {}});
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
           resolve(true);
-        }
+        },
       });
+      // Handle cancel
       setTimeout(() => {
-        if (confirmModal.show) {
-          setConfirmModal({show: false, message: "", onConfirm: () => {}});
+        const cancelHandler = () => {
           resolve(false);
-        }
-      }, 30000);
+        };
+        (window as any)._confirmCancelHandler = cancelHandler;
+      }, 0);
     });
   };
 
@@ -390,64 +391,75 @@ export default function RewardsStorePage() {
 
       {/* Alert Modal */}
       {alertModal.show && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn" onClick={() => setAlertModal({...alertModal, show: false})}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scaleIn" onClick={(e) => e.stopPropagation()}>
-            <div className={`p-6 rounded-t-2xl ${
-              alertModal.type === "success" ? "bg-gradient-to-r from-green-500 to-emerald-500" :
-              alertModal.type === "error" ? "bg-gradient-to-r from-red-500 to-rose-500" :
-              alertModal.type === "warning" ? "bg-gradient-to-r from-yellow-500 to-orange-500" :
-              "bg-gradient-to-r from-[#006372] to-[#00C2E0]"
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setAlertModal({ ...alertModal, show: false })}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+              alertModal.type === \"success\" ? \"bg-green-100\" :
+              alertModal.type === \"error\" ? \"bg-red-100\" :
+              alertModal.type === \"warning\" ? \"bg-yellow-100\" :
+              \"bg-blue-100\"
             }`}>
-              <div className="flex items-center gap-3 text-white">
-                <div className="text-4xl">
-                  {alertModal.type === "success" ? "✅" : alertModal.type === "error" ? "❌" : alertModal.type === "warning" ? "⚠️" : "ℹ️"}
-                </div>
-                <div className="text-xl font-bold">
-                  {alertModal.type === "success" ? "Success" : alertModal.type === "error" ? "Error" : alertModal.type === "warning" ? "Warning" : "Notice"}
-                </div>
-              </div>
+              <span className=\"text-3xl\">{
+                alertModal.type === \"success\" ? \"✓\" :
+                alertModal.type === \"error\" ? \"✕\" :
+                alertModal.type === \"warning\" ? \"⚠\" :
+                \"ℹ\"
+              }</span>
             </div>
-            <div className="p-6">
-              <p className="text-gray-700 text-lg">{alertModal.message}</p>
-              <button
-                onClick={() => setAlertModal({...alertModal, show: false})}
-                className="mt-6 w-full bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 px-6 rounded-xl font-bold hover:opacity-90 transition-all"
-              >
-                OK
-              </button>
-            </div>
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              alertModal.type === \"success\" ? \"text-green-600\" :
+              alertModal.type === \"error\" ? \"text-red-600\" :
+              alertModal.type === \"warning\" ? \"text-yellow-600\" :
+              \"text-blue-600\"
+            }`}>
+              {alertModal.type === \"success\" ? \"Success!\" :
+               alertModal.type === \"error\" ? \"Error\" :
+               alertModal.type === \"warning\" ? \"Warning\" :
+               \"Information\"}
+            </h3>
+            <p className=\"text-gray-700 text-center mb-6\">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition ${
+                alertModal.type === \"success\" ? \"bg-green-500 hover:bg-green-600\" :
+                alertModal.type === \"error\" ? \"bg-red-500 hover:bg-red-600\" :
+                alertModal.type === \"warning\" ? \"bg-yellow-500 hover:bg-yellow-600\" :
+                \"bg-blue-500 hover:bg-blue-600\"
+              }`}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
 
       {/* Confirm Modal */}
       {confirmModal.show && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full animate-scaleIn">
-            <div className="p-6 rounded-t-2xl bg-gradient-to-r from-[#006372] to-[#00C2E0]">
-              <div className="flex items-center gap-3 text-white">
-                <div className="text-4xl">❓</div>
-                <div className="text-xl font-bold">Confirm Action</div>
-              </div>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+            <div className=\"w-16 h-16 rounded-full bg-yellow-100 mx-auto mb-4 flex items-center justify-center\">
+              <span className=\"text-3xl\">?</span>
             </div>
-            <div className="p-6">
-              <p className="text-gray-700 text-lg mb-6">{confirmModal.message}</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setConfirmModal({show: false, message: "", onConfirm: () => {}});
-                  }}
-                  className="flex-1 bg-gray-200 text-gray-700 py-3 px-6 rounded-xl font-bold hover:bg-gray-300 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmModal.onConfirm}
-                  className="flex-1 bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 px-6 rounded-xl font-bold hover:opacity-90 transition-all"
-                >
-                  Confirm
-                </button>
-              </div>
+            <h3 className=\"text-xl font-bold text-center mb-2 text-gray-800\">Confirm Action</h3>
+            <p className=\"text-gray-700 text-center mb-6\">{confirmModal.message}</p>
+            <div className=\"flex gap-3\">
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: \"\", onConfirm: () => {} });
+                  if ((window as any)._confirmCancelHandler) {
+                    (window as any)._confirmCancelHandler();
+                  }
+                }}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gray-200 text-gray-700 hover:bg-gray-300 transition\"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className=\"flex-1 py-3 rounded-xl font-bold bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 transition\"
+              >
+                Confirm
+              </button>
             </div>
           </div>
         </div>
