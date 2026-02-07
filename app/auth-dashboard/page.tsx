@@ -24,6 +24,31 @@ export default function ParentDashboardPage() {
   const [newTaskPoints, setNewTaskPoints] = useState("");
   const [newBulletinMessage, setNewBulletinMessage] = useState("");
 
+  // Modal states
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; message: string; onConfirm: () => void }>({ show: false, message: "", onConfirm: () => {} });
+
+  // Modal helper functions
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+          resolve(true);
+        },
+      });
+      setTimeout(() => {
+        (window as any)._confirmCancelHandler = () => resolve(false);
+      }, 0);
+    });
+  };
+
   // TASK APPROVAL STATE - ADDED
   const [pendingTasks, setPendingTasks] = useState([
     {
@@ -90,14 +115,15 @@ export default function ParentDashboardPage() {
     ));
     setTimeout(() => {
       setPendingTasks(pendingTasks.filter(task => task.id !== taskId));
-      alert("Task approved! Points awarded to child.");
+      showAlert("Task approved! Points awarded to child.", "success");
     }, 300);
   };
 
-  const handleDeleteTask = (taskId: number) => {
-    if (confirm("Are you sure you want to delete this task?")) {
+  const handleDeleteTask = async (taskId: number) => {
+    const confirmed = await showConfirm("Are you sure you want to delete this task?");
+    if (confirmed) {
       setPendingTasks(pendingTasks.filter(task => task.id !== taskId));
-      alert("Task deleted.");
+      showAlert("Task deleted.", "success");
     }
   };
 
@@ -138,13 +164,13 @@ export default function ParentDashboardPage() {
     if (request) {
       setTotalPoints(totalPoints - request.points);
       setRequests(requests.filter(req => req.id !== requestId));
-      setTimeout(() => alert(`Approved "${request.name}"!`), 100);
+      setTimeout(() => showAlert(`Approved "${request.name}"!`, "success"), 100);
     }
   };
 
   const rejectRequest = (requestId: string) => {
     setRequests(requests.filter(req => req.id !== requestId));
-    setTimeout(() => alert("Request rejected."), 100);
+    setTimeout(() => showAlert("Request rejected.", "info"), 100);
   };
 
   const markTaskComplete = (taskId: number) => {
@@ -154,7 +180,7 @@ export default function ParentDashboardPage() {
       setTasksCompleted(tasksCompleted + 1);
       setTasksPending(tasksPending - 1);
       setActiveTasks(activeTasks.filter(t => t.id !== taskId));
-      setTimeout(() => alert(`Task "${task.name}" completed! +${task.points} points`), 100);
+      setTimeout(() => showAlert(`Task "${task.name}" completed! +${task.points} points`, "success"), 100);
     }
   };
 
@@ -240,9 +266,10 @@ export default function ParentDashboardPage() {
   </button>
   
   <button
-    onClick={() => {
-      if (confirm("Are you sure you want to logout?")) {
-        alert("Logging out..."); // In real app: router.push("/login");
+    onClick={async () => {
+      const confirmed = await showConfirm("Are you sure you want to logout?");
+      if (confirmed) {
+        showAlert("Logging out...", "info"); // In real app: router.push("/login");
       }
     }}
     className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
@@ -571,6 +598,74 @@ export default function ParentDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+        >
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              alertModal.type === "success" ? "bg-green-100" :
+              alertModal.type === "error" ? "bg-red-100" :
+              alertModal.type === "warning" ? "bg-yellow-100" :
+              "bg-blue-100"
+            }`}>
+              <span className={`text-3xl ${
+                alertModal.type === "success" ? "text-green-600" :
+                alertModal.type === "error" ? "text-red-600" :
+                alertModal.type === "warning" ? "text-yellow-600" :
+                "text-blue-600"
+              }`}>
+                {alertModal.type === "success" ? "✓" : alertModal.type === "error" ? "✕" : alertModal.type === "warning" ? "⚠" : "ℹ"}
+              </span>
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2 text-gray-800">
+              {alertModal.type === "success" ? "Success" : alertModal.type === "error" ? "Error" : alertModal.type === "warning" ? "Warning" : "Info"}
+            </h3>
+            <p className="text-gray-700 text-center mb-6 whitespace-pre-line">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+              className="w-full bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+            <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl text-yellow-600">⚠</span>
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2 text-gray-800">Confirm Action</h3>
+            <p className="text-gray-700 text-center mb-6 whitespace-pre-line">{confirmModal.message}</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+                  if ((window as any)._confirmCancelHandler) {
+                    (window as any)._confirmCancelHandler();
+                  }
+                }}
+                className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className="flex-1 bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

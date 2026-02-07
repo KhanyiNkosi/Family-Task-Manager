@@ -9,6 +9,13 @@ export default function VerifyFixPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<string[]>([]);
 
+  // Modal state
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const role = sessionStorage.getItem("userRole");
@@ -38,17 +45,17 @@ export default function VerifyFixPage() {
     sessionStorage.setItem("userRole", role);
     localStorage.setItem("roleTestCompleted", "true");
     
-    alert(`Role set to: ${role}\n\nNow test these pages:\n1. /parent-dashboard (${role === "parent" ? "Should WORK" : "Should redirect"})\n2. /child-dashboard (${role === "child" ? "Should WORK" : "Should redirect"})`);
+    showAlert(`Role set to: ${role}\n\nNow test these pages:\n1. /parent-dashboard (${role === "parent" ? "Should WORK" : "Should redirect"})\n2. /child-dashboard (${role === "child" ? "Should WORK" : "Should redirect"})`, "success");
     
     // Refresh to see changes
-    window.location.reload();
+    setTimeout(() => window.location.reload(), 2000);
   };
 
   const clearTestData = () => {
     sessionStorage.removeItem("userRole");
     localStorage.removeItem("roleTestCompleted");
-    alert("Test data cleared. Refresh page.");
-    window.location.reload();
+    showAlert("Test data cleared. Refresh page.", "info");
+    setTimeout(() => window.location.reload(), 2000);
   };
 
   return (
@@ -168,6 +175,50 @@ export default function VerifyFixPage() {
           <p className="text-green-600 text-sm mt-2">Issue: "Removed '|| "child"' default from permission checks"</p>
         </div>
       </div>
+      
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setAlertModal({ ...alertModal, show: false })}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+              alertModal.type === "success" ? "bg-green-100" :
+              alertModal.type === "error" ? "bg-red-100" :
+              alertModal.type === "warning" ? "bg-yellow-100" :
+              "bg-blue-100"
+            }`}>
+              <span className="text-3xl">{
+                alertModal.type === "success" ? "✓" :
+                alertModal.type === "error" ? "✕" :
+                alertModal.type === "warning" ? "⚠" :
+                "ℹ"
+              }</span>
+            </div>
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              alertModal.type === "success" ? "text-green-600" :
+              alertModal.type === "error" ? "text-red-600" :
+              alertModal.type === "warning" ? "text-yellow-600" :
+              "text-blue-600"
+            }`}>
+              {alertModal.type === "success" ? "Success!" :
+               alertModal.type === "error" ? "Error" :
+               alertModal.type === "warning" ? "Warning" :
+               "Information"}
+            </h3>
+            <p className="text-gray-700 text-center mb-6 whitespace-pre-line">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition ${
+                alertModal.type === "success" ? "bg-green-500 hover:bg-green-600" :
+                alertModal.type === "error" ? "bg-red-500 hover:bg-red-600" :
+                alertModal.type === "warning" ? "bg-yellow-500 hover:bg-yellow-600" :
+                "bg-blue-500 hover:bg-blue-600"
+              }`}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,6 +19,13 @@ export default function DashboardPage() {
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [newTask, setNewTask] = useState({ name: "", points: "" });
 
+  // Modal state
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  
+  const showAlert = (message: string, type: "success" | "error" |"warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
   const switchView = (view: "dashboard" | "tasks" | "rewards") => {
     setActiveView(view);
   };
@@ -54,7 +61,7 @@ export default function DashboardPage() {
     setNewTask({ name: "", points: "" });
     setShowTaskModal(false);
     
-    alert("Task Assigned!");
+    showAlert("Task Assigned!", "success");
   };
 
   const getInitials = (name: string) => {
@@ -366,6 +373,50 @@ export default function DashboardPage() {
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn" onClick={() => setAlertModal({ ...alertModal, show: false })}>
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${
+              alertModal.type === "success" ? "bg-green-100" :
+              alertModal.type === "error" ? "bg-red-100" :
+              alertModal.type === "warning" ? "bg-yellow-100" :
+              "bg-blue-100"
+            }`}>
+              <span className="text-3xl">{
+                alertModal.type === "success" ? "✓" :
+                alertModal.type === "error" ? "✕" :
+                alertModal.type === "warning" ? "⚠" :
+                "ℹ"
+              }</span>
+            </div>
+            <h3 className={`text-xl font-bold text-center mb-2 ${
+              alertModal.type === "success" ? "text-green-600" :
+              alertModal.type === "error" ? "text-red-600" :
+              alertModal.type === "warning" ? "text-yellow-600" :
+              "text-blue-600"
+            }`}>
+              {alertModal.type === "success" ? "Success!" :
+               alertModal.type === "error" ? "Error" :
+               alertModal.type === "warning" ? "Warning" :
+               "Information"}
+            </h3>
+            <p className="text-gray-700 text-center mb-6">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className={`w-full py-3 rounded-xl font-bold text-white transition ${
+                alertModal.type === "success" ? "bg-green-500 hover:bg-green-600" :
+                alertModal.type === "error" ? "bg-red-500 hover:bg-red-600" :
+                alertModal.type === "warning" ? "bg-yellow-500 hover:bg-yellow-600" :
+                "bg-blue-500 hover:bg-blue-600"
+              }`}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
