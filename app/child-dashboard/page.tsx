@@ -105,11 +105,47 @@ export default function ChildDashboardPage() {
   const [pepTalkModal, setPepTalkModal] = useState({ show: false, message: "", emoji: "" });
   const [taskHelperModal, setTaskHelperModal] = useState({ show: false, task: null as Task | null, messages: [] as { text: string, sender: 'user' | 'ai' }[] });
   const [helperInput, setHelperInput] = useState("");
+  const [alertModal, setAlertModal] = useState({ show: false, message: "", type: "info" as "info" | "success" | "error" | "warning" });
+  const [confirmModal, setConfirmModal] = useState({ show: false, message: "", onConfirm: () => {} });
+  const [promptModal, setPromptModal] = useState({ show: false, message: "", defaultValue: "", onConfirm: (value: string) => {} });
 
   // Task filter and sort state
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [taskCategoryFilter, setTaskCategoryFilter] = useState<string>("all");
   const [taskSortBy, setTaskSortBy] = useState<"date" | "points" | "name">("date");
+
+  // === MODAL HELPERS ===
+  const showAlert = (message: string, type: "info" | "success" | "error" | "warning" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
+
+  const showConfirm = (message: string): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        show: true,
+        message,
+        onConfirm: () => {
+          setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+          resolve(true);
+        }
+      });
+    });
+  };
+
+  const showPrompt = (message: string, defaultValue: string = ""): Promise<string | null> => {
+    return new Promise((resolve) => {
+      let inputValue = defaultValue;
+      setPromptModal({
+        show: true,
+        message,
+        defaultValue,
+        onConfirm: (value) => {
+          setPromptModal({ show: false, message: "", defaultValue: "", onConfirm: () => {} });
+          resolve(value || null);
+        }
+      });
+    });
+  };
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
 
@@ -463,14 +499,14 @@ export default function ChildDashboardPage() {
     ];
     
     if (parentOnlyRoutes.includes(pathname)) {
-      alert("Access Denied! This section is for parents only.");
+      showAlert("Access Denied! This section is for parents only.", "error");
       router.push("/child-dashboard");
       return;
     }
     
     // Also check for any "parent-" routes
     if (pathname.includes("parent-")) {
-      alert("Parent section detected! Redirecting to child dashboard.");
+      showAlert("Parent section detected! Redirecting to child dashboard.", "warning");
       router.push("/child-dashboard");
     }
   }, [pathname, router]);
@@ -552,7 +588,7 @@ export default function ChildDashboardPage() {
 
       if (error) {
         console.error('Error completing task:', error);
-        alert(`Failed to complete task: ${error.message}`);
+        showAlert(`Failed to complete task: ${error.message}`, "error");
         return;
       }
 
@@ -574,7 +610,7 @@ export default function ChildDashboardPage() {
       }
     } catch (error) {
       console.error('Error in completeTask:', error);
-      alert(`Error: ${error.message}`);
+      showAlert(`Error: ${error.message}`, "error");
     }
   };
 
@@ -583,7 +619,7 @@ export default function ChildDashboardPage() {
       const task = tasks.find(t => t.id === taskId);
       
       // Prompt for help message
-      const helpMessage = prompt(`What help do you need with "${task?.title}"?`);
+      const helpMessage = await showPrompt(`What help do you need with "${task?.title}"?`);
       
       if (!helpMessage || !helpMessage.trim()) {
         return; // User cancelled or provided empty message
@@ -603,7 +639,7 @@ export default function ChildDashboardPage() {
 
       if (error) {
         console.error('Error requesting help:', error);
-        alert('Failed to request help');
+        showAlert('Failed to request help', "error");
         return;
       }
 
@@ -633,12 +669,12 @@ export default function ChildDashboardPage() {
     );
 
     if (existingRedemption) {
-      alert('You have already requested this reward!');
+      showAlert('You have already requested this reward!', "warning");
       return;
     }
 
     if (points < reward.points_cost) {
-      alert(`You need ${reward.points_cost} points to redeem this reward!`);
+      showAlert(`You need ${reward.points_cost} points to redeem this reward!`, "warning");
       return;
     }
 
@@ -647,7 +683,7 @@ export default function ChildDashboardPage() {
       const { data: { user } } = await supabase.auth.getUser();
       
       if (!user) {
-        alert('You must be logged in to redeem rewards');
+        showAlert('You must be logged in to redeem rewards', "error");
         return;
       }
 
@@ -668,7 +704,7 @@ export default function ChildDashboardPage() {
 
       if (error) {
         console.error('Error creating redemption:', error);
-        alert('Failed to redeem reward: ' + error.message);
+        showAlert('Failed to redeem reward: ' + error.message, "error");
         return;
       }
 
@@ -682,7 +718,7 @@ export default function ChildDashboardPage() {
       }
     } catch (error) {
       console.error('Error in redeemReward:', error);
-      alert('Failed to redeem reward');
+      showAlert('Failed to redeem reward', "error");
     }
   };
 
@@ -1529,6 +1565,152 @@ export default function ChildDashboardPage() {
               <p className="text-xs text-gray-500 mt-2 text-center">
                 Ask about how to start, where to find things, or tips! 🤖
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`p-6 rounded-t-2xl ${
+              alertModal.type === "error" ? "bg-red-50" :
+              alertModal.type === "success" ? "bg-green-50" :
+              alertModal.type === "warning" ? "bg-yellow-50" :
+              "bg-blue-50"
+            }`}>
+              <div className="flex items-center gap-3">
+                <div className={`text-3xl ${
+                  alertModal.type === "error" ? "text-red-500" :
+                  alertModal.type === "success" ? "text-green-500" :
+                  alertModal.type === "warning" ? "text-yellow-500" :
+                  "text-blue-500"
+                }`}>
+                  {alertModal.type === "error" && "❌"}
+                  {alertModal.type === "success" && "✅"}
+                  {alertModal.type === "warning" && "⚠️"}
+                  {alertModal.type === "info" && "ℹ️"}
+                </div>
+                <h3 className="text-lg font-bold text-gray-800">
+                  {alertModal.type === "error" && "Error"}
+                  {alertModal.type === "success" && "Success"}
+                  {alertModal.type === "warning" && "Warning"}
+                  {alertModal.type === "info" && "Notice"}
+                </h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-6 whitespace-pre-line">{alertModal.message}</p>
+              <button
+                onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+                className={`w-full py-3 rounded-xl font-bold text-white hover:opacity-90 transition-all ${
+                  alertModal.type === "error" ? "bg-red-500" :
+                  alertModal.type === "success" ? "bg-green-500" :
+                  alertModal.type === "warning" ? "bg-yellow-500" :
+                  "bg-blue-500"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Modal */}
+      {confirmModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setConfirmModal({ show: false, message: "", onConfirm: () => {} })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="text-3xl">❓</div>
+                <h3 className="text-lg font-bold">Confirm Action</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-6">{confirmModal.message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmModal({ show: false, message: "", onConfirm: () => {} })}
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 hover:opacity-90 transition-all"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prompt Modal */}
+      {promptModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md mx-4 w-full animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="text-3xl">✏️</div>
+                <h3 className="text-lg font-bold">Input Required</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700 mb-4">{promptModal.message}</p>
+              <input
+                type="text"
+                defaultValue={promptModal.defaultValue}
+                id="prompt-input"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent mb-6"
+                placeholder="Type your response..."
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter') {
+                    const input = document.getElementById('prompt-input') as HTMLInputElement;
+                    promptModal.onConfirm(input?.value || '');
+                  }
+                }}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setPromptModal({ show: false, message: "", defaultValue: "", onConfirm: () => {} });
+                    promptModal.onConfirm('');
+                  }}
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const input = document.getElementById('prompt-input') as HTMLInputElement;
+                    promptModal.onConfirm(input?.value || '');
+                  }}
+                  className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-teal-500 hover:opacity-90 transition-all"
+                >
+                  Submit
+                </button>
+              </div>
             </div>
           </div>
         </div>
