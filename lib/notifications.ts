@@ -12,6 +12,215 @@ export const NOTIFICATION_TYPES = {
   URGENT: 'error' as NotificationType,
 };
 
+// Service functions for creating notifications via API
+export const notificationService = {
+  // Create a notification for a user
+  async createNotification(params: {
+    userId: string;
+    familyId: string;
+    title: string;
+    message: string;
+    type?: NotificationType;
+    actionUrl?: string;
+    actionText?: string;
+  }): Promise<boolean> {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Failed to create notification:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      return false;
+    }
+  },
+
+  // Notify parent when task is completed
+  async notifyTaskCompleted(params: {
+    parentId: string;
+    childName: string;
+    taskName: string;
+    points: number;
+    familyId: string;
+    taskId?: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.parentId,
+      familyId: params.familyId,
+      title: 'Task Completed!',
+      message: `${params.childName} completed "${params.taskName}" and earned ${params.points} points`,
+      type: 'success',
+      actionUrl: params.taskId ? `/parent-dashboard?highlight=${params.taskId}` : '/parent-dashboard',
+      actionText: 'View Details',
+    });
+  },
+
+  // Notify child when task is assigned
+  async notifyTaskAssigned(params: {
+    childId: string;
+    taskName: string;
+    points: number;
+    familyId: string;
+    taskId?: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.childId,
+      familyId: params.familyId,
+      title: 'New Task Assigned',
+      message: `You have been assigned "${params.taskName}" worth ${params.points} points`,
+      type: 'task',
+      actionUrl: params.taskId ? `/child-dashboard?highlight=${params.taskId}` : '/child-dashboard',
+      actionText: 'View Task',
+    });
+  },
+
+  // Notify child when task is approved
+  async notifyTaskApproved(params: {
+    childId: string;
+    taskName: string;
+    points: number;
+    familyId: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.childId,
+      familyId: params.familyId,
+      title: 'Task Approved!',
+      message: `Your task "${params.taskName}" has been approved! ${params.points} points added to your account`,
+      type: 'success',
+      actionUrl: '/child-dashboard',
+      actionText: 'View Dashboard',
+    });
+  },
+
+  // Notify parent of reward request
+  async notifyRewardRequested(params: {
+    parentId: string;
+    childName: string;
+    rewardName: string;
+    points: number;
+    familyId: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.parentId,
+      familyId: params.familyId,
+      title: 'Reward Request',
+      message: `${params.childName} requested "${params.rewardName}" (${params.points} points)`,
+      type: 'reward',
+      actionUrl: '/parent-dashboard',
+      actionText: 'Review Request',
+    });
+  },
+
+  // Notify child when reward is approved
+  async notifyRewardApproved(params: {
+    childId: string;
+    rewardName: string;
+    points: number;
+    familyId: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.childId,
+      familyId: params.familyId,
+      title: 'Reward Approved!',
+      message: `Your reward "${params.rewardName}" has been approved! Enjoy!`,
+      type: 'success',
+      actionUrl: '/child-dashboard',
+      actionText: 'View Rewards',
+    });
+  },
+
+  // Notify child when reward is denied
+  async notifyRewardDenied(params: {
+    childId: string;
+    rewardName: string;
+    points: number;
+    familyId: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.childId,
+      familyId: params.familyId,
+      title: 'Reward Request Denied',
+      message: `Your request for "${params.rewardName}" was not approved. Your ${params.points} points have been returned.`,
+      type: 'warning',
+      actionUrl: '/child-dashboard',
+      actionText: 'View Dashboard',
+    });
+  },
+
+  // Notify about task help request
+  async notifyHelpRequested(params: {
+    parentId: string;
+    childName: string;
+    taskName: string;
+    helpMessage: string;
+    familyId: string;
+    taskId?: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.parentId,
+      familyId: params.familyId,
+      title: 'Help Requested',
+      message: `${params.childName} needs help with "${params.taskName}": ${params.helpMessage}`,
+      type: 'warning',
+      actionUrl: params.taskId ? `/parent-dashboard?highlight=${params.taskId}` : '/parent-dashboard',
+      actionText: 'View Task',
+    });
+  },
+
+  // Notify about overdue task
+  async notifyTaskOverdue(params: {
+    childId: string;
+    taskName: string;
+    familyId: string;
+    taskId?: string;
+  }): Promise<boolean> {
+    return this.createNotification({
+      userId: params.childId,
+      familyId: params.familyId,
+      title: 'Task Overdue',
+      message: `Your task "${params.taskName}" is overdue. Please complete it soon!`,
+      type: 'warning',
+      actionUrl: params.taskId ? `/child-dashboard?highlight=${params.taskId}` : '/child-dashboard',
+      actionText: 'View Task',
+    });
+  },
+
+  // Send system message to all family members
+  async notifyFamilyMessage(params: {
+    userIds: string[];
+    familyId: string;
+    title: string;
+    message: string;
+  }): Promise<boolean> {
+    try {
+      const promises = params.userIds.map(userId =>
+        this.createNotification({
+          userId,
+          familyId: params.familyId,
+          title: params.title,
+          message: params.message,
+          type: 'info',
+        })
+      );
+      
+      await Promise.all(promises);
+      return true;
+    } catch (error) {
+      console.error('Error sending family message:', error);
+      return false;
+    }
+  },
+};
+
 // Helper to create notifications
 export function createNotification(
   title: string,

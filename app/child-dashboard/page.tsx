@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import LogoutButton from "@/app/components/LogoutButton";
+import NotificationAlert from '@/components/NotificationAlert';
+import { useNotifications } from '@/hooks/useNotifications';
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 interface Task {
@@ -14,6 +16,12 @@ interface Task {
   completed: boolean;
   due_date?: string;
   created_at: string;
+  completed_at?: string;
+  approved?: boolean;
+  category?: string;
+  help_requested?: boolean;
+  help_message?: string;
+  assigned_to?: string;
 }
 
 interface Reward {
@@ -45,6 +53,14 @@ export default function ChildDashboardPage() {
   const [profileImage, setProfileImage] = useState(""); // Profile picture state
   const [isClient, setIsClient] = useState(false);
 
+  // Use the notifications hook for real-time notifications
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    dismissNotification 
+  } = useNotifications();
+
   // Load avatar from localStorage
  useEffect(() => {
   setIsClient(true);
@@ -72,10 +88,15 @@ export default function ChildDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [points, setPoints] = useState(0);
-  const [tasks, setTasks] = useState([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [toast, setToast] = useState({ show: false, message: "" });
+
+  // Task filter and sort state
+  const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState<string>("all");
+  const [taskSortBy, setTaskSortBy] = useState<"date" | "points" | "name">("date");
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
 
@@ -106,8 +127,11 @@ export default function ChildDashboardPage() {
         if (tasksError) {
           console.error('Error fetching tasks:', tasksError);
         } else if (childTasks) {
-          console.log('Loaded tasks:', childTasks);
+          console.log('Loaded tasks:', childTasks.length, 'tasks found');
+          console.log('Task data:', childTasks);
           setTasks(childTasks);
+        } else {
+          console.log('No tasks data returned (null/undefined)');
         }
         
         // Load available rewards for the family
@@ -117,7 +141,10 @@ export default function ChildDashboardPage() {
           .eq('id', user.id)
           .single();
 
+        console.log('User profile:', profile);
+
         if (profile?.family_id) {
+          console.log('Family ID found:', profile.family_id);
           const { data: familyRewards, error: rewardsError } = await supabase
             .from('rewards')
             .select('*')
@@ -128,8 +155,10 @@ export default function ChildDashboardPage() {
           if (rewardsError) {
             console.error('Error fetching rewards:', rewardsError);
           } else if (familyRewards) {
-            console.log('Loaded rewards:', familyRewards);
+            console.log('Loaded rewards:', familyRewards.length, 'rewards found');
             setRewards(familyRewards);
+          } else {
+            console.log('No rewards data returned');
           }
 
           // Load child's reward redemptions
@@ -145,8 +174,10 @@ export default function ChildDashboardPage() {
           if (redemptionsError) {
             console.error('Error fetching redemptions:', redemptionsError);
           } else if (userRedemptions) {
-            console.log('Loaded redemptions:', userRedemptions);
+            console.log('Loaded redemptions:', userRedemptions.length, 'redemptions found');
             setRedemptions(userRedemptions);
+          } else {
+            console.log('No redemptions data returned');
           }
         }
         
@@ -191,6 +222,135 @@ export default function ChildDashboardPage() {
     
     fetchDashboardData();
   }, []);
+
+  // Set up real-time subscriptions
+  useEffect(() => {
+    if (!isClient) return;
+
+    const supabase = createClientSupabaseClient();
+
+    // Subscribe to task changes for this user
+    const tasksSubscription = supabase
+      .channel('child-tasks-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks' },
+        (payload) => {
+          console.log('Task change detected:', payload);
+          
+          // Check if this task is assigned to current user
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user && (payload.new?.assigned_to === user.id || payload.old?.assigned_to === user.id)) {
+              // Show notification
+              if (payload.eventType === 'INSERT') {
+                setToast({
+                  show: true,
+                  message: `New task assigned: ${payload.new.title} (+${payload.new.points} points)`
+                });
+                setTimeout(() => setToast({ show: false, message: "" }), 4000);
+              } else if (payload.eventType === 'UPDATE' && payload.new.approved && !payload.old.approved) {
+                setToast({
+                  show: true,
+                  message: `Task approved! You earned ${payload.new.points} points! 🎉`
+                });
+                setTimeout(() => setToast({ show: false, message: "" }), 4000);
+              }
+              
+              // Reload tasks and points
+              const fetchUpdatedData = async () => {
+                const { data: childTasks } = await supabase
+                  .from('tasks')
+                  .select('*')
+                  .eq('assigned_to', user.id)
+                  .order('created_at', { ascending: false });
+                
+                if (childTasks) {
+                  setTasks(childTasks);
+                }
+
+                const { data: userProfile } = await supabase
+                  .from('user_profiles')
+                  .select('total_points')
+                  .eq('id', user.id)
+                  .single();
+                
+                if (userProfile) {
+                  setPoints(userProfile.total_points || 0);
+                }
+              };
+              
+              fetchUpdatedData();
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to reward redemption changes
+    const redemptionsSubscription = supabase
+      .channel('child-redemptions-changes')
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'reward_redemptions' },
+        (payload) => {
+          console.log('Redemption change detected:', payload);
+          
+          // Check if this redemption belongs to current user
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user && payload.new?.user_id === user.id) {
+              // Show notification
+              if (payload.new.status === 'approved' && payload.old.status === 'pending') {
+                setToast({
+                  show: true,
+                  message: `Reward approved! Enjoy your reward! 🎁`
+                });
+                setTimeout(() => setToast({ show: false, message: "" }), 4000);
+              } else if (payload.new.status === 'rejected' && payload.old.status === 'pending') {
+                setToast({
+                  show: true,
+                  message: `Reward request was declined. Try again later.`
+                });
+                setTimeout(() => setToast({ show: false, message: "" }), 4000);
+              }
+
+              // Reload redemptions and points
+              const fetchUpdatedData = async () => {
+                const { data: userRedemptions } = await supabase
+                  .from('reward_redemptions')
+                  .select(`
+                    *,
+                    reward:rewards(*)
+                  `)
+                  .eq('user_id', user.id)
+                  .order('redeemed_at', { ascending: false });
+
+                if (userRedemptions) {
+                  setRedemptions(userRedemptions);
+                }
+
+                const { data: userProfile } = await supabase
+                  .from('user_profiles')
+                  .select('total_points')
+                  .eq('id', user.id)
+                  .single();
+
+                if (userProfile) {
+                  setPoints(userProfile.total_points || 0);
+                }
+              };
+
+              fetchUpdatedData();
+            }
+          });
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(tasksSubscription);
+      supabase.removeChannel(redemptionsSubscription);
+    };
+  }, [isClient]);
+
   useEffect(() => {
     // Check if user is trying to access parent-only routes
     const parentOnlyRoutes = [
@@ -239,24 +399,63 @@ export default function ChildDashboardPage() {
     return true;
   };
 
+  // Filter and sort tasks
+  const getFilteredAndSortedTasks = () => {
+    let filtered = [...tasks];
+
+    // Apply status filter
+    if (taskStatusFilter === "pending") {
+      filtered = filtered.filter(t => !t.completed && !t.approved);
+    } else if (taskStatusFilter === "completed") {
+      filtered = filtered.filter(t => t.completed || t.approved);
+    }
+
+    // Apply category filter
+    if (taskCategoryFilter !== "all") {
+      filtered = filtered.filter(t => t.category === taskCategoryFilter);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (taskSortBy) {
+        case "points":
+          return b.points - a.points;
+        case "name":
+          return a.title.localeCompare(b.title);
+        case "date":
+        default:
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateB - dateA;
+      }
+    });
+
+    return filtered;
+  };
+
   const completeTask = async (taskId: string) => {
     try {
       const supabase = createClientSupabaseClient();
       
-      // Update task in database
-      const { error } = await supabase
+      console.log('Completing task:', taskId);
+      
+      // Update task in database - set completed to true
+      const { data, error } = await supabase
         .from('tasks')
         .update({ 
           completed: true,
           completed_at: new Date().toISOString()
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .select();
 
       if (error) {
         console.error('Error completing task:', error);
-        alert('Failed to complete task');
+        alert(`Failed to complete task: ${error.message}`);
         return;
       }
+
+      console.log('Task update successful:', data);
 
       // Update local state
       setTasks(tasks.map(task => 
@@ -274,6 +473,7 @@ export default function ChildDashboardPage() {
       }
     } catch (error) {
       console.error('Error in completeTask:', error);
+      alert(`Error: ${error.message}`);
     }
   };
 
@@ -406,6 +606,14 @@ export default function ChildDashboardPage() {
 
   return (
     <div className="dashboard-container flex min-h-screen bg-gray-50">
+      <NotificationAlert
+        notifications={notifications}
+        onDismiss={dismissNotification}
+        onMarkAsRead={markAsRead}
+        maxNotifications={3}
+        autoClose={8000}
+      />
+
       {/* Sidebar Navigation - CHILD-ONLY VERSION */}
       <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
         <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
@@ -536,16 +744,81 @@ export default function ChildDashboardPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Tasks Section */}
-          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col">
+            <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold text-gray-800">Your Tasks</h2>
               <span className="bg-cyan-100 text-cyan-800 px-3 py-1 rounded-full text-sm font-medium">
                 {todoTasks.length} pending
               </span>
             </div>
+
+            {/* Filter and Sort Controls */}
+            <div className="mb-4 p-3 bg-gray-50 rounded-xl space-y-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                  <select
+                    value={taskStatusFilter}
+                    onChange={(e) => setTaskStatusFilter(e.target.value as "all" | "pending" | "completed")}
+                    className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="all">All Tasks</option>
+                    <option value="pending">Pending Only</option>
+                    <option value="completed">Completed Only</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                  <select
+                    value={taskCategoryFilter}
+                    onChange={(e) => setTaskCategoryFilter(e.target.value)}
+                    className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="all">All Categories</option>
+                    <option value="general">General</option>
+                    <option value="chores">Chores</option>
+                    <option value="homework">Homework</option>
+                    <option value="school">School</option>
+                    <option value="cleaning">Cleaning</option>
+                    <option value="outdoor">Outdoor</option>
+                    <option value="pets">Pets</option>
+                    <option value="personal">Personal Care</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
+                  <select
+                    value={taskSortBy}
+                    onChange={(e) => setTaskSortBy(e.target.value as "date" | "points" | "name")}
+                    className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="date">Date (Newest First)</option>
+                    <option value="points">Points (Highest First)</option>
+                    <option value="name">Name (A-Z)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
             
-            <div className="space-y-4">
-              {tasks.map((task) => (
+            <div className="space-y-4 overflow-y-auto max-h-[500px] pr-2">
+              {getFilteredAndSortedTasks().length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <i className="fas fa-tasks text-4xl text-gray-300 mb-3"></i>
+                  {tasks.length === 0 ? (
+                    <>
+                      <p>No tasks yet!</p>
+                      <p className="text-sm">Your parent will assign tasks to you soon.</p>
+                    </>
+                  ) : (
+                    <>
+                      <p>No tasks match your filters</p>
+                      <p className="text-sm">Try adjusting your filters</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                getFilteredAndSortedTasks().map((task) => (
                 <div
                   key={task.id}
                   className={`p-4 rounded-xl border shadow-sm hover:shadow-md transition-shadow duration-300 ${
@@ -564,9 +837,16 @@ export default function ChildDashboardPage() {
                         )}
                       </div>
                       <div className="flex-1">
-                        <span className={`font-medium block ${task.completed ? 'text-[#00C2E0]/70 line-through' : 'text-gray-800'}`}>
-                          {task.title}
-                        </span>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`font-medium ${task.completed ? 'text-[#00C2E0]/70 line-through' : 'text-gray-800'}`}>
+                            {task.title}
+                          </span>
+                          {task.category && (
+                            <span className="px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded text-xs font-medium capitalize">
+                              {task.category}
+                            </span>
+                          )}
+                        </div>
                         {task.description && (
                           <p className="text-sm text-gray-600 mt-1">{task.description}</p>
                         )}
@@ -582,9 +862,6 @@ export default function ChildDashboardPage() {
                         <i className="fas fa-star text-sm"></i>
                         <span className="text-[#00C2E0]">{task.points}</span>
                       </div>
-                      {task.category && task.category !== 'general' && (
-                        <div className="text-xs text-[#00C2E0]/70 capitalize mt-1">{task.category}</div>
-                      )}
                     </div>
                   </div>
                   
@@ -608,12 +885,12 @@ export default function ChildDashboardPage() {
                     </div>
                   )}
                 </div>
-              ))}
+              )))}
             </div>
           </div>
 
           {/* Rewards Section */}
-          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+          <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-gray-800">Available Rewards</h2>
               <span className="text-lg font-bold text-[#006372] flex items-center gap-1">
@@ -622,15 +899,16 @@ export default function ChildDashboardPage() {
               </span>
             </div>
             
-            {rewards.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
-                <p>No rewards available yet</p>
-                <p className="text-sm">Ask your parents to create some rewards!</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {rewards.map((reward) => {
+            <div className="flex-1 overflow-y-auto max-h-[600px]">
+              {rewards.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
+                  <p>No rewards available yet</p>
+                  <p className="text-sm">Ask your parents to create some rewards!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {rewards.map((reward) => {
                   const redemption = redemptions.find(
                     r => r.reward_id === reward.id && (r.status === 'pending' || r.status === 'approved')
                   );
@@ -706,6 +984,7 @@ export default function ChildDashboardPage() {
                 })}
               </div>
             )}
+            </div>
           </div>
         </div>
 

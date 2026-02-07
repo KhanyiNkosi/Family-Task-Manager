@@ -3,46 +3,159 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
+
+interface Reward {
+  id: string;
+  title: string;
+  description: string | null;
+  points_cost: number;
+  family_id: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  is_active: boolean;
+}
 
 export default function RewardsStorePage() {
   const router = useRouter();
-  
-  // Note: In production, add proper authentication here
 
-  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [newRewardTitle, setNewRewardTitle] = useState("");
+  const [newRewardDescription, setNewRewardDescription] = useState("");
+  const [newRewardPoints, setNewRewardPoints] = useState("50");
 
-  const [rewards, setRewards] = useState([]);
-  const [newReward, setNewReward] = useState({ name: "", description: "", points: 0, stock: 1 });
+  useEffect(() => {
+    loadRewards();
+  }, []);
 
-  const approveRequest = (id: number) => {
-    setPendingApprovals(pendingApprovals.filter(req => req.id !== id));
-    alert("Reward approved! Points have been deducted.");
-  };
+  const loadRewards = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
 
-  const denyRequest = (id: number) => {
-    setPendingApprovals(pendingApprovals.filter(req => req.id !== id));
-    alert("Reward request denied.");
-  };
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
 
-  const addReward = () => {
-    if (newReward.name && newReward.description && newReward.points > 0) {
-      const newId = rewards.length > 0 ? Math.max(...rewards.map(r => r.id)) + 1 : 1;
-      // TODO: Add Supabase data fetching here;
-      setNewReward({ name: "", description: "", points: 0, stock: 1 });
-      alert("New reward added to store!");
+      if (!profile?.family_id) return;
+
+      // Load all active rewards for this family
+      const { data: rewardsData, error } = await supabase
+        .from('rewards')
+        .select('*')
+        .eq('family_id', profile.family_id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading rewards:', error);
+        return;
+      }
+
+      if (rewardsData) {
+        setRewards(rewardsData);
+      }
+    } catch (error) {
+      console.error('Error in loadRewards:', error);
     }
   };
 
-  const removeReward = (id: number) => {
-    if (confirm("Are you sure you want to remove this reward from the store?")) {
-      setRewards(rewards.filter(reward => reward.id !== id));
+  const handleCreateReward = async () => {
+    if (!newRewardTitle.trim()) {
+      alert('Please enter a reward title');
+      return;
+    }
+
+    const pointsCost = parseInt(newRewardPoints);
+    if (isNaN(pointsCost) || pointsCost <= 0) {
+      alert('Please enter a valid points cost');
+      return;
+    }
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        alert('You must be logged in to create rewards');
+        return;
+      }
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        alert('Family ID not found');
+        return;
+      }
+
+      // Insert reward into database
+      const { data: newReward, error } = await supabase
+        .from('rewards')
+        .insert({
+          title: newRewardTitle.trim(),
+          description: newRewardDescription.trim() || null,
+          points_cost: pointsCost,
+          family_id: profile.family_id,
+          created_by: user.id,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating reward:', error);
+        alert('Failed to create reward: ' + error.message);
+        return;
+      }
+
+      if (newReward) {
+        setRewards([newReward, ...rewards]);
+        setNewRewardTitle('');
+        setNewRewardDescription('');
+        setNewRewardPoints('50');
+        alert('Reward created successfully!');
+      }
+    } catch (error) {
+      console.error('Error in handleCreateReward:', error);
+      alert('Failed to create reward');
     }
   };
 
-  const updateStock = (id: number, change: number) => {
-    setRewards(rewards.map(reward => 
-      reward.id === id ? { ...reward, stock: Math.max(0, reward.stock + change) } : reward
-    ));
+  const handleDeleteReward = async (rewardId: string) => {
+    if (!confirm('Are you sure you want to delete this reward?')) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Instead of deleting, mark as inactive
+      const { error } = await supabase
+        .from('rewards')
+        .update({ is_active: false })
+        .eq('id', rewardId);
+
+      if (error) {
+        console.error('Error deleting reward:', error);
+        alert('Failed to delete reward');
+        return;
+      }
+
+      setRewards(rewards.filter(r => r.id !== rewardId));
+      alert('Reward deleted successfully');
+    } catch (error) {
+      console.error('Error in handleDeleteReward:', error);
+      alert('Failed to delete reward');
+    }
   };
 
   return (
@@ -73,66 +186,6 @@ export default function RewardsStorePage() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6">
-        {/* Pending Approvals Section */}
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-[#006372] flex items-center gap-3">
-              <i className="fas fa-clock"></i>
-              Pending Approvals
-              <span className="bg-[#00C2E0] text-white text-sm px-3 py-1 rounded-full">
-                {pendingApprovals.length} requests
-              </span>
-            </h2>
-            <div className="text-gray-600">
-              Children are waiting for your approval!
-            </div>
-          </div>
-
-          {pendingApprovals.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {pendingApprovals.map((request) => (
-                <div key={request.id} className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-yellow-500">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: request.iconBg }}>
-                        <i className={`${request.icon} text-xl`}></i>
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-gray-800">{request.name}</h3>
-                        <p className="text-sm text-gray-600">Requested by: <span className="font-bold">{request.requestedBy}</span></p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-[#00C2E0]">{request.points}</div>
-                      <div className="text-sm text-gray-500">points</div>
-                    </div>
-                  </div>
-                  <div className="flex gap-3 mt-4">
-                    <button
-                      onClick={() => approveRequest(request.id)}
-                      className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white py-2.5 rounded-lg font-bold hover:opacity-90"
-                    >
-                      <i className="fas fa-check mr-2"></i> Approve
-                    </button>
-                    <button
-                      onClick={() => denyRequest(request.id)}
-                      className="flex-1 bg-gradient-to-r from-red-500 to-pink-500 text-white py-2.5 rounded-lg font-bold hover:opacity-90"
-                    >
-                      <i className="fas fa-times mr-2"></i> Deny
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-8 text-center">
-              <i className="fas fa-check-circle text-4xl text-green-500 mb-4"></i>
-              <h3 className="text-xl font-bold text-green-800 mb-2">All Caught Up!</h3>
-              <p className="text-green-700">No pending reward requests at the moment.</p>
-            </div>
-          )}
-        </div>
-
         {/* Rewards Management Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add New Reward Form */}
@@ -154,8 +207,8 @@ export default function RewardsStorePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Reward Name *</label>
                     <input
                       type="text"
-                      value={newReward.name}
-                      onChange={(e) => setNewReward({...newReward, name: e.target.value})}
+                      value={newRewardTitle}
+                      onChange={(e) => setNewRewardTitle(e.target.value)}
                       className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
                       placeholder="e.g., Special Pizza Night"
                     />
@@ -164,8 +217,8 @@ export default function RewardsStorePage() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">Point Cost *</label>
                     <input
                       type="number"
-                      value={newReward.points}
-                      onChange={(e) => setNewReward({...newReward, points: parseInt(e.target.value) || 0})}
+                      value={newRewardPoints}
+                      onChange={(e) => setNewRewardPoints(e.target.value)}
                       className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
                       placeholder="Enter points required"
                       min="1"
@@ -176,45 +229,20 @@ export default function RewardsStorePage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
                   <textarea
-                    value={newReward.description}
-                    onChange={(e) => setNewReward({...newReward, description: e.target.value})}
+                    value={newRewardDescription}
+                    onChange={(e) => setNewRewardDescription(e.target.value)}
                     className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
                     rows={3}
                     placeholder="Describe what the child earns with this reward..."
                   />
                 </div>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Initial Stock</label>
-                    <div className="flex items-center gap-3">
-                      <button
-                        onClick={() => setNewReward({...newReward, stock: Math.max(1, newReward.stock - 1)})}
-                        className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200"
-                      >
-                        <i className="fas fa-minus"></i>
-                      </button>
-                      <input
-                        type="number"
-                        value={newReward.stock}
-                        onChange={(e) => setNewReward({...newReward, stock: parseInt(e.target.value) || 1})}
-                        className="w-24 p-3 border border-gray-300 rounded-lg text-center focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
-                        min="1"
-                      />
-                      <button
-                        onClick={() => setNewReward({...newReward, stock: newReward.stock + 1})}
-                        className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center hover:bg-gray-200"
-                      >
-                        <i className="fas fa-plus"></i>
-                      </button>
-                    </div>
-                  </div>
-
+                <div className="flex items-center justify-end">
                   <button
-                    onClick={addReward}
-                    disabled={!newReward.name || !newReward.description || newReward.points <= 0}
+                    onClick={handleCreateReward}
+                    disabled={!newRewardTitle.trim() || !newRewardDescription.trim() || parseInt(newRewardPoints) <= 0}
                     className={`px-8 py-3.5 rounded-xl font-bold transition ${
-                      newReward.name && newReward.description && newReward.points > 0
+                      newRewardTitle.trim() && newRewardDescription.trim() && parseInt(newRewardPoints) > 0
                         ? "bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 hover:shadow-lg"
                         : "bg-gray-300 text-gray-500 cursor-not-allowed"
                     }`}
@@ -229,56 +257,40 @@ export default function RewardsStorePage() {
             <div className="mt-8 bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
               <h2 className="text-2xl font-bold text-[#006372] mb-6">Current Rewards in Store</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {rewards.map((reward) => (
-                  <div key={reward.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition bg-gradient-to-br from-cyan-50 to-teal-50">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00C2E0]/20 to-[#006372]/20 flex items-center justify-center">
-                          <i className={`${reward.icon} text-[#006372]`}></i>
+              {rewards.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <i className="fas fa-gift text-4xl mb-4 text-gray-400"></i>
+                  <p className="text-lg">No rewards added yet. Create your first reward above!</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {rewards.map((reward) => (
+                    <div key={reward.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition bg-gradient-to-br from-cyan-50 to-teal-50">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-[#006372] text-lg">{reward.title}</h3>
+                          {reward.description && (
+                            <p className="text-gray-600 text-sm mt-1">{reward.description}</p>
+                          )}
                         </div>
-                        <div>
-                          <h3 className="font-bold text-[#006372] text-lg">{reward.name}</h3>
-                          <p className="text-gray-600 text-sm mt-1">{reward.description}</p>
+                        <div className="text-right ml-4">
+                          <div className="text-2xl font-bold text-[#00C2E0]">{reward.points_cost}</div>
+                          <div className="text-sm text-gray-500">points</div>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold text-[#00C2E0]">{reward.points}</div>
-                        <div className="text-sm text-gray-500">points</div>
+                      
+                      <div className="flex items-center justify-end mt-4 pt-4 border-t border-gray-200">
+                        <button
+                          onClick={() => handleDeleteReward(reward.id)}
+                          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                        >
+                          <i className="fas fa-trash mr-2"></i> Remove
+                        </button>
                       </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
-                      <div className="flex items-center gap-3">
-                        <div className="text-sm text-gray-700">
-                          Stock: <span className="font-bold">{reward.stock}</span>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => updateStock(reward.id, -1)}
-                            className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center hover:bg-gray-200"
-                            disabled={reward.stock <= 0}
-                          >
-                            <i className="fas fa-minus text-xs"></i>
-                          </button>
-                          <button
-                            onClick={() => updateStock(reward.id, 1)}
-                            className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center hover:bg-gray-200"
-                          >
-                            <i className="fas fa-plus text-xs"></i>
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => removeReward(reward.id)}
-                        className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                      >
-                        <i className="fas fa-trash mr-2"></i> Remove
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -299,20 +311,22 @@ export default function RewardsStorePage() {
                 <div className="p-4 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl border border-[#00C2E0]/30">
                   <div className="text-sm text-gray-600">Average Point Cost</div>
                   <div className="text-3xl font-bold text-[#006372] mt-2">
-                    {rewards.length > 0 ? Math.round(rewards.reduce((sum, r) => sum + r.points, 0) / rewards.length) : 0}
+                    {rewards.length > 0 ? Math.round(rewards.reduce((sum, r) => sum + r.points_cost, 0) / rewards.length) : 0}
                   </div>
                 </div>
                 
                 <div className="p-4 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl border border-[#00C2E0]/30">
-                  <div className="text-sm text-gray-600">Total Stock Available</div>
+                  <div className="text-sm text-gray-600">Lowest Cost Reward</div>
                   <div className="text-3xl font-bold text-[#006372] mt-2">
-                    {rewards.reduce((sum, r) => sum + r.stock, 0)}
+                    {rewards.length > 0 ? Math.min(...rewards.map(r => r.points_cost)) : 0}
                   </div>
                 </div>
                 
                 <div className="p-4 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-xl border border-[#00C2E0]/30">
-                  <div className="text-sm text-gray-600">Pending Approvals</div>
-                  <div className="text-3xl font-bold text-[#006372] mt-2">{pendingApprovals.length}</div>
+                  <div className="text-sm text-gray-600">Highest Cost Reward</div>
+                  <div className="text-3xl font-bold text-[#006372] mt-2">
+                    {rewards.length > 0 ? Math.max(...rewards.map(r => r.points_cost)) : 0}
+                  </div>
                 </div>
               </div>
               

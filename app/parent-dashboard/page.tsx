@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import NotificationAlert, { Notification, NotificationType } from '@/components/NotificationAlert';
+import NotificationAlert from '@/components/NotificationAlert';
+import { useNotifications } from '@/hooks/useNotifications';
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import AddChildSection from '@/components/AddChildSection';
@@ -82,24 +83,15 @@ export default function ParentDashboard() {
   const [isClient, setIsClient] = useState(false);
   const [parentProfileImage, setParentProfileImage] = useState("");
 
-  // Notification State
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-
-  const handleDismissNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notif => notif.id !== id));
-  };
-
-  const handleMarkAsRead = (id: string) => {
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === id ? { ...notif, read: true } : notif
-      )
-    );
-  };
+  // Use the notifications hook for real-time notifications
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    dismissNotification 
+  } = useNotifications();
 
   
-
-
   // Load profile image from localStorage
   useEffect(() => {
     setIsClient(true);
@@ -128,15 +120,9 @@ export default function ParentDashboard() {
   // State for bulletin messages
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
 
-  // State for reward requests
+  // State for reward redemptions
   const [rewardRequests, setRewardRequests] = useState<RewardRequest[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
-
-  // State for rewards
-  const [rewards, setRewards] = useState<Reward[]>([]);
-  const [newRewardTitle, setNewRewardTitle] = useState("");
-  const [newRewardDescription, setNewRewardDescription] = useState("");
-  const [newRewardPoints, setNewRewardPoints] = useState("50");
 
   // New task form state
   const [newTaskName, setNewTaskName] = useState("");
@@ -145,6 +131,14 @@ export default function ParentDashboard() {
   const [newBulletinMessage, setNewBulletinMessage] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
   const [newTaskCategory, setNewTaskCategory] = useState("general");
+
+  // Task filter and sort state
+  const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState<string>("all");
+  const [taskSortBy, setTaskSortBy] = useState<"date" | "points" | "name">("date");
+
+  // Loading state to prevent concurrent calls
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   // Permission check for child modifications
   const canModifyChild = false;
@@ -158,49 +152,109 @@ export default function ParentDashboard() {
 
   // Load tasks from database
   useEffect(() => {
-    loadTasks();
-    loadChildren();
-    loadRewards();
-    loadRedemptions();
+    let isMounted = true;
+    
+    const loadData = async () => {
+      if (isLoadingData) return;
+      setIsLoadingData(true);
+      
+      try {
+        if (isMounted) {
+          await Promise.all([
+            loadTasks(),
+            loadChildren(),
+            loadRedemptions()
+          ]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingData(false);
+        }
+      }
+    };
+    
+    loadData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  const loadRewards = async () => {
-    try {
-      const supabase = createClientSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) return;
+  // Set up real-time subscriptions
+  useEffect(() => {
+    const supabase = createClientSupabaseClient();
 
-      // Get user's family_id
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
+    // Subscribe to task changes
+    const tasksSubscription = supabase
+      .channel('parent-tasks-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'tasks' },
+        (payload) => {
+          console.log('Task change detected:', payload);
+          
+          // Show notification
+          if (payload.eventType === 'INSERT') {
+            setNotifications(prev => [...prev, {
+              id: Date.now().toString(),
+              title: 'New Task',
+              type: 'task' as NotificationType,
+              message: `New task created: ${payload.new.title}`,
+              timestamp: new Date(),
+              read: false
+            }]);
+          } else if (payload.eventType === 'UPDATE' && payload.new.completed && !payload.old.completed) {
+            setNotifications(prev => [...prev, {
+              id: Date.now().toString(),
+              title: 'Task Completed',
+              type: 'success' as NotificationType,
+              message: `Task completed: ${payload.new.title}`,
+              timestamp: new Date(),
+              read: false
+            }]);
+          }
+          
+          // Reload tasks (only if not already loading)
+          if (!isLoadingData) {
+            loadTasks();
+          }
+        }
+      )
+      .subscribe();
 
-      if (!profile?.family_id) return;
+    // Subscribe to reward redemption changes
+    const redemptionsSubscription = supabase
+      .channel('parent-redemptions-changes')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'reward_redemptions' },
+        (payload) => {
+          console.log('Redemption change detected:', payload);
+          
+          // Show notification for new redemption requests
+          if (payload.eventType === 'INSERT') {
+            setNotifications(prev => [...prev, {
+              id: Date.now().toString(),
+              title: 'Reward Request',
+              type: 'reward' as NotificationType,
+              message: 'New reward redemption request received!',
+              timestamp: new Date(),
+              read: false
+            }]);
+          }
+          
+          // Reload redemptions (only if not already loading)
+          if (!isLoadingData) {
+            loadRedemptions();
+          }
+        }
+      )
+      .subscribe();
 
-      // Load all active rewards for this family
-      const { data: rewardsData, error } = await supabase
-        .from('rewards')
-        .select('*')
-        .eq('family_id', profile.family_id)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error loading rewards:', error);
-        return;
-      }
-
-      if (rewardsData) {
-        setRewards(rewardsData);
-        console.log('Rewards loaded:', rewardsData);
-      }
-    } catch (error) {
-      console.error('Error in loadRewards:', error);
-    }
-  };
+    // Cleanup subscriptions on unmount
+    return () => {
+      supabase.removeChannel(tasksSubscription);
+      supabase.removeChannel(redemptionsSubscription);
+    };
+  }, [isLoadingData]);
 
   const loadRedemptions = async () => {
     try {
@@ -218,21 +272,21 @@ export default function ParentDashboard() {
 
       if (!profile?.family_id) return;
 
+      // First, get all family member IDs
+      const { data: familyMembers } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .eq('family_id', profile.family_id);
+
+      if (!familyMembers || familyMembers.length === 0) return;
+
+      const familyMemberIds = familyMembers.map(m => m.id);
+
       // Load all redemptions for family members
       const { data: redemptionsData, error } = await supabase
         .from('reward_redemptions')
-        .select(`
-          *,
-          reward:rewards(*),
-          user:profiles!reward_redemptions_user_id_fkey(id, full_name)
-        `)
-        .in('user_id', 
-          await supabase
-            .from('profiles')
-            .select('id')
-            .eq('family_id', profile.family_id)
-            .then(({ data }) => data?.map(p => p.id) || [])
-        )
+        .select('*')
+        .in('user_id', familyMemberIds)
         .order('redeemed_at', { ascending: false });
 
       if (error) {
@@ -240,11 +294,29 @@ export default function ParentDashboard() {
         return;
       }
 
-      if (redemptionsData) {
-        setRedemptions(redemptionsData);
-        console.log('Redemptions loaded:', redemptionsData);
+      // Load rewards separately
+      if (redemptionsData && redemptionsData.length > 0) {
+        const rewardIds = [...new Set(redemptionsData.map(r => r.reward_id))];
+        const { data: rewardsData } = await supabase
+          .from('rewards')
+          .select('*')
+          .in('id', rewardIds);
+
+        // Manually join the data
+        const enrichedRedemptions = redemptionsData.map(redemption => ({
+          ...redemption,
+          reward: rewardsData?.find(r => r.id === redemption.reward_id),
+          user: familyMembers.find(m => m.id === redemption.user_id)
+        }));
+
+        setRedemptions(enrichedRedemptions);
+        console.log('Redemptions loaded:', enrichedRedemptions);
+      } else {
+        setRedemptions([]);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore AbortError - it's expected during cleanup/re-renders
+      if (error?.name === 'AbortError') return;
       console.error('Error in loadRedemptions:', error);
     }
   };
@@ -307,7 +379,9 @@ export default function ParentDashboard() {
         setFamilyChildren(childrenWithPoints);
         console.log('Children loaded with points:', childrenWithPoints);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore AbortError - it's expected during cleanup/re-renders
+      if (error?.name === 'AbortError') return;
       console.error('Error in loadChildren:', error);
     }
   };
@@ -362,9 +436,45 @@ export default function ParentDashboard() {
         }));
         setActiveTasks(formattedTasks);
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Ignore AbortError - it's expected during cleanup/re-renders
+      if (error?.name === 'AbortError') return;
       console.error('Error in loadTasks:', error);
     }
+  };
+
+  // Filter and sort tasks
+  const getFilteredAndSortedTasks = () => {
+    let filtered = [...activeTasks];
+
+    // Apply status filter
+    if (taskStatusFilter === "pending") {
+      filtered = filtered.filter(t => t.status === "pending" || (!t.completed && !t.approved));
+    } else if (taskStatusFilter === "completed") {
+      filtered = filtered.filter(t => t.status === "completed" || t.status === "approved" || t.completed || t.approved);
+    }
+
+    // Apply category filter
+    if (taskCategoryFilter !== "all") {
+      filtered = filtered.filter(t => t.category === taskCategoryFilter);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (taskSortBy) {
+        case "points":
+          return b.points - a.points;
+        case "name":
+          return a.title.localeCompare(b.title);
+        case "date":
+        default:
+          const dateA = new Date(a.created_at || 0).getTime();
+          const dateB = new Date(b.created_at || 0).getTime();
+          return dateB - dateA;
+      }
+    });
+
+    return filtered;
   };
 
   // Add new task
@@ -459,22 +569,28 @@ export default function ParentDashboard() {
       const task = activeTasks.find(t => t.id === taskId);
       if (!task) {
         console.error('Task not found:', taskId);
+        alert('Task not found');
         return;
       }
 
       console.log('Approving task:', { taskId, assignedTo: task.assigned_to, points: task.points });
 
-      // Update task status to approved
+      // Update task - set approved to true (and ensure completed is true)
       const { error: taskError } = await supabase
         .from('tasks')
-        .update({ completed: true, approved: true })
+        .update({ 
+          completed: true, 
+          approved: true 
+        })
         .eq('id', taskId);
 
       if (taskError) {
         console.error('Error approving task:', taskError);
-        alert('Failed to approve task');
+        alert(`Failed to approve task: ${taskError.message}`);
         return;
       }
+
+      console.log('Task approved successfully, now awarding points...');
 
       // Award points to child
       console.log('Attempting to award points via RPC...');
@@ -523,7 +639,7 @@ export default function ParentDashboard() {
       alert(`Task approved! ${task.points} points awarded to child!`);
     } catch (error) {
       console.error('Error in handleApproveTask:', error);
-      alert('Failed to approve task');
+      alert(`Failed to approve task: ${error.message}`);
     }
   };
 
@@ -591,20 +707,25 @@ export default function ParentDashboard() {
     try {
       const supabase = createClientSupabaseClient();
       
-      const { error } = await supabase
+      console.log('Resolving help request for task:', taskId);
+      
+      const { data, error } = await supabase
         .from('tasks')
         .update({ 
           help_requested: false,
           help_requested_at: null,
           help_message: null
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .select();
 
       if (error) {
         console.error('Error resolving help request:', error);
-        alert('Failed to resolve help request');
+        alert(`Failed to resolve help request: ${error.message}`);
         return;
       }
+
+      console.log('Help request resolved successfully:', data);
 
       // Update local state
       setActiveTasks(activeTasks.map(task =>
@@ -614,102 +735,11 @@ export default function ParentDashboard() {
       alert('Help request resolved!');
     } catch (error) {
       console.error('Error in handleResolveHelp:', error);
-      alert('Failed to resolve help request');
+      alert(`Failed to resolve help request: ${error.message}`);
+    }
+  };
 
   // Create a new reward
-  const handleCreateReward = async () => {
-    if (!newRewardTitle.trim()) {
-      alert('Please enter a reward title');
-      return;
-    }
-
-    const pointsCost = parseInt(newRewardPoints);
-    if (isNaN(pointsCost) || pointsCost <= 0) {
-      alert('Please enter a valid points cost');
-      return;
-    }
-
-    try {
-      const supabase = createClientSupabaseClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        alert('You must be logged in to create rewards');
-        return;
-      }
-
-      // Get user's family_id
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.family_id) {
-        alert('Family ID not found');
-        return;
-      }
-
-      // Insert reward into database
-      const { data: newReward, error } = await supabase
-        .from('rewards')
-        .insert({
-          title: newRewardTitle.trim(),
-          description: newRewardDescription.trim() || null,
-          points_cost: pointsCost,
-          family_id: profile.family_id,
-          created_by: user.id,
-          is_active: true
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating reward:', error);
-        alert('Failed to create reward: ' + error.message);
-        return;
-      }
-
-      if (newReward) {
-        setRewards([newReward, ...rewards]);
-        setNewRewardTitle('');
-        setNewRewardDescription('');
-        setNewRewardPoints('50');
-        alert('Reward created successfully!');
-      }
-    } catch (error) {
-      console.error('Error in handleCreateReward:', error);
-      alert('Failed to create reward');
-    }
-  };
-
-  // Delete a reward
-  const handleDeleteReward = async (rewardId: string) => {
-    if (!confirm('Are you sure you want to delete this reward?')) return;
-
-    try {
-      const supabase = createClientSupabaseClient();
-      
-      // Instead of deleting, mark as inactive
-      const { error } = await supabase
-        .from('rewards')
-        .update({ is_active: false })
-        .eq('id', rewardId);
-
-      if (error) {
-        console.error('Error deleting reward:', error);
-        alert('Failed to delete reward');
-        return;
-      }
-
-      setRewards(rewards.filter(r => r.id !== rewardId));
-      alert('Reward deleted successfully');
-    } catch (error) {
-      console.error('Error in handleDeleteReward:', error);
-      alert('Failed to delete reward');
-    }
-  };
-
   // Add bulletin message
   const handleAddBulletinMessage = () => {
     if (!newBulletinMessage.trim()) return;
@@ -877,8 +907,8 @@ export default function ParentDashboard() {
     <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE]">
       <NotificationAlert
         notifications={notifications}
-        onDismiss={handleDismissNotification}
-        onMarkAsRead={handleMarkAsRead}
+        onDismiss={dismissNotification}
+        onMarkAsRead={markAsRead}
         maxNotifications={3}
         autoClose={8000}
       />
@@ -1168,58 +1198,127 @@ export default function ParentDashboard() {
             <div className="space-y-8">
               {/* Active Tasks Card */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-[#006372]">Active Family Tasks</h2>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                    {activeTasks?.filter(t => !t.completed).length} tasks
+                    {getFilteredAndSortedTasks().length} tasks
                   </span>
                 </div>
 
-                <div className="space-y-4">
-                  {activeTasks?.filter(t => !t.completed).map((task) => {
+                {/* Filter and Sort Controls */}
+                <div className="mb-4 p-4 bg-gray-50 rounded-xl space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
+                      <select
+                        value={taskStatusFilter}
+                        onChange={(e) => setTaskStatusFilter(e.target.value as "all" | "pending" | "completed")}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+                      >
+                        <option value="all">All Tasks</option>
+                        <option value="pending">Pending Only</option>
+                        <option value="completed">Completed Only</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+                      <select
+                        value={taskCategoryFilter}
+                        onChange={(e) => setTaskCategoryFilter(e.target.value)}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+                      >
+                        <option value="all">All Categories</option>
+                        <option value="general">General</option>
+                        <option value="chores">Chores</option>
+                        <option value="homework">Homework</option>
+                        <option value="school">School</option>
+                        <option value="cleaning">Cleaning</option>
+                        <option value="outdoor">Outdoor</option>
+                        <option value="pets">Pets</option>
+                        <option value="personal">Personal Care</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Sort By</label>
+                      <select
+                        value={taskSortBy}
+                        onChange={(e) => setTaskSortBy(e.target.value as "date" | "points" | "name")}
+                        className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+                      >
+                        <option value="date">Date (Newest First)</option>
+                        <option value="points">Points (Highest First)</option>
+                        <option value="name">Name (A-Z)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
+                  {getFilteredAndSortedTasks().length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <i className="fas fa-tasks text-4xl text-gray-300 mb-3"></i>
+                      <p>No tasks match your filters</p>
+                      <p className="text-sm">Try adjusting your filters or add a new task</p>
+                    </div>
+                  ) : (
+                    getFilteredAndSortedTasks().map((task) => {
                     const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || task.assignedTo;
                     return (
                     <div key={task.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold text-gray-800">{task.title}</h3>
-                          <p className="text-sm text-gray-600 mt-1">
+                      <div className="flex items-center justify-between mb-2 gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <h3 className="font-semibold text-gray-800">{task.title}</h3>
+                            {task.category && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium capitalize">
+                                {task.category}
+                              </span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                              task.status === 'completed' || task.status === 'approved' || task.completed || task.approved
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {task.status === 'completed' || task.status === 'approved' || task.completed || task.approved ? 'Completed' : 'Pending'}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">
                             Assigned to: <span className="font-medium">{childName}</span>
                             {task.due_date && (
                               <> • Due: <span className="font-medium">{new Date(task.due_date).toLocaleDateString()}</span></>
                             )}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1 whitespace-nowrap">
                             <i className="fas fa-star text-amber-500"></i>
                             {task.points}
                           </span>
-                          {task.status === "pending" && (
-                            <>
-                              <button
-                                onClick={() => handleCompleteTask(task.id)}
-                                className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
-                              >
-                                Complete
-                              </button>
-                              <button
-                                onClick={() => handleDeleteTask(task.id)}
-                                className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
-                                title="Delete task"
-                              >
-                                <i className="fas fa-trash"></i>
-                              </button>
-                            </>
+                          {(task.status === "pending" || (!task.completed && !task.approved)) && (
+                            <button
+                              onClick={() => handleCompleteTask(task.id)}
+                              className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90 whitespace-nowrap"
+                            >
+                              Complete
+                            </button>
                           )}
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="px-3 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg text-sm font-medium hover:opacity-90"
+                            title="Delete task"
+                          >
+                            <i className="fas fa-trash"></i>
+                          </button>
                         </div>
                       </div>
                       {task.description && (
-                        <p className="text-gray-600 text-sm mt-3">{task.description}</p>
+                        <p className="text-gray-600 text-sm mt-2">{task.description}</p>
                       )}
                     </div>
                     );
-                  })}
+                  })
+                  )}
                 </div>
 
                 <div className="mt-6 p-4 bg-gray-50 rounded-xl">
@@ -1400,106 +1499,23 @@ export default function ParentDashboard() {
                 </div>
               </div>
 
-              {/* Rewards Management Card */}
-              <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-[#006372]">Rewards Store</h2>
-                  <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium flex items-center gap-1">
-                    <i className="fas fa-trophy text-emerald-600"></i>
-                    {rewards.length} rewards
-                  </span>
-                </div>
-
-                {/* Create New Reward Form */}
-                <div className="mb-6 p-4 bg-gradient-to-br from-emerald-50/30 to-white rounded-xl border border-emerald-100/50">
-                  <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                    <i className="fas fa-plus-circle text-emerald-600"></i>
-                    Create New Reward
-                  </h3>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={newRewardTitle}
-                      onChange={(e) => setNewRewardTitle(e.target.value)}
-                      placeholder="Reward title (e.g., Extra Screen Time)"
-                      className="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                    />
-                    <textarea
-                      value={newRewardDescription}
-                      onChange={(e) => setNewRewardDescription(e.target.value)}
-                      placeholder="Description (optional)"
-                      className="w-full p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent h-20"
-                    />
-                    <div className="flex items-center gap-2">
-                      <i className="fas fa-star text-amber-500"></i>
-                      <input
-                        type="number"
-                        value={newRewardPoints}
-                        onChange={(e) => setNewRewardPoints(e.target.value)}
-                        placeholder="Points cost"
-                        min="1"
-                        className="flex-1 p-3 border border-emerald-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                      />
-                      <span className="text-sm text-gray-600">points</span>
-                    </div>
-                    <button
-                      onClick={handleCreateReward}
-                      className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-lg font-medium hover:opacity-90 flex items-center justify-center gap-2"
-                    >
-                      <i className="fas fa-plus"></i>
-                      Create Reward
-                    </button>
-                  </div>
-                </div>
-
-                {/* Active Rewards List */}
-                <div className="space-y-3">
-                  {rewards.length === 0 ? (
-                    <div className="text-center py-8 text-gray-500">
-                      <i className="fas fa-trophy text-4xl text-gray-300 mb-3"></i>
-                      <p>No rewards created yet</p>
-                      <p className="text-sm">Create your first reward above!</p>
-                    </div>
-                  ) : (
-                    rewards.map((reward) => (
-                      <div key={reward.id} className="p-4 bg-gradient-to-br from-emerald-50/30 to-white rounded-xl border border-emerald-100/50 hover:border-emerald-200 transition-colors">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-gray-800">{reward.title}</h3>
-                            {reward.description && (
-                              <p className="text-sm text-gray-600 mt-1">{reward.description}</p>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
-                                <i className="fas fa-star text-amber-500"></i>
-                                {reward.points_cost}
-                              </span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(reward.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => handleDeleteReward(reward.id)}
-                            className="text-gray-400 hover:text-red-500 transition-colors ml-2 p-2 hover:bg-red-50 rounded"
-                            title="Delete reward"
-                          >
-                            <i className="fas fa-trash text-sm"></i>
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-
               {/* Reward Redemptions Card */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Reward Redemptions</h2>
-                  <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                    {redemptions?.filter(r => r.status === "pending").length} pending
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={loadRedemptions}
+                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors"
+                      title="Refresh redemptions"
+                    >
+                      <i className="fas fa-refresh mr-1"></i>
+                      Refresh
+                    </button>
+                    <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                      {redemptions?.filter(r => r.status === "pending").length} pending
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -1586,9 +1602,6 @@ export default function ParentDashboard() {
     </div>
   );
 }
-
-
-
 
 
 
