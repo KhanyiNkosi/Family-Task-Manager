@@ -1170,7 +1170,7 @@ export default function ChildDashboardPage() {
 
       {/* Toast Notification */}
       {toast.show && (
-        <div className="fixed bottom-6 right-6 bg-white p-4 rounded-xl shadow-2xl border-l-4 border-[#00C2E0] animate-slideIn">
+        <div className="fixed bottom-6 right-6 bg-white p-4 rounded-xl shadow-2xl border-l-4 border-[#00C2E0] animate-slideIn z-50 max-w-md">
           <div className="font-bold text-gray-800 mb-1">Great Job! 🎉</div>
           <div className="text-sm text-gray-600">{toast.message}</div>
         </div>
