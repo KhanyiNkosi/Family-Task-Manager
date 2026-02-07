@@ -10,6 +10,11 @@ export default function RegisterSuccessPage() {
   const [resending, setResending] = useState(false);
   const [resendCount, setResendCount] = useState(0);
   const [canResend, setCanResend] = useState(true);
+  const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+
+  const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+    setAlertModal({ show: true, message, type });
+  };
 
   useEffect(() => {
     // Get email from localStorage (set during registration)
@@ -21,7 +26,7 @@ export default function RegisterSuccessPage() {
 
   const handleResendEmail = async () => {
     if (!email || !canResend || resendCount >= 3) {
-      alert("Too many attempts. Please wait or contact support.");
+      showAlert("Too many attempts. Please wait or contact support.", "warning");
       return;
     }
 
@@ -38,10 +43,10 @@ export default function RegisterSuccessPage() {
       });
 
       if (error) {
-        alert(`Error: ${error.message}`);
+        showAlert(`Error: ${error.message}`, "error");
       } else {
         setResendCount(prev => prev + 1);
-        alert("✅ Confirmation email resent! Please check your inbox.");
+        showAlert("✅ Confirmation email resent! Please check your inbox.", "success");
         
         // Disable resend for 2 minutes after 3 attempts
         if (resendCount >= 2) {
@@ -50,7 +55,7 @@ export default function RegisterSuccessPage() {
         }
       }
     } catch (err) {
-      alert("Failed to resend email");
+      showAlert("Failed to resend email", "error");
     } finally {
       setResending(false);
     }
@@ -132,6 +137,42 @@ export default function RegisterSuccessPage() {
           </div>
         </div>
       </div>
+
+      {/* Alert Modal */}
+      {alertModal.show && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+        >
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn" onClick={(e) => e.stopPropagation()}>
+            <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
+              alertModal.type === "success" ? "bg-green-100" :
+              alertModal.type === "error" ? "bg-red-100" :
+              alertModal.type === "warning" ? "bg-yellow-100" :
+              "bg-blue-100"
+            }`}>
+              <span className={`text-3xl ${
+                alertModal.type === "success" ? "text-green-600" :
+                alertModal.type === "error" ? "text-red-600" :
+                alertModal.type === "warning" ? "text-yellow-600" :
+                "text-blue-600"
+              }`}>
+                {alertModal.type === "success" ? "✓" : alertModal.type === "error" ? "✕" : alertModal.type === "warning" ? "⚠" : "ℹ"}
+              </span>
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2 text-gray-800">
+              {alertModal.type === "success" ? "Success" : alertModal.type === "error" ? "Error" : alertModal.type === "warning" ? "Warning" : "Info"}
+            </h3>
+            <p className="text-gray-700 text-center mb-6 whitespace-pre-line">{alertModal.message}</p>
+            <button
+              onClick={() => setAlertModal({ show: false, message: "", type: "info" })}
+              className="w-full bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
