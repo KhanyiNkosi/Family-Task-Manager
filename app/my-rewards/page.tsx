@@ -286,6 +286,7 @@ export default function MyRewardsPage() {
           user_id: user.id,
           family_id: profile.family_id,
           type: 'reward_suggestion',
+          title: 'New Reward Suggestion',
           message: `${profile.full_name || 'Your child'} suggested a new reward: "${name}" - ${description} (${points || '?'} points)`,
           read: false,
           metadata: {
