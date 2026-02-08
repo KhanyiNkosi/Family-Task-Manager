@@ -44,10 +44,25 @@ export default function MyRewardsPage() {
 
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
+  const [promptModal, setPromptModal] = useState<{ show: boolean; title: string; fields: { label: string; value: string; type: string }[]; onSubmit: (values: string[]) => void }>({ show: false, title: "", fields: [], onSubmit: () => {} });
 
   // Modal helper function
   const showAlert = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
     setAlertModal({ show: true, message, type });
+  };
+
+  const showPrompt = (title: string, fields: { label: string; value: string; type: string }[]): Promise<string[]> => {
+    return new Promise((resolve) => {
+      setPromptModal({
+        show: true,
+        title,
+        fields,
+        onSubmit: (values: string[]) => {
+          setPromptModal({ show: false, title: "", fields: [], onSubmit: () => {} });
+          resolve(values);
+        }
+      });
+    });
   };
 
 
@@ -200,10 +215,89 @@ export default function MyRewardsPage() {
 
       showAlert(`Request sent to parents for: ${rewardName}\nParents will review and approve.`, "success");
       
+      // Refresh redemptions list
+      const { data: userRedemptions } = await supabase
+        .from('reward_redemptions')
+        .select(`
+          *,
+          reward:rewards(*)
+        `)
+        .eq('user_id', user.id)
+        .order('redeemed_at', { ascending: false });
+
+      if (userRedemptions) {
+        setRedemptions(userRedemptions);
+      }
+      
       // Stay on my-rewards page so child can continue browsing/requesting rewards
     } catch (error) {
       console.error('Error in redeemReward:', error);
       showAlert('Failed to redeem reward', "error");
+    }
+  };
+
+  // Function to suggest a new reward to parents
+  const handleSuggestReward = async () => {
+    const values = await showPrompt("Suggest a Reward", [
+      { label: "Reward Name", value: "", type: "text" },
+      { label: "Description", value: "", type: "text" },
+      { label: "Points Cost (suggestion)", value: "", type: "number" }
+    ]);
+
+    if (!values || !values[0] || !values[1]) {
+      return; // User cancelled or didn't fill required fields
+    }
+
+    const [name, description, points] = values;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in to suggest rewards', "error");
+        return;
+      }
+
+      // Get user's profile for family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        showAlert('Could not find your family information', "error");
+        return;
+      }
+
+      // Create a notification for the parents
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          family_id: profile.family_id,
+          type: 'reward_suggestion',
+          message: `${profile.full_name || 'Your child'} suggested a new reward: "${name}" - ${description} (${points || '?'} points)`,
+          read: false,
+          metadata: {
+            suggestion_type: 'reward',
+            reward_name: name,
+            reward_description: description,
+            suggested_points: points || null
+          }
+        });
+
+      if (error) {
+        console.error('Error creating suggestion:', error);
+        showAlert('Failed to send suggestion: ' + error.message, "error");
+        return;
+      }
+
+      showAlert(`Reward suggestion sent to parents!\n\n"${name}"\nYour parents will review your suggestion.`, "success");
+    } catch (error) {
+      console.error('Error in handleSuggestReward:', error);
+      showAlert('Failed to send suggestion', "error");
     }
   };
 
@@ -217,7 +311,23 @@ export default function MyRewardsPage() {
             <span>Back to Dashboard</span>
           </Link>
           <h1 className="text-2xl font-bold">My Rewards</h1>
-          <div className="w-24"></div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleSuggestReward}
+              className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all font-medium"
+              title="Suggest a new reward"
+            >
+              <i className="fas fa-lightbulb"></i>
+              <span className="hidden md:inline">Suggest Reward</span>
+            </button>
+            <Link
+              href="/child-dashboard"
+              className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all"
+              title="Go to Dashboard"
+            >
+              <i className="fas fa-home text-xl"></i>
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -428,6 +538,60 @@ export default function MyRewardsPage() {
             >
               OK
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Prompt Modal for Reward Suggestion */}
+      {promptModal.show && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-fadeIn">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+            <div className="w-16 h-16 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-4">
+              <i className="fas fa-lightbulb text-3xl text-blue-600"></i>
+            </div>
+            <h3 className="text-xl font-bold text-center mb-2 text-gray-800">{promptModal.title}</h3>
+            <p className="text-gray-600 text-center mb-6 text-sm">Tell your parents what reward you'd like!</p>
+            
+            <div className="space-y-4 mb-6">
+              {promptModal.fields.map((field, index) => (
+                <div key={index}>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {field.label}
+                    {index < 2 && <span className="text-red-500">*</span>}
+                  </label>
+                  <input
+                    type={field.type}
+                    defaultValue={field.value}
+                    id={`prompt-field-${index}`}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+                    placeholder={field.label}
+                  />
+                </div>
+              ))}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setPromptModal({ show: false, title: "", fields: [], onSubmit: () => {} });
+                }}
+                className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const values = promptModal.fields.map((_, index) => {
+                    const input = document.getElementById(`prompt-field-${index}`) as HTMLInputElement;
+                    return input ? input.value : "";
+                  });
+                  promptModal.onSubmit(values);
+                }}
+                className="flex-1 bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+              >
+                Send Suggestion
+              </button>
+            </div>
           </div>
         </div>
       )}
