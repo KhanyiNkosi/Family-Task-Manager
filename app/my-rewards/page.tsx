@@ -238,7 +238,7 @@ export default function MyRewardsPage() {
       }
 
       // Create notification for parent
-      const { error: notificationError } = await supabase
+      const { error: notificationError, data: notificationData } = await supabase
         .from('notifications')
         .insert({
           user_id: parentProfile.id,
@@ -249,7 +249,8 @@ export default function MyRewardsPage() {
           read: false,
           action_url: '/rewards-store',
           action_text: 'Review Reward'
-        });
+        })
+        .select();
 
       if (notificationError) {
         console.error('Error creating notification:', notificationError);
@@ -257,6 +258,7 @@ export default function MyRewardsPage() {
         return;
       }
 
+      console.log('✅ Reminder notification created:', notificationData);
       showAlert('Reminder sent to parent! 📬', "success");
     } catch (error) {
       console.error('Error in sendRewardReminder:', error);
