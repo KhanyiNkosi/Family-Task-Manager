@@ -1101,11 +1101,6 @@ export default function ParentDashboard() {
           </nav>
 
           <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
-            <div className="p-3 bg-white/10 rounded-xl">
-              <p className="text-sm text-white/80">Logged in as:</p>
-              <p className="font-bold text-white">Parent</p>
-            </div>
-
             <button
               onClick={() => window.history.back()}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
