@@ -12,6 +12,18 @@ interface Reward {
   cost: number;
 }
 
+interface RewardRedemption {
+  id: string;
+  reward_id: string;
+  user_id: string;
+  points_spent: number;
+  status: 'pending' | 'approved' | 'rejected';
+  redeemed_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  reward?: Reward;
+}
+
 export default function MyRewardsPage() {
   const [userRole, setUserRole] = useState("child");
   const router = useRouter();
@@ -26,6 +38,7 @@ export default function MyRewardsPage() {
   }, [router]);
 
   const [availableRewards, setAvailableRewards] = useState<Reward[]>([]);
+  const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
 
   const [myPoints, setMyPoints] = useState(0);
 
@@ -93,12 +106,63 @@ export default function MyRewardsPage() {
             })));
             console.log('Loaded rewards:', familyRewards.length);
           }
+
+          // Fetch child's reward redemptions
+          const { data: userRedemptions, error: redemptionsError } = await supabase
+            .from('reward_redemptions')
+            .select(`
+              *,
+              reward:rewards(*)
+            `)
+            .eq('user_id', user.id)
+            .order('redeemed_at', { ascending: false });
+
+          if (redemptionsError) {
+            console.error('Error fetching redemptions:', redemptionsError);
+          } else if (userRedemptions) {
+            console.log('Loaded redemptions:', userRedemptions.length);
+            setRedemptions(userRedemptions);
+          }
         }
       } catch (error) {
         console.error('Error in fetchData:', error);
       }
     };
     fetchData();
+
+    // Set up real-time subscription for reward redemptions
+    const supabase = createClientSupabaseClient();
+    const channel = supabase
+      .channel('my-rewards-changes')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'reward_redemptions' },
+        async (payload) => {
+          console.log('Redemption updated:', payload);
+          
+          // Refresh redemptions when status changes
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: userRedemptions } = await supabase
+              .from('reward_redemptions')
+              .select(`
+                *,
+                reward:rewards(*)
+              `)
+              .eq('user_id', user.id)
+              .order('redeemed_at', { ascending: false });
+
+            if (userRedemptions) {
+              setRedemptions(userRedemptions);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []); // Empty dependency array means this runs once on component mount
   // --- End of Data Fetching ---
 
@@ -169,13 +233,81 @@ export default function MyRewardsPage() {
         </div>
 
         {/* AVAILABLE REWARDS */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 mb-8">
+          <h2 className="text-2xl font-bold text-[#006372] mb-6">Pending Requests</h2>
+          
+          {redemptions.filter(r => r.status === 'pending').length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <i className="fas fa-clock text-4xl text-gray-300 mb-3"></i>
+              <p>No pending requests</p>
+              <p className="text-sm">Request a reward below and it will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {redemptions.filter(r => r.status === 'pending').map((redemption) => (
+                <div key={redemption.id} className="border border-amber-200 bg-amber-50 rounded-xl p-6">
+                  <div className="text-center">
+                    <i className="fas fa-clock text-3xl text-amber-600 mb-3"></i>
+                    <div className="font-bold text-amber-700 text-lg mb-2">Pending Approval</div>
+                    <div className="text-gray-700 font-medium mb-1">{redemption.reward?.title || 'Unknown Reward'}</div>
+                    <div className="text-sm text-amber-600 mb-2">{redemption.points_spent} points</div>
+                    <div className="text-xs text-gray-500">
+                      Requested {new Date(redemption.redeemed_at).toLocaleDateString()}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-2">Waiting for parent approval...</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* APPROVED REWARDS */}
+        {redemptions.filter(r => r.status === 'approved').length > 0 && (
+          <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100 mb-8">
+            <h2 className="text-2xl font-bold text-green-600 mb-6">Approved Rewards</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {redemptions.filter(r => r.status === 'approved').map((redemption) => (
+                <div key={redemption.id} className="border border-green-200 bg-green-50 rounded-xl p-6">
+                  <div className="text-center">
+                    <i className="fas fa-check-circle text-3xl text-green-600 mb-3"></i>
+                    <div className="font-bold text-green-700 text-lg mb-2">Approved!</div>
+                    <div className="text-gray-700 font-medium mb-1">{redemption.reward?.title || 'Unknown Reward'}</div>
+                    <div className="text-sm text-green-600 mb-2">{redemption.points_spent} points</div>
+                    {redemption.approved_at && (
+                      <div className="text-xs text-gray-500">
+                        Approved {new Date(redemption.approved_at).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* AVAILABLE REWARDS */}
         <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
           <h2 className="text-2xl font-bold text-[#006372] mb-6">Available Rewards</h2>
           <p className="text-gray-600 mb-6">Redeem your points for these rewards:</p>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {availableRewards.map((reward, index) => (
-              <div key={index} className="border border-[#00C2E0]/30 rounded-xl p-6 hover:shadow-md transition bg-gradient-to-br from-cyan-50 to-teal-50">
+            {availableRewards.map((reward, index) => {
+              const redemption = redemptions.find(
+                r => r.reward_id === reward.id && (r.status === 'pending' || r.status === 'approved')
+              );
+              const isRedeemed = redemption?.status === 'approved';
+              const isPending = redemption?.status === 'pending';
+              
+              return (
+              <div key={index} className={`border rounded-xl p-6 hover:shadow-md transition ${
+                isRedeemed
+                  ? 'bg-green-50 border-green-200'
+                  : isPending
+                  ? 'bg-amber-50 border-amber-200'
+                  : 'bg-gradient-to-br from-cyan-50 to-teal-50 border-[#00C2E0]/30'
+              }`}>
                 <div className="flex justify-between items-start mb-4">
                   <div>
                     <h3 className="text-xl font-bold text-[#006372]">{reward.name}</h3>
@@ -189,7 +321,15 @@ export default function MyRewardsPage() {
                 
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm">
-                    {myPoints >= reward.cost ? (
+                    {isRedeemed ? (
+                      <span className="text-green-600">
+                        <i className="fas fa-check-circle mr-1"></i> Approved!
+                      </span>
+                    ) : isPending ? (
+                      <span className="text-amber-600">
+                        <i className="fas fa-clock mr-1"></i> Pending approval
+                      </span>
+                    ) : myPoints >= reward.cost ? (
                       <span className="text-green-600">
                         <i className="fas fa-check-circle mr-1"></i> You have enough points!
                       </span>
@@ -202,22 +342,25 @@ export default function MyRewardsPage() {
                   {/* Button changed to teal/cyan gradient */}
                   <button 
                     className={`px-6 py-2 rounded-lg font-bold transition ${
-                      myPoints >= reward.cost
+                      isRedeemed || isPending
+                        ? "bg-gray-300 text-gray-600 cursor-not-allowed"
+                        : myPoints >= reward.cost
                         ? "bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 hover:shadow-md"
                         : "bg-gray-200 text-gray-500 cursor-not-allowed"
                     }`}
-                    disabled={myPoints < reward.cost}
+                    disabled={myPoints < reward.cost || isRedeemed || isPending}
                     onClick={() => {
-                      if (myPoints >= reward.cost) {
+                      if (myPoints >= reward.cost && !isRedeemed && !isPending) {
                         redeemReward(reward.id, reward.name, reward.cost);
                       }
                     }}
                   >
-                    {myPoints >= reward.cost ? "Request Reward" : "Need More Points"}
+                    {isRedeemed ? "Approved" : isPending ? "Pending" : myPoints >= reward.cost ? "Request Reward" : "Need More Points"}
                   </button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
           
           {availableRewards.length === 0 && (
