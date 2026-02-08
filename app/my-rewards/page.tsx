@@ -136,8 +136,7 @@ export default function MyRewardsPage() {
 
       showAlert(`Request sent to parents for: ${rewardName}\nParents will review and approve.`, "success");
       
-      // Redirect back to child dashboard
-      router.push('/child-dashboard');
+      // Stay on my-rewards page so child can continue browsing/requesting rewards
     } catch (error) {
       console.error('Error in redeemReward:', error);
       showAlert('Failed to redeem reward', "error");
