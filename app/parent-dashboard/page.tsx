@@ -245,8 +245,9 @@ export default function ParentDashboard() {
           // Note: Notifications are handled by database triggers and useNotifications hook
           // No need to manually create notifications here
           
-          // Reload redemptions (only if not already loading)
-          if (!isLoadingData) {
+          // Reload redemptions (only if not already loading and not a delete event)
+          // For delete events, the local state is already updated
+          if (!isLoadingData && payload.eventType !== 'DELETE') {
             loadRedemptions();
           }
         }

@@ -641,7 +641,7 @@ export default function ChildDashboardPage() {
       }
 
       // Create notification for parent
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('notifications')
         .insert({
           user_id: parentProfile.id,
@@ -652,10 +652,15 @@ export default function ChildDashboardPage() {
           read: false,
           action_url: '/parent-dashboard',
           action_text: 'Review Task'
-        });
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to create notification:', error);
+        throw error;
+      }
 
+      console.log('✅ Reminder notification created:', data);
       showAlert('Reminder sent to parent! 📬', "success");
     } catch (error) {
       console.error('Error sending task reminder:', error);
@@ -707,7 +712,7 @@ export default function ChildDashboardPage() {
       }
 
       // Create notification for parent
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('notifications')
         .insert({
           user_id: parentProfile.id,
@@ -718,10 +723,15 @@ export default function ChildDashboardPage() {
           read: false,
           action_url: '/rewards-store',
           action_text: 'Review Reward'
-        });
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Failed to create notification:', error);
+        throw error;
+      }
 
+      console.log('✅ Reminder notification created:', data);
       showAlert('Reminder sent to parent! 📬', "success");
     } catch (error) {
       console.error('Error sending reward reminder:', error);
