@@ -1034,6 +1034,39 @@ export default function ParentDashboard() {
     }
   };
 
+  const handleDeleteRedemption = async (redemptionId: string) => {
+    try {
+      const confirmed = await showConfirm(
+        'Delete Redemption',
+        'Are you sure you want to delete this redemption? This action cannot be undone.'
+      );
+
+      if (!confirmed) return;
+
+      const supabase = createClientSupabaseClient();
+
+      // Delete the redemption
+      const { error } = await supabase
+        .from('reward_redemptions')
+        .delete()
+        .eq('id', redemptionId);
+
+      if (error) {
+        console.error('Error deleting redemption:', error);
+        showAlert('Failed to delete redemption', "error");
+        return;
+      }
+
+      // Update local state
+      setRedemptions(redemptions.filter(r => r.id !== redemptionId));
+      
+      showAlert('Redemption deleted successfully.', "success");
+    } catch (error) {
+      console.error('Error in handleDeleteRedemption:', error);
+      showAlert('Failed to delete redemption', "error");
+    }
+  };
+
   // Handle reward request (legacy - keeping for compatibility)
   const handleRewardRequest = (requestId: number, status: "approved" | "rejected") => {
     const updatedRequests = rewardRequests?.map(request =>
@@ -1736,17 +1769,26 @@ export default function ParentDashboard() {
                                   </button>
                                 </>
                               ) : (
-                                <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${
-                                  redemption.status === "approved" 
-                                    ? "bg-green-100 text-green-700" 
-                                    : "bg-red-100 text-red-700"
-                                }`}>
-                                  {redemption.status === "approved" ? (
-                                    <><i className="fas fa-check-circle"></i> Approved</>
-                                  ) : (
-                                    <><i className="fas fa-times-circle"></i> Rejected</>
-                                  )}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1 ${
+                                    redemption.status === "approved" 
+                                      ? "bg-green-100 text-green-700" 
+                                      : "bg-red-100 text-red-700"
+                                  }`}>
+                                    {redemption.status === "approved" ? (
+                                      <><i className="fas fa-check-circle"></i> Approved</>
+                                    ) : (
+                                      <><i className="fas fa-times-circle"></i> Rejected</>
+                                    )}
+                                  </span>
+                                  <button
+                                    onClick={() => handleDeleteRedemption(redemption.id)}
+                                    className="px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-red-100 hover:text-red-700 transition-colors"
+                                    title="Delete this redemption"
+                                  >
+                                    <i className="fas fa-trash"></i>
+                                  </button>
+                                </div>
                               )}
                             </div>
                           </div>
