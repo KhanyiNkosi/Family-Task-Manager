@@ -24,6 +24,7 @@ export default function RewardsStorePage() {
   const [newRewardTitle, setNewRewardTitle] = useState("");
   const [newRewardDescription, setNewRewardDescription] = useState("");
   const [newRewardPoints, setNewRewardPoints] = useState("50");
+  const [profileImage, setProfileImage] = useState("");
 
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
@@ -56,6 +57,11 @@ export default function RewardsStorePage() {
 
   useEffect(() => {
     loadRewards();
+  }, []);
+
+  useEffect(() => {
+    const savedImage = localStorage.getItem("parentProfileImage") || "";
+    setProfileImage(savedImage);
   }, []);
 
   const loadRewards = async () => {
@@ -204,12 +210,25 @@ export default function RewardsStorePage() {
                 <p className="text-white/80 mt-1">Parents: Manage rewards and approve requests</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl">
-              <i className="fas fa-user-shield text-xl"></i>
-              <div>
-                <div className="font-bold">Parent Account</div>
-                <div className="text-sm text-white/80">Full Access</div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl">
+                <i className="fas fa-user-shield text-xl"></i>
+                <div>
+                  <div className="font-bold">Parent Account</div>
+                  <div className="text-sm text-white/80">Full Access</div>
+                </div>
               </div>
+              <Link 
+                href="/parent-profile"
+                className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full transition-all overflow-hidden"
+                title="My Profile"
+              >
+                {profileImage ? (
+                  <img src={profileImage} alt="Parent Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <i className="fas fa-user text-lg"></i>
+                )}
+              </Link>
             </div>
           </div>
         </div>

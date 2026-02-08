@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -28,6 +28,7 @@ export default function SettingsPage() {
   const [newMemberRole, setNewMemberRole] = useState("child");
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState("");
+  const [profileImage, setProfileImage] = useState("");
 
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
@@ -53,6 +54,11 @@ export default function SettingsPage() {
       }, 0);
     });
   };
+
+  useEffect(() => {
+    const savedImage = localStorage.getItem("parentProfileImage") || "";
+    setProfileImage(savedImage);
+  }, []);
 
   const handleSettingChange = (key: string, value: any) => {
     setSettings(prev => ({
@@ -171,6 +177,17 @@ export default function SettingsPage() {
                   <i className="fas fa-robot mr-2"></i>
                   AI Assistant
                 </button>
+              </Link>
+              <Link 
+                href="/parent-profile"
+                className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full transition-all overflow-hidden"
+                title="My Profile"
+              >
+                {profileImage ? (
+                  <img src={profileImage} alt="Parent Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <i className="fas fa-user text-lg"></i>
+                )}
               </Link>
             </div>
           </div>

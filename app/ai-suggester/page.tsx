@@ -42,6 +42,7 @@ export default function AlSuggestorPage() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     { id: 1, text: 'Hi! I\'m your FamilyTask AI Assistant. I can help you generate task ideas, suggest family activities, balance points, and solve family management challenges. What would you like help with today?', sender: 'ai', timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) },
   ]);
+  const [profileImage, setProfileImage] = useState("");
 
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
@@ -83,6 +84,11 @@ export default function AlSuggestorPage() {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
   }, [chatMessages, router]);
+
+  useEffect(() => {
+    const savedImage = localStorage.getItem("parentProfileImage") || "";
+    setProfileImage(savedImage);
+  }, []);
 
   const generateSuggestions = () => {
     if (prompt.trim() === '') {
@@ -207,6 +213,17 @@ export default function AlSuggestorPage() {
                   Back to Dashboard
                 </Link>
               </div>
+              <Link 
+                href="/parent-profile"
+                className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full transition-all overflow-hidden"
+                title="My Profile"
+              >
+                {profileImage ? (
+                  <img src={profileImage} alt="Parent Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <i className="fas fa-user text-lg"></i>
+                )}
+              </Link>
             </div>
           </div>
         </div>

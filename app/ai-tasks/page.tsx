@@ -21,6 +21,7 @@ export default function ViewAITasksPage() {
   const [createdTasks, setCreatedTasks] = useState<CreatedTask[]>([]);
   const [savedSuggestions, setSavedSuggestions] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'tasks' | 'suggestions'>('tasks');
+  const [profileImage, setProfileImage] = useState("");
 
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
@@ -54,6 +55,11 @@ export default function ViewAITasksPage() {
 
     setCreatedTasks(tasks);
     setSavedSuggestions(suggestions);
+  }, []);
+
+  useEffect(() => {
+    const savedImage = localStorage.getItem("parentProfileImage") || "";
+    setProfileImage(savedImage);
   }, []);
 
   const handleAssignTask = async (taskId: number) => {
@@ -123,6 +129,17 @@ export default function ViewAITasksPage() {
                   Back to Dashboard
                 </Link>
               </div>
+              <Link 
+                href="/parent-profile"
+                className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full transition-all overflow-hidden"
+                title="My Profile"
+              >
+                {profileImage ? (
+                  <img src={profileImage} alt="Parent Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <i className="fas fa-user text-lg"></i>
+                )}
+              </Link>
             </div>
           </div>
         </div>
