@@ -176,7 +176,7 @@ export default function ChildProfilePage() {
 
         <div className="sidebar-footer mt-auto pt-5 border-t border-white/10">
           <Link
-            href="/child-profile"
+            href="/child-settings"
             className="nav-item px-6 py-3 flex items-center gap-3.5 text-white/80 no-underline text-base hover:bg-white/5 transition-colors"
           >
             <i className="fas fa-cog"></i> My Settings

@@ -1014,6 +1014,15 @@ export default function ChildDashboardPage() {
             <span>Go Back</span>
           </button>
           
+          {/* Settings Link */}
+          <Link
+            href="/child-settings"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+          >
+            <i className="fas fa-cog"></i>
+            <span>My Settings</span>
+          </Link>
+          
           {/* Logout Button */}
           <LogoutButton variant="sidebar" />
         </div>
