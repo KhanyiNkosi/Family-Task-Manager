@@ -44,7 +44,7 @@ export default function ParentProfilePage() {
     id: "1",
     name: "",
     email: "email@example.com",
-    phone: "+1 (555) 123-4567",
+    phone: "",
     joinDate: "0-01-15",
     role: "Parent",
     childrenCount: 0,
@@ -111,9 +111,9 @@ export default function ParentProfilePage() {
       if (dbProfile) {
         setProfile(prev => ({
           ...prev,
-          name: dbProfile.name || "",
+          name: dbProfile.full_name || "",
           email: dbProfile.email || "",
-          phone: dbProfile.phone || "+1 (555) 123-4567",
+          phone: dbProfile.phone || "",
           role: dbProfile.role === 'parent' ? 'Parent' : 'Family Member',
           profileImage: dbProfile.profile_image || ""
         }));
@@ -188,7 +188,7 @@ export default function ParentProfilePage() {
       
       // Prepare update data
       const updateData: any = {
-        name: editedProfile.name || "",
+        full_name: editedProfile.name || "",
         email: editedProfile.email || "",
         phone: editedProfile.phone || "",
         updated_at: new Date().toISOString()
