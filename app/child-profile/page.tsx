@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 export default function ChildProfilePage() {
   const [activeTab, setActiveTab] = useState<"profile" | "activity">("profile");
@@ -44,31 +45,66 @@ export default function ChildProfilePage() {
   };
 
   useEffect(() => {
-    const savedImage = localStorage.getItem("childProfileImage") || "";
-    setProfileImage(savedImage);
+    const loadProfileData = async () => {
+      const savedImage = localStorage.getItem("childProfileImage") || "";
+      setProfileImage(savedImage);
+      
+      try {
+        const supabase = createClientSupabaseClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          console.log('No user found');
+          setIsClient(true);
+          return;
+        }
+        
+        // Load profile data from Supabase
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.full_name) {
+          setChildName(profile.full_name);
+        }
+        
+        // Load points from user_profiles
+        const { data: userProfile } = await supabase
+          .from('user_profiles')
+          .select('total_points')
+          .eq('id', user.id)
+          .single();
+        
+        const points = userProfile?.total_points || 0;
+        setTotalPoints(points);
+        
+        // Calculate level (100 points per level)
+        const calculatedLevel = Math.floor(points / 100) + 1;
+        setLevel(calculatedLevel);
+        
+        // Load tasks completed count
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('id, status')
+          .eq('assigned_to', user.id);
+        
+        const completed = tasks?.filter((t: any) => t.status === 'completed').length || 0;
+        setTasksCompleted(completed);
+        
+        // Load recent activities
+        const activities = JSON.parse(localStorage.getItem('childActivities') || '[]');
+        setRecentActivities(activities.slice(0, 5));
+        
+      } catch (error) {
+        console.error('Error loading profile data:', error);
+      }
+      
+      setIsClient(true);
+    };
     
-    // Load child data
-    const name = localStorage.getItem("childName") || localStorage.getItem("userName") || "Child";
-    setChildName(name);
-    
-    // Load points from localStorage
-    const points = parseInt(localStorage.getItem("childPoints") || "0");
-    setTotalPoints(points);
-    
-    // Calculate level (100 points per level)
-    const calculatedLevel = Math.floor(points / 100) + 1;
-    setLevel(calculatedLevel);
-    
-    // Load tasks completed
-    const tasks = JSON.parse(localStorage.getItem("familytask-tasks") || "[]");
-    const completed = tasks.filter((t: any) => t.status === "completed").length;
-    setTasksCompleted(completed);
-    
-    // Load recent activities
-    const activities = JSON.parse(localStorage.getItem("childActivities") || "[]");
-    setRecentActivities(activities.slice(0, 5));
-    
-    setIsClient(true);
+    loadProfileData();
   }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
