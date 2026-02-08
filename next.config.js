@@ -2,6 +2,13 @@
 const nextConfig = {
   reactStrictMode: false,
   
+  // Optimize for development memory usage
+  experimental: {
+    // Reduce memory usage by optimizing compilation
+    workerThreads: false,
+    cpus: 1,
+  },
+  
   // Temporarily disable ESLint and TypeScript during build for Vercel deployment
   eslint: {
     ignoreDuringBuilds: true,
