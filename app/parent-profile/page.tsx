@@ -432,17 +432,17 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
               <div className="bg-gradient-to-r from-violet-500 to-violet-600 text-white p-5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm opacity-90">Total Points</p>
-                    <p className="text-2xl font-bold mt-1">0</p>
+                    <p className="text-sm opacity-90">Tasks Assigned</p>
+                    <p className="text-2xl font-bold mt-1">{profile.totalTasksAssigned}</p>
                   </div>
-                  <i className="fas fa-star text-2xl opacity-80"></i>
+                  <i className="fas fa-tasks text-2xl opacity-80"></i>
                 </div>
               </div>
               <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm opacity-90">Member Since</p>
-                    <p className="text-2xl font-bold mt-1">0</p>
+                    <p className="text-lg font-bold mt-1">{new Date(profile.joinDate).getFullYear()}</p>
                   </div>
                   <i className="fas fa-calendar text-2xl opacity-80"></i>
                 </div>
