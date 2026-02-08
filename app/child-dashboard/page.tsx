@@ -634,7 +634,7 @@ export default function ChildDashboardPage() {
 
       if (!parentProfile) {
         showAlert(
-          'No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they\'re in the same family',
+          "No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they're in the same family",
           "warning"
         );
         return;
@@ -700,7 +700,7 @@ export default function ChildDashboardPage() {
 
       if (!parentProfile) {
         showAlert(
-          'No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they\'re in the same family',
+          "No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they're in the same family",
           "warning"
         );
         return;
