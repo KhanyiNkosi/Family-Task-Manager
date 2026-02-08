@@ -131,7 +131,8 @@ export default function ParentProfilePage() {
         ...prev,
         childrenCount: stats.childrenCount,
         totalTasksAssigned: stats.totalTasksAssigned,
-        completedTasks: stats.completedTasks
+        completedTasks: stats.completedTasks,
+        joinDate: dbProfile.created_at || prev.joinDate
       }));
       
     } catch (error) {
@@ -144,11 +145,11 @@ export default function ParentProfilePage() {
   // Navigation items - Custom for parent-profile
   const navItems: NavItem[] = [
     { href: "/", icon: "fas fa-home", label: "Home" },
-    { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard", active: true },
+    { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard" },
     { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
     { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Store" },
     { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
-    { href: "/parent-profile", icon: "fas fa-user", label: "Profile" },
+    { href: "/parent-profile", icon: "fas fa-user", label: "Profile", active: true },
   ];
 
   const handleEdit = () => {
@@ -349,11 +350,6 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
 
           {/* Sidebar Footer */}
           <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
-            <div className="p-3 bg-white/10 rounded-xl">
-              <p className="text-sm text-white/80">Logged in as:</p>
-              <p className="font-bold text-white">Parent</p>
-            </div>
-
             <button
               onClick={() => window.history.back()}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
