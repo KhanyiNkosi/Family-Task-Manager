@@ -26,12 +26,20 @@ interface RewardRedemption {
 
 export default function MyRewardsPage() {
   const [userRole, setUserRole] = useState("child");
+  const [profileImage, setProfileImage] = useState("");
+  const [childAvatar, setChildAvatar] = useState("child");
   const router = useRouter();
   
   // CHILD-ONLY REWARDS VIEW - NO DUPLICATE VARIABLES
   useEffect(() => {
     const role = sessionStorage.getItem("userRole") || "child";
     setUserRole(role);
+    
+    // Load profile picture and avatar from localStorage
+    const savedProfileImage = localStorage.getItem("childProfileImage") || "";
+    const savedAvatar = localStorage.getItem("childAvatar") || "child";
+    setProfileImage(savedProfileImage);
+    setChildAvatar(savedAvatar);
     
     // STRICT: Parents CANNOT access child rewards
     
@@ -321,11 +329,29 @@ export default function MyRewardsPage() {
               <span className="hidden md:inline">Suggest Reward</span>
             </button>
             <Link
-              href="/child-dashboard"
-              className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-all"
-              title="Go to Dashboard"
+              href="/child-profile"
+              className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full transition-all overflow-hidden"
+              title="My Profile"
             >
-              <i className="fas fa-home text-xl"></i>
+              {profileImage ? (
+                <img
+                  src={profileImage}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-2xl">
+                  {childAvatar === "child" ? "👦" :
+                   childAvatar === "girl" ? "👧" :
+                   childAvatar === "robot" ? "🤖" :
+                   childAvatar === "superhero" ? "🦸" :
+                   childAvatar === "astronaut" ? "🧑‍🚀" :
+                   childAvatar === "alien" ? "👽" :
+                   childAvatar === "ninja" ? "🥷" :
+                   childAvatar === "wizard" ? "🧙" :
+                   "👦"}
+                </span>
+              )}
             </Link>
           </div>
         </div>
