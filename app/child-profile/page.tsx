@@ -10,6 +10,11 @@ export default function ChildProfilePage() {
   const [tempImage, setTempImage] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const [childName, setChildName] = useState("Child");
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [tasksCompleted, setTasksCompleted] = useState(0);
+  const [level, setLevel] = useState(1);
+  const [recentActivities, setRecentActivities] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -41,6 +46,28 @@ export default function ChildProfilePage() {
   useEffect(() => {
     const savedImage = localStorage.getItem("childProfileImage") || "";
     setProfileImage(savedImage);
+    
+    // Load child data
+    const name = localStorage.getItem("childName") || localStorage.getItem("userName") || "Child";
+    setChildName(name);
+    
+    // Load points from localStorage
+    const points = parseInt(localStorage.getItem("childPoints") || "0");
+    setTotalPoints(points);
+    
+    // Calculate level (100 points per level)
+    const calculatedLevel = Math.floor(points / 100) + 1;
+    setLevel(calculatedLevel);
+    
+    // Load tasks completed
+    const tasks = JSON.parse(localStorage.getItem("familytask-tasks") || "[]");
+    const completed = tasks.filter((t: any) => t.status === "completed").length;
+    setTasksCompleted(completed);
+    
+    // Load recent activities
+    const activities = JSON.parse(localStorage.getItem("childActivities") || "[]");
+    setRecentActivities(activities.slice(0, 5));
+    
     setIsClient(true);
   }, []);
 
@@ -79,6 +106,7 @@ export default function ChildProfilePage() {
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/child-dashboard", icon: "fas fa-th-large", label: "My Dashboard" },
     { href: "/my-rewards", icon: "fas fa-gift", label: "My Rewards" },
+    { href: "/my-goals", icon: "fas fa-bullseye", label: "My Goals" },
     { href: "/child-profile", icon: "fas fa-user", label: "My Profile" },
   ];
 
@@ -232,8 +260,8 @@ export default function ChildProfilePage() {
                       />
                     </div>
                     
-                    <h3 className="text-2xl font-black text-gray-800 mb-1">Child Name</h3>
-                    <p className="text-[#64748b] text-base mb-6">Family Member</p>
+                    <h3 className="text-2xl font-black text-gray-800 mb-1">{childName}</h3>
+                    <p className="text-[#64748b] text-base mb-6">Level {level} • Family Member</p>
                     
                     {isEditing && (
                       <div className="space-y-3 mb-6">
@@ -279,33 +307,33 @@ export default function ChildProfilePage() {
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-[#006372] text-sm font-medium">Total Points</p>
-                            <p className="text-4xl font-black text-[#00A8C2]">0</p>
+                            <p className="text-4xl font-black text-[#00A8C2]">{totalPoints}</p>
                           </div>
                           <i className="fas fa-star text-3xl text-yellow-500"></i>
                         </div>
-                        <button className="w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold">
+                        <Link href="/my-rewards" className="block w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold text-center">
                           My Rewards
-                        </button>
+                        </Link>
                       </div>
 
                       <div className="stat-card bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] p-6 rounded-xl border border-[#B2EBF2]">
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-[#006372] text-sm font-medium">Tasks Done</p>
-                            <p className="text-4xl font-black text-[#00A8C2]">0</p>
+                            <p className="text-4xl font-black text-[#00A8C2]">{tasksCompleted}</p>
                           </div>
                           <i className="fas fa-check-circle text-3xl text-[#00C2E0]"></i>
                         </div>
-                        <button className="w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold">
+                        <Link href="/child-dashboard" className="block w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold text-center">
                           View Tasks
-                        </button>
+                        </Link>
                       </div>
 
                       <div className="stat-card bg-gradient-to-br from-[#E0F7FA] to-[#B2EBF2] p-6 rounded-xl border border-[#B2EBF2] md:col-span-2">
                         <div className="flex items-center justify-between mb-4">
                           <div>
                             <p className="text-[#006372] text-sm font-medium">Level</p>
-                            <p className="text-4xl font-black text-[#00A8C2]">1</p>
+                            <p className="text-4xl font-black text-[#00A8C2]">{level}</p>
                           </div>
                           <i className="fas fa-trophy text-3xl text-[#00C2E0]"></i>
                         </div>
@@ -313,14 +341,14 @@ export default function ChildProfilePage() {
                           <div className="w-full bg-gray-200 rounded-full h-3">
                             <div 
                               className="bg-gradient-to-r from-[#00C2E0] to-[#00A8C2] h-3 rounded-full" 
-                              style={{ width: "75%" }}
+                              style={{ width: `${(totalPoints % 100)}%` }}
                             ></div>
                           </div>
-                          <p className="text-sm text-[#64748b] mt-2">0/100 points to level 2</p>
+                          <p className="text-sm text-[#64748b] mt-2">{totalPoints % 100}/100 points to level {level + 1}</p>
                         </div>
-                        <button className="w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold">
-                          Level Up!
-                        </button>
+                        <Link href="/child-dashboard" className="block w-full bg-[#00C2E0] text-white py-3 rounded-lg hover:bg-[#00A8C2] transition font-bold text-center">
+                          Keep Going!
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -345,12 +373,7 @@ export default function ChildProfilePage() {
                 </div>
                 
                 <div className="space-y-4">
-                  {[
-                    { type: "task", title: "Completed Task", points: "+0", time: "Recently", icon: "fa-check", color: "text-green-500" },
-                    { type: "ai", title: "Completed Activity", points: "+0", time: "Recently", icon: "fa-robot", color: "text-purple-500" },
-                    { type: "reward", title: "Redeemed Reward", points: "-0", time: "Recently", icon: "fa-gift", color: "text-[#00C2E0]" },
-                    { type: "task", title: "Completed Chore", points: "+0", time: "Recently", icon: "fa-check", color: "text-green-500" },
-                  ].map((activity, index) => (
+                  {recentActivities.length > 0 ? recentActivities.map((activity, index) => (
                     <div key={index} className="activity-item flex items-center gap-4 p-4 border border-[#e2e8f0] rounded-xl hover:bg-[#f8fafc] transition">
                       <div className={`activity-icon w-12 h-12 bg-[#E0F7FA] rounded-full flex items-center justify-center ${activity.color}`}>
                         <i className={`fas ${activity.icon}`}></i>
@@ -359,11 +382,20 @@ export default function ChildProfilePage() {
                         <h4 className="font-bold text-gray-800">{activity.title}</h4>
                         <p className="text-sm text-[#64748b]">{activity.time}</p>
                       </div>
-                      <span className={`font-black text-lg ${activity.points.startsWith("+") ? "text-green-600" : "text-red-500"}`}>
-                        {activity.points}
+                      <span className={`font-black text-lg ${activity.points >= 0 ? "text-green-600" : "text-red-500"}`}>
+                        {activity.points >= 0 ? '+' : ''}{activity.points}
                       </span>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-12">
+                      <i className="fas fa-history text-6xl text-gray-300 mb-4"></i>
+                      <p className="text-gray-500 text-lg">No recent activity</p>
+                      <p className="text-gray-400 text-sm mt-2">Complete tasks to see your activity here!</p>
+                      <Link href="/child-dashboard" className="inline-block mt-4 px-6 py-3 bg-[#00C2E0] text-white rounded-lg hover:bg-[#00A8C2] transition font-bold">
+                        Go to Dashboard
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
