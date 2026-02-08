@@ -212,6 +212,32 @@ export default function ChildDashboardPage() {
 
         console.log('Loading tasks for child:', user.id);
         
+        // Ensure user has a profile entry (needed for reminder feature)
+        const { data: existingProfile, error: profileCheckError } = await supabase
+          .from('profiles')
+          .select('id, family_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (!existingProfile && profileCheckError) {
+          console.log('No profile found, creating one for reminder feature...');
+          const { error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: user.id,
+              email: user.email || '',
+              full_name: user.user_metadata?.name || 'Child User',
+              role: 'child',
+              family_id: crypto.randomUUID()
+            });
+          
+          if (createError) {
+            console.error('Error creating profile:', createError);
+          } else {
+            console.log('✅ Profile created successfully');
+          }
+        }
+        
         // Fetch child's assigned tasks (exclude approved tasks)
         const { data: childTasks, error: tasksError } = await supabase
           .from('tasks')
@@ -592,20 +618,25 @@ export default function ChildDashboardPage() {
         .single();
 
       if (!profile?.family_id) {
-        showAlert('Unable to send reminder', "error");
+        showAlert('Family setup incomplete. Ask your parent to add you to the family.', "warning");
         return;
       }
 
       // Get parent user ID from family
-      const { data: parentProfile } = await supabase
+      const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
-        .select('id, role')
+        .select('id, role, full_name')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
-        .single();
+        .maybeSingle();
+
+      console.log('Task reminder - parent lookup:', { parentProfile, parentError, familyId: profile.family_id });
 
       if (!parentProfile) {
-        showAlert('No parent found to notify', "error");
+        showAlert(
+          'No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they\'re in the same family',
+          "warning"
+        );
         return;
       }
 
@@ -653,20 +684,25 @@ export default function ChildDashboardPage() {
         .single();
 
       if (!profile?.family_id) {
-        showAlert('Unable to send reminder', "error");
+        showAlert('Family setup incomplete. Ask your parent to add you to the family.', "warning");
         return;
       }
 
       // Get parent user ID from family
-      const { data: parentProfile } = await supabase
+      const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
-        .select('id, role')
+        .select('id, role, full_name')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
-        .single();
+        .maybeSingle();
+
+      console.log('Reward reminder - parent lookup:', { parentProfile, parentError, familyId: profile.family_id });
 
       if (!parentProfile) {
-        showAlert('No parent found to notify', "error");
+        showAlert(
+          'No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they\'re in the same family',
+          "warning"
+        );
         return;
       }
 

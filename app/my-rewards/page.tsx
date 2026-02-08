@@ -222,14 +222,18 @@ export default function MyRewardsPage() {
       // Find the parent to notify
       const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
-        .select('id, role')
+        .select('id, role, full_name')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
-        .single();
+        .maybeSingle();
 
-      if (parentError || !parentProfile) {
-        console.error('Parent lookup error:', parentError);
-        showAlert('Could not find parent to notify', "error");
+      console.log('My-rewards - parent lookup:', { parentProfile, parentError, familyId: profile.family_id });
+
+      if (!parentProfile) {
+        showAlert(
+          'No parent found in your family. Ask your parent to:\\n1. Log in to the app\\n2. Make sure they\\'re in the same family',
+          "warning"
+        );
         return;
       }
 
