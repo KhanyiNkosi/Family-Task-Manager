@@ -518,6 +518,7 @@ export default function ChildDashboardPage() {
     { href: "/child-dashboard", icon: "fas fa-th-large", label: "My Dashboard", active: true },
     { href: "/child-profile", icon: "fas fa-user", label: "My Profile", active: false },
     { href: "/my-rewards", icon: "fas fa-gift", label: "My Rewards", active: false },
+    { href: "/my-goals", icon: "fas fa-bullseye", label: "My Goals", active: false },
   ];
   
   // === PERMISSION-CHECKED NAVIGATION HANDLER ===
@@ -1073,7 +1074,7 @@ export default function ChildDashboardPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
           <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
             <div className="flex justify-between items-center">
               <div>
@@ -1103,6 +1104,19 @@ export default function ChildDashboardPage() {
               <i className="fas fa-gift text-3xl text-[#00C2E0]"></i>
             </div>
           </div>
+
+          <Link href="/my-goals" className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl shadow-lg border border-purple-400 hover:shadow-xl transition-all cursor-pointer">
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-white/90 text-sm font-medium">My Goals</h3>
+                <div className="text-2xl font-bold text-white mt-2 flex items-center gap-2">
+                  Track Goals
+                  <i className="fas fa-arrow-right text-lg"></i>
+                </div>
+              </div>
+              <i className="fas fa-bullseye text-3xl text-white/80"></i>
+            </div>
+          </Link>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
