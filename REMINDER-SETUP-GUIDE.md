@@ -1,11 +1,47 @@
 # Family Setup Guide for Reminder Feature
 
-## Problem
-The reminder feature requires that both parent and child profiles exist in the `profiles` table with the **same `family_id`**. Currently, your profiles table is empty or users have different family_ids.
+## ROOT CAUSE IDENTIFIED ⚠️
 
-## Solution Options
+The `profiles` table is **missing the `role` column**! The reminder feature queries `profiles.role` to find the parent, but role is only stored in the `user_profiles` table.
 
-### Option 1: Run SQL Script in Supabase Dashboard (Recommended)
+## Quick Fix (Run This First) ⭐
+
+**Run this in your Supabase SQL Editor:**
+
+Use the complete script: [fix-profiles-add-role.sql](fix-profiles-add-role.sql)
+
+Or run these commands manually:
+
+```sql
+-- 1. Add role column to profiles
+ALTER TABLE profiles 
+ADD COLUMN IF NOT EXISTS role TEXT;
+
+-- 2. Sync role from user_profiles
+UPDATE profiles
+SET role = user_profiles.role
+FROM user_profiles
+WHERE profiles.id = user_profiles.id;
+
+-- 3. Fix family_id - connect parent and child
+UPDATE profiles
+SET family_id = (
+  SELECT family_id 
+  FROM profiles 
+  WHERE role = 'parent' 
+  LIMIT 1
+)
+WHERE role = 'child';
+
+-- 4. Verify it worked
+SELECT role, full_name, family_id 
+FROM profiles 
+ORDER BY role;
+```
+
+**Expected result:** Both parent and child have the same `family_id` ✅
+
+## Problem Explanation
 
 1. **Get User IDs from app:**
    - Log in as child, open browser console (F12), run:

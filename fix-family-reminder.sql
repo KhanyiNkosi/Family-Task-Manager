@@ -1,7 +1,8 @@
 -- =============================================================================
 -- FIX FAMILY CONNECTION FOR REMINDER FEATURE
 -- =============================================================================
--- Run this in your Supabase SQL Editor to fix the "No parent found" error
+-- IMPORTANT: This script assumes the profiles table has a 'role' column.
+-- If you get an error about 'role' not existing, run fix-profiles-add-role.sql first!
 -- =============================================================================
 
 -- Step 1: Check current state
