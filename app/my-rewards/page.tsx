@@ -189,6 +189,77 @@ export default function MyRewardsPage() {
   }, []); // Empty dependency array means this runs once on component mount
   // --- End of Data Fetching ---
 
+  // Function to send reminder to parent about pending reward
+  const sendRewardReminder = async (redemptionId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in to send reminders', "error");
+        return;
+      }
+
+      // Get the current user's profile and family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id, full_name')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        showAlert('Could not find your family', "error");
+        return;
+      }
+
+      // Get the redemption details
+      const redemption = redemptions.find(r => r.id === redemptionId);
+      if (!redemption || !redemption.reward) {
+        showAlert('Could not find reward details', "error");
+        return;
+      }
+
+      // Find the parent to notify
+      const { data: parentProfile, error: parentError } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('family_id', profile.family_id)
+        .eq('role', 'parent')
+        .single();
+
+      if (parentError || !parentProfile) {
+        console.error('Parent lookup error:', parentError);
+        showAlert('Could not find parent to notify', "error");
+        return;
+      }
+
+      // Create notification for parent
+      const { error: notificationError } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: parentProfile.id,
+          family_id: profile.family_id,
+          type: 'reward',
+          title: '⏰ Reward Approval Reminder',
+          message: `${profile.full_name} is waiting for approval on: "${redemption.reward.title}" (${redemption.points_spent} points)`,
+          read: false,
+          action_url: '/rewards-store',
+          action_text: 'Review Reward'
+        });
+
+      if (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        showAlert('Failed to send reminder', "error");
+        return;
+      }
+
+      showAlert('Reminder sent to parent! 📬', "success");
+    } catch (error) {
+      console.error('Error in sendRewardReminder:', error);
+      showAlert('Failed to send reminder', "error");
+    }
+  };
+
   // Function to redeem a reward
   const redeemReward = async (rewardId: string, rewardName: string, rewardCost: number) => {
     if (myPoints < rewardCost) {
@@ -392,6 +463,12 @@ export default function MyRewardsPage() {
                       Requested {new Date(redemption.redeemed_at).toLocaleDateString()}
                     </div>
                     <p className="text-xs text-gray-600 mt-2">Waiting for parent approval...</p>
+                    <button
+                      onClick={() => sendRewardReminder(redemption.id)}
+                      className="mt-4 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 w-full"
+                    >
+                      <i className="fas fa-bell"></i> Send Reminder
+                    </button>
                   </div>
                 </div>
               ))}

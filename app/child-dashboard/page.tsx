@@ -571,6 +571,128 @@ export default function ChildDashboardPage() {
     return filtered;
   };
 
+  const sendTaskReminder = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in to send reminders', "error");
+        return;
+      }
+
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+
+      // Get user profile for name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        showAlert('Unable to send reminder', "error");
+        return;
+      }
+
+      // Get parent user ID from family
+      const { data: parentProfile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('family_id', profile.family_id)
+        .eq('role', 'parent')
+        .single();
+
+      if (!parentProfile) {
+        showAlert('No parent found to notify', "error");
+        return;
+      }
+
+      // Create notification for parent
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: parentProfile.id,
+          family_id: profile.family_id,
+          type: 'task',
+          title: '⏰ Task Approval Reminder',
+          message: `${profile.full_name || 'Your child'} is waiting for approval on: "${task.title}" (${task.points} points)`,
+          read: false,
+          action_url: '/parent-dashboard',
+          action_text: 'Review Task'
+        });
+
+      if (error) throw error;
+
+      showAlert('Reminder sent to parent! 📬', "success");
+    } catch (error) {
+      console.error('Error sending task reminder:', error);
+      showAlert('Failed to send reminder', "error");
+    }
+  };
+
+  const sendRewardReminder = async (redemptionId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in to send reminders', "error");
+        return;
+      }
+
+      const redemption = redemptions.find(r => r.id === redemptionId);
+      if (!redemption || !redemption.reward) return;
+
+      // Get user profile for name
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        showAlert('Unable to send reminder', "error");
+        return;
+      }
+
+      // Get parent user ID from family
+      const { data: parentProfile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('family_id', profile.family_id)
+        .eq('role', 'parent')
+        .single();
+
+      if (!parentProfile) {
+        showAlert('No parent found to notify', "error");
+        return;
+      }
+
+      // Create notification for parent
+      const { error } = await supabase
+        .from('notifications')
+        .insert({
+          user_id: parentProfile.id,
+          family_id: profile.family_id,
+          type: 'reward',
+          title: '⏰ Reward Approval Reminder',
+          message: `${profile.full_name || 'Your child'} is waiting for approval on reward: "${redemption.reward.title}" (${redemption.points_spent} points)`,
+          read: false,
+          action_url: '/rewards-store',
+          action_text: 'Review Reward'
+        });
+
+      if (error) throw error;
+
+      showAlert('Reminder sent to parent! 📬', "success");
+    } catch (error) {
+      console.error('Error sending reward reminder:', error);
+      showAlert('Failed to send reminder', "error");
+    }
+  };
+
   const completeTask = async (taskId: string) => {
     try {
       const supabase = createClientSupabaseClient();
@@ -1252,6 +1374,24 @@ export default function ChildDashboardPage() {
                     </div>
                   </div>
                   
+                  {task.completed && !task.approved && (
+                    <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-amber-700">
+                          <i className="fas fa-clock"></i>
+                          <span className="text-sm font-medium">Waiting for parent approval</span>
+                        </div>
+                        <button
+                          onClick={() => sendTaskReminder(task.id)}
+                          className="px-3 py-1.5 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors flex items-center gap-2"
+                          title="Send reminder to parent"
+                        >
+                          <i className="fas fa-bell"></i>
+                          Remind
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {!task.completed && (
                     <div className="flex gap-2 mt-3">
                       <button
@@ -1336,7 +1476,15 @@ export default function ChildDashboardPage() {
                           <i className="fas fa-clock text-2xl text-amber-600 mb-2"></i>
                           <div className="font-bold text-amber-700">Pending Approval</div>
                           <div className="text-sm text-amber-600">{reward.title}</div>
-                          <div className="text-xs text-gray-500 mt-1">Waiting for parent...</div>
+                          <div className="text-xs text-gray-500 mt-1 mb-3">Waiting for parent...</div>
+                          <button
+                            onClick={() => sendRewardReminder(redemption?.id || '')}
+                            className="px-4 py-2 bg-amber-500 text-white rounded-lg text-sm font-medium hover:bg-amber-600 transition-colors inline-flex items-center gap-2"
+                            title="Send reminder to parent"
+                          >
+                            <i className="fas fa-bell"></i>
+                            Send Reminder
+                          </button>
                         </div>
                       ) : (
                         <>
