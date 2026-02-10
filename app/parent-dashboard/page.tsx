@@ -307,7 +307,7 @@ export default function ParentDashboard() {
 
       const familyMemberIds = familyMembers.map(m => m.id);
 
-      // Load all redemptions for family members
+      // Only query reward_redemptions by user_id (not family_id)
       const { data: redemptionsData, error } = await supabase
         .from('reward_redemptions')
         .select('*')
@@ -501,12 +501,21 @@ export default function ParentDashboard() {
 
       if (!profile?.family_id) return;
 
-      // Load all tasks for this family
-      const { data: tasks, error } = await supabase
+      // Load all tasks for this family, with status filter if needed
+      let query = supabase
         .from('tasks')
         .select('*')
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
+
+      // Apply status filter if not "all"
+      if (taskStatusFilter === 'pending') {
+        query = query.eq('completed', false).eq('approved', false);
+      } else if (taskStatusFilter === 'completed') {
+        query = query.or('completed.eq.true,approved.eq.true');
+      }
+
+      const { data: tasks, error } = await query;
 
       if (error) {
         console.error('Error loading tasks:', error);
@@ -738,7 +747,7 @@ export default function ParentDashboard() {
       showAlert(`Task approved! ${task.points} points awarded to child!`, "success");
     } catch (error) {
       console.error('Error in handleApproveTask:', error);
-      showAlert(`Failed to approve task: ${error.message}`, "error");
+      showAlert(`Failed to approve task: ${(error as any).message}`, "error");
     }
   };
 
@@ -835,7 +844,7 @@ export default function ParentDashboard() {
       showAlert('Help request resolved!', "success");
     } catch (error) {
       console.error('Error in handleResolveHelp:', error);
-      showAlert(`Failed to resolve help request: ${error.message}`, "error");
+      showAlert(`Failed to resolve help request: ${(error as any).message}`, "error");
     }
   };
 

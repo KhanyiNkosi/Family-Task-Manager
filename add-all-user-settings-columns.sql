@@ -1,0 +1,9 @@
+-- Add all missing columns to user_settings table for settings page compatibility
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS notifications boolean DEFAULT true;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS email_updates boolean DEFAULT true;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS sound_effects boolean DEFAULT false;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS dark_mode boolean DEFAULT false;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS language text DEFAULT 'English';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS timezone text DEFAULT 'UTC-5';
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS daily_reminders boolean DEFAULT true;
+ALTER TABLE public.user_settings ADD COLUMN IF NOT EXISTS weekly_reports boolean DEFAULT false;

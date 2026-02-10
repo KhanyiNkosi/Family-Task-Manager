@@ -1,95 +1,105 @@
-﻿// app/lib/profile-data.ts
-import { supabase } from './supabase'
-
-export interface ProfileStats {
-  childrenCount: number
-  totalTasksAssigned: number
-  completedTasks: number
-  pendingTasks: number
-  totalPoints: number
+﻿import { supabase } from "@/app/lib/supabase";
+export async function fetchParentProfile(userId: string) {
+  try {
+    console.log('fetchParentProfile userId:', userId);
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error) {
+      console.error('Supabase error', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+      throw error;
+    }
+    return data;
+  } catch (error) {
+    console.error('Error fetching parent profile full:', error);
+    return null;
+  }
 }
 
-export async function fetchParentProfileData(userId: string): Promise<ProfileStats> {
+export async function fetchParentProfileData(userId: string) {
   try {
-    // Get user's family
-    const { data: familyData, error: familyError } = await supabase
-      .rpc('get_user_family')
-    
-    if (familyError) throw familyError
-    
-    const familyId = familyData
-    
-    // Get children count
-    const { data: childrenData, error: childrenError } = await supabase
+    // Fetch profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('family_id')
+      .eq('id', userId)
+      .single();
+    if (profileError || !profile) throw profileError || new Error('Profile not found');
+    const familyId = profile.family_id;
+
+    // Children count
+    const { count: childrenCount } = await supabase
       .from('profiles')
       .select('id', { count: 'exact' })
       .eq('family_id', familyId)
-      .eq('role', 'child')
-    
-    if (childrenError) throw childrenError
-    const childrenCount = childrenData?.length || 0
-    
-    // Get tasks statistics
-    const { data: tasksData, error: tasksError } = await supabase
+      .eq('role', 'child');
+
+
+    // Tasks assigned (created by this parent)
+    const { count: totalTasksAssigned } = await supabase
       .from('tasks')
-      .select('status')
+      .select('id', { count: 'exact' })
       .eq('family_id', familyId)
-    
-    if (tasksError) throw tasksError
-    
-    const totalTasksAssigned = tasksData?.length || 0
-    const completedTasks = tasksData?.filter(task => 
-      task.status === 'completed' || task.status === 'approved'
-    ).length || 0
-    const pendingTasks = tasksData?.filter(task => 
-      task.status === 'pending' || task.status === 'in_progress'
-    ).length || 0
-    
-    // Get total points (from claimed rewards or task completions)
-    const { data: rewardsData, error: rewardsError } = await supabase
-      .from('claimed_rewards')
-      .select('points_used')
+      .eq('created_by', userId);
+
+    // Completed tasks (created by this parent, completed AND approved)
+    const { count: completedTasks } = await supabase
+      .from('tasks')
+      .select('id', { count: 'exact' })
       .eq('family_id', familyId)
-    
-    let totalPoints = 0
-    if (!rewardsError && rewardsData) {
-      totalPoints = rewardsData.reduce((sum, reward) => sum + (reward.points_used || 0), 0)
+      .eq('created_by', userId)
+      .eq('completed', true)
+      .eq('approved', true);
+
+    // Pending tasks (created by this parent, not completed)
+    const { count: pendingTasks } = await supabase
+      .from('tasks')
+      .select('id', { count: 'exact' })
+      .eq('family_id', familyId)
+      .eq('created_by', userId)
+      .eq('completed', false);
+
+    // Total points (sum from reward_redemptions)
+    // reward_redemptions does not have family_id, so sum for all family members
+    // First, get all family member IDs
+    const { data: familyMembers } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('family_id', familyId);
+    let totalPoints = 0;
+    if (familyMembers && familyMembers.length > 0) {
+      const familyMemberIds = familyMembers.map((m: any) => m.id);
+      const { data: rewardsData, error: rewardsError } = await supabase
+        .from('reward_redemptions')
+        .select('points_spent, user_id')
+        .in('user_id', familyMemberIds);
+      if (!rewardsError && rewardsData) {
+        totalPoints = rewardsData.reduce((sum, r) => sum + (r.points_spent || 0), 0);
+      }
     }
-    
+
     return {
       childrenCount,
       totalTasksAssigned,
       completedTasks,
       pendingTasks,
       totalPoints
-    }
-    
+    };
   } catch (error) {
-    console.error('Error fetching profile data:', error)
-    // Return default values on error
+    console.error('Error fetching profile stats:', error);
     return {
       childrenCount: 0,
       totalTasksAssigned: 0,
       completedTasks: 0,
       pendingTasks: 0,
       totalPoints: 0
-    }
-  }
-}
-
-export async function fetchParentProfile(userId: string) {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    
-    if (error) throw error
-    
-    return data
-  } catch (error) {
-    console.error('Error fetching parent profile:', error)
-    return null
+    };
   }
 }

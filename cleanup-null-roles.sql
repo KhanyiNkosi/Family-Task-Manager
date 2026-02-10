@@ -17,11 +17,9 @@ WHERE role IS NULL
 ORDER BY created_at;
 
 -- Step 2: Option A - Delete profiles with NULL role (if they're test/orphaned accounts)
--- UNCOMMENT IF YOU WANT TO DELETE THEM:
--- DELETE FROM profiles WHERE role IS NULL;
+DELETE FROM profiles WHERE role IS NULL;
 
 -- Step 2: Option B - Or assign them a default role (if they should be kept)
--- UNCOMMENT IF YOU WANT TO KEEP THEM AS CHILDREN:
 -- UPDATE profiles 
 -- SET role = 'child'
 -- WHERE role IS NULL;
@@ -36,9 +34,8 @@ FROM profiles
 ORDER BY role, full_name;
 
 -- Step 4: Add NOT NULL constraint (only after all roles are populated)
--- UNCOMMENT after choosing Option A or B above:
--- ALTER TABLE profiles 
--- ALTER COLUMN role SET NOT NULL;
+ALTER TABLE profiles 
+ALTER COLUMN role SET NOT NULL;
 
 -- Step 5: Add helpful indexes for performance
 CREATE INDEX IF NOT EXISTS idx_profiles_role ON profiles(role);

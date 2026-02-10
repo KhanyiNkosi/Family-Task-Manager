@@ -152,98 +152,71 @@ export default function ParentProfilePage() {
     { href: "/parent-profile", icon: "fas fa-user", label: "Profile", active: true },
   ];
 
+
   const handleEdit = () => {
     setEditedProfile({ ...profile });
     setIsEditing(true);
   };
 
-    const handleSave = async () => {
+  const handleSave = async () => {
     try {
-      console.log("Saving profile...", editedProfile);
-      
-      // Get current user session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
       if (sessionError) {
-        console.error("Session error:", sessionError);
-        throw new Error("Cannot get user session");
+        showAlert("Cannot get user session", "error");
+        return;
       }
-      
       if (!session?.user) {
-        console.error("No user found in session");
-        throw new Error("No user logged in");
+        showAlert("No user logged in", "error");
+        return;
       }
-      
       const userId = session.user.id;
-      console.log("Updating user ID:", userId);
-      
-      // First, check if profiles table exists for this user
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', userId)
         .single();
-      
-      console.log("Existing profile check:", { existingProfile, fetchError });
-      
-      // Prepare update data
-      const updateData: any = {
+      const updateData = {
         full_name: editedProfile.name || "",
         email: editedProfile.email || "",
         phone: editedProfile.phone || "",
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
+        profile_image: tempImage ? tempImage : (profileImage || null)
       };
-      
-      // Add profile image if we have one
-      if (tempImage) {
-        updateData.profile_image = tempImage;
-        setProfileImage(tempImage);
-        localStorage.setItem("parentProfileImage", tempImage);
-      }
-      
-      console.log("Update data:", updateData);
-      
       let updateError;
-      
       if (fetchError?.code === 'PGRST116') {
-        // Profile doesn't exist, create it
-        console.log("Creating new profile...");
         const { error: createError } = await supabase
           .from('profiles')
           .insert({
             id: userId,
             ...updateData,
             role: 'parent',
-            family_id: 'temp-family-id', // This should come from user metadata
+            family_id: 'temp-family-id',
             created_at: new Date().toISOString()
           });
         updateError = createError;
       } else {
-        // Update existing profile
-        console.log("Updating existing profile...");
         const { error: updateError2 } = await supabase
           .from('profiles')
           .update(updateData)
           .eq('id', userId);
         updateError = updateError2;
       }
-      
       if (updateError) {
-        console.error("Database error details:", updateError);
-        throw new Error(`Database error: ${updateError.message} (Code: ${updateError.code})`);
+        showAlert(`Database error: ${updateError.message || "Unknown error"}`, "error");
+        return;
       }
-      
-      // Update local state
+      if (updateData.profile_image) {
+        setProfileImage(updateData.profile_image);
+        localStorage.setItem("parentProfileImage", updateData.profile_image);
+      } else {
+        setProfileImage("");
+        localStorage.removeItem("parentProfileImage");
+      }
       setProfile({ ...editedProfile });
-      
       setIsEditing(false);
       showAlert("Profile updated successfully!", "success");
-      
-      // Refresh data
       fetchProfileFromSupabase();
-      
     } catch (error: any) {
-      console.error("Detailed save error:", error);
       showAlert(`Error saving profile: ${error.message || "Please try again."}`, "error");
     }
   };
@@ -253,11 +226,11 @@ export default function ParentProfilePage() {
     setIsEditing(false);
   };
 
-  
   const handleInputChange = (field: keyof ParentProfile, value: string) => {
     setEditedProfile(prev => ({ ...prev, [field]: value }));
   };
-const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -270,31 +243,29 @@ const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     }
   };
 
-  // Remove profile picture
   const handleRemoveparentProfileImage = async () => {
     const confirmed = await showConfirm("Remove profile picture?");
     if (confirmed) {
       try {
-        // Get current user session
-        const { data: { session } } = await supabase.auth.getSession();
-        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          showAlert("Cannot get user session", "error");
+          return;
+        }
         if (session?.user) {
-          // Update database to remove profile image
           const { error } = await supabase
             .from('profiles')
             .update({ profile_image: null })
             .eq('id', session.user.id);
-          
-          if (error) throw error;
+          if (error) {
+            showAlert("Error removing profile picture in database.", "error");
+            return;
+          }
         }
-        
-        // Update local state
         setProfileImage("");
         localStorage.removeItem("parentProfileImage");
         showAlert("Profile picture removed!", "success");
-        
       } catch (error) {
-        console.error("Error removing profile image:", error);
         showAlert("Error removing profile picture. Please try again.", "error");
       }
     }
