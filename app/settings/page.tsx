@@ -5,6 +5,33 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SettingsPage() {
+      // Load settings from Supabase
+      useEffect(() => {
+        async function loadSettings() {
+          const supabase = require("@/app/lib/supabase").supabase;
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data: settingsData } = await supabase
+            .from('user_settings')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          if (settingsData) {
+            setSettings({
+              notifications: settingsData.notifications,
+              emailUpdates: settingsData.email_updates,
+              soundEffects: settingsData.sound_effects,
+              darkMode: settingsData.dark_mode,
+              language: settingsData.language,
+              timezone: settingsData.timezone,
+              dailyReminders: settingsData.daily_reminders,
+              weeklyReports: settingsData.weekly_reports,
+            });
+          }
+        }
+        loadSettings();
+      }, []);
+    const [userRole, setUserRole] = useState<string>("");
   const router = useRouter();
   const [settings, setSettings] = useState({
     notifications: true,
@@ -17,12 +44,7 @@ export default function SettingsPage() {
     weeklyReports: false,
   });
 
-  const [familyMembers, setFamilyMembers] = useState([
-    { id: 1, name: "Parent", role: "admin", points: 0, active: true },
-    { id: 2, name: "Sarah", role: "child", points: 1250, active: true },
-    { id: 3, name: "John", role: "child", points: 850, active: true },
-    { id: 4, name: "Emily", role: "child", points: 0, active: false },
-  ]);
+  const [familyMembers, setFamilyMembers] = useState<any[]>([]);
 
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberRole, setNewMemberRole] = useState("child");
@@ -56,8 +78,43 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
+        // Get current user role
+        async function loadUserRole() {
+          const supabase = require("@/app/lib/supabase").supabase;
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return;
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single();
+          setUserRole(profile?.role || "");
+        }
+        loadUserRole();
     const savedImage = localStorage.getItem("parentProfileImage") || "";
     setProfileImage(savedImage);
+
+    // Load family members from Supabase
+    async function loadFamilyMembers() {
+      // Get current user
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.family_id) return;
+      // Load all profiles in the family
+      const { data: members } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .eq('family_id', profile.family_id);
+      setFamilyMembers(members || []);
+    }
+    loadFamilyMembers();
   }, []);
 
   const handleSettingChange = (key: string, value: any) => {
@@ -65,6 +122,35 @@ export default function SettingsPage() {
       ...prev,
       [key]: value
     }));
+    // Save to Supabase
+    async function saveSetting() {
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Upsert all fields from current settings state
+      const updatedSettings: { [k: string]: any } = {
+        user_id: user.id,
+        notifications: key === 'notifications' ? value : settings.notifications,
+        email_updates: key === 'emailUpdates' ? value : settings.emailUpdates,
+        sound_effects: key === 'soundEffects' ? value : settings.soundEffects,
+        dark_mode: key === 'darkMode' ? value : settings.darkMode,
+        language: key === 'language' ? value : settings.language,
+        timezone: key === 'timezone' ? value : settings.timezone,
+        daily_reminders: key === 'dailyReminders' ? value : settings.dailyReminders,
+        weekly_reports: key === 'weeklyReports' ? value : settings.weeklyReports,
+      };
+      // If the changed key is not in updatedSettings, add it
+      if (!(key in updatedSettings)) {
+        updatedSettings[key] = value;
+      }
+      const { error } = await supabase
+        .from('user_settings')
+        .upsert(updatedSettings, { onConflict: ['user_id'] });
+      if (error) {
+        showAlert('Failed to save settings: ' + error.message, 'error');
+      }
+    }
+    saveSetting();
   };
 
   const handleSaveSettings = () => {
@@ -92,36 +178,77 @@ export default function SettingsPage() {
       showAlert("Please enter a name for the family member.", "warning");
       return;
     }
-
-    const newMember = {
-      id: familyMembers.length + 1,
-      name: newMemberName.trim(),
-      role: newMemberRole,
-      points: 0,
-      active: true,
-    };
-
-    setFamilyMembers(prev => [...prev, newMember]);
-    setNewMemberName("");
-    setNewMemberRole("child");
-    
-    showAlert(`${newMember.name} has been added to the family!`, "success");
+    // Add new member to Supabase
+    async function addMember() {
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+      if (!profile?.family_id) return;
+      // Insert new profile
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          full_name: newMemberName.trim(),
+          role: newMemberRole,
+          family_id: profile.family_id
+        });
+      if (error) {
+        showAlert("Failed to add member: " + error.message, "error");
+      } else {
+        showAlert(`${newMemberName.trim()} has been added to the family!`, "success");
+        setNewMemberName("");
+        setNewMemberRole("child");
+        // Reload members
+        const { data: members } = await supabase
+          .from('profiles')
+          .select('id, full_name, role, total_points, active')
+          .eq('family_id', profile.family_id);
+        setFamilyMembers(members || []);
+      }
+    }
+    addMember();
   };
 
   const handleToggleMemberStatus = (id: number) => {
-    setFamilyMembers(members =>
-      members.map(member =>
-        member.id === id 
-          ? { ...member, active: !member.active }
-          : member
-      )
-    );
+    async function toggleStatus() {
+      const supabase = require("@/app/lib/supabase").supabase;
+      const member = familyMembers.find(m => m.id === id);
+      if (!member) return;
+      // No active column, so just reload members
+      const { data: members } = await supabase
+        .from('profiles')
+        .select('id, full_name, role, total_points')
+        .eq('family_id', member.family_id);
+      setFamilyMembers(members || []);
+    }
+    toggleStatus();
   };
 
   const handleRemoveMember = async (id: number, name: string) => {
     const confirmed = await showConfirm(`Are you sure you want to remove ${name} from the family?`);
     if (confirmed) {
-      setFamilyMembers(members => members.filter(member => member.id !== id));
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', id);
+      if (error) {
+        showAlert("Failed to remove member: " + error.message, "error");
+      } else {
+        showAlert(`${name} removed from the family!`, "success");
+        // Reload members
+        const { data: members } = await supabase
+          .from('profiles')
+          .select('id, full_name, role')
+          .eq('family_id', familyMembers[0]?.family_id);
+        setFamilyMembers(members || []);
+      }
     }
   };
 
@@ -274,30 +401,17 @@ export default function SettingsPage() {
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
                         member.role === "admin" ? "bg-[#00C2E0]" : "bg-purple-500"
                       } text-white font-bold`}>
-                        {member.name.charAt(0)}
+                        {member.full_name.charAt(0)}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-800">{member.name}</div>
+                        <div className="font-medium text-gray-800">{member.full_name}</div>
                         <div className="text-sm text-gray-500 capitalize">
-                          {member.role} • {member.points.toLocaleString()} points • 
-                          <span className={`ml-1 ${member.active ? "text-green-600" : "text-gray-400"}`}>
-                            {member.active ? "Active" : "Inactive"}
-                          </span>
+                          {member.role}
                         </div>
                       </div>
                     </div>
-                    
                     <div className="flex gap-2">
-                      <button
-                        onClick={() => handleToggleMemberStatus(member.id)}
-                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                          member.active 
-                            ? "bg-gray-100 text-gray-700 hover:bg-gray-200" 
-                            : "bg-green-100 text-green-700 hover:bg-green-200"
-                        }`}
-                      >
-                        {member.active ? "Deactivate" : "Activate"}
-                      </button>
+                      {/* No activate/deactivate button since no active column */}
                       {member.role !== "admin" && (
                         <button
                           onClick={() => handleRemoveMember(member.id, member.name)}
