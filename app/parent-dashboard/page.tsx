@@ -85,6 +85,7 @@ export default function ParentDashboard() {
   const [isClient, setIsClient] = useState(false);
   const [parentProfileImage, setParentProfileImage] = useState("");
   const [userName, setUserName] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Use the notifications hook for real-time notifications
   const { 
@@ -1163,8 +1164,61 @@ export default function ParentDashboard() {
 
         {/* MAIN CONTENT */}
         <div className="lg:ml-64 flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Mobile Hamburger Menu */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
+              <div className="w-64 h-full bg-gradient-to-b from-[#006372] to-[#004955] text-white p-6" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3 text-2xl font-extrabold">
+                    <i className="fas fa-smile text-3xl"></i>
+                    <span>FamilyTask</span>
+                  </div>
+                  <button onClick={() => setMobileMenuOpen(false)} className="text-2xl">
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <nav className="space-y-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3.5 px-4 py-3.5 rounded-xl transition-all ${
+                        pathname === item.href || item.active
+                          ? "bg-white/20 text-white shadow-lg"
+                          : "text-white/80 hover:bg-white/10 hover:text-white"
+                      }`}
+                    >
+                      <i className={`${item.icon} w-5 text-center`}></i>
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+                <div className="mt-auto pt-6 border-t border-white/20 space-y-3 absolute bottom-6 left-6 right-6">
+                  <button
+                    onClick={() => { window.history.back(); setMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+                  >
+                    <i className="fas fa-arrow-left"></i>
+                    Go Back
+                  </button>
+                  <button
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
+                  >
+                    <i className="fas fa-sign-out-alt"></i>
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Mobile Header */}
           <div className="lg:hidden mb-4 bg-gradient-to-r from-[#006372] to-[#004955] text-white px-4 py-3 rounded-xl flex items-center justify-between">
+            <button onClick={() => setMobileMenuOpen(true)} className="text-2xl">
+              <i className="fas fa-bars"></i>
+            </button>
             <div className="flex items-center gap-3">
               <i className="fas fa-smile text-2xl"></i>
               <span className="font-bold text-lg">FamilyTask</span>

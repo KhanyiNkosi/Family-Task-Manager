@@ -42,30 +42,30 @@ export default function HomePage() {
     <>
       <Header />
       <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE] pt-[90px]">
-        <div className="max-w-[1200px] mx-auto px-[80px]">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 md:px-12 lg:px-[80px]">
           {/* Hero Section */}
-          <section className="hero text-center py-[80px] pb-[120px] max-w-[800px] mx-auto">
-            <h1 className="text-[64px] font-black leading-tight text-[#00C2E0] mb-6 tracking-tight">
+          <section className="hero text-center py-8 sm:py-12 md:py-[80px] pb-12 sm:pb-16 md:pb-[120px] max-w-[800px] mx-auto">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-[64px] font-black leading-tight text-[#00C2E0] mb-4 sm:mb-6 tracking-tight">
               Organize Your Family&apos;s Life
             </h1>
-            <p className="hero-subtitle text-xl text-[#4A5568] leading-relaxed mb-12 max-w-[600px] mx-auto">
+            <p className="hero-subtitle text-base sm:text-lg md:text-xl text-[#4A5568] leading-relaxed mb-8 sm:mb-12 max-w-[600px] mx-auto px-4">
               The fun and easy way to manage tasks, rewards, and family cooperation.
             </p>
             <button
               onClick={handleGetStartedClick}
-              className="btn-primary bg-[#00C2E0] text-white px-10 py-4 rounded-xl font-bold text-lg shadow-lg shadow-[#00C2E0]/40 hover:shadow-[#00C2E0]/50 hover:transform hover:-translate-y-1 transition-all duration-300"
+              className="btn-primary bg-[#00C2E0] text-white px-6 sm:px-10 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg shadow-lg shadow-[#00C2E0]/40 hover:shadow-[#00C2E0]/50 hover:transform hover:-translate-y-1 transition-all duration-300"
             >
               Get Started
             </button>
           </section>
 
           {/* Features Section - 3 Cards */}
-          <section className="features py-[60px] pb-[100px]">
-            <div className="features-grid grid grid-cols-1 md:grid-cols-3 gap-8 mb-[60px]">
+          <section className="features py-8 sm:py-12 md:py-[60px] pb-12 sm:pb-16 md:pb-[100px]">
+            <div className="features-grid grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 mb-8 sm:mb-12 md:mb-[60px]">
               {/* Card 1: Manage Tasks */}
               <div 
                 onClick={() => handleFeatureClick(0)}
-                className={`feature-card bg-white/70 p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
+                className={`feature-card bg-white/70 p-6 sm:p-8 md:p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
                   activeFeature === 0 
                     ? "ring-2 ring-[#00C2E0] ring-opacity-50 transform scale-[1.02]" 
                     : "hover:translate-y-[-5px] hover:shadow-lg"
@@ -74,7 +74,7 @@ export default function HomePage() {
                 <div className="feature-icon w-15 h-15 bg-[#00C2E0]/10 rounded-2xl flex items-center justify-center text-3xl font-bold text-[#00C2E0] mb-6">
                   ✓
                 </div>
-                <h2 className="feature-title text-3xl font-bold text-[#00C2E0] mb-4 leading-tight">
+                <h2 className="feature-title text-xl sm:text-2xl md:text-3xl font-bold text-[#00C2E0] mb-3 sm:mb-4 leading-tight">
                   Manage Tasks
                 </h2>
                 <p className="feature-description text-[#4A5568] text-base leading-relaxed">
@@ -85,7 +85,7 @@ export default function HomePage() {
               {/* Card 2: Motivate with Rewards */}
               <div 
                 onClick={() => handleFeatureClick(1)}
-                className={`feature-card bg-white/70 p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
+                className={`feature-card bg-white/70 p-6 sm:p-8 md:p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
                   activeFeature === 1 
                     ? "ring-2 ring-[#00C2E0] ring-opacity-50 transform scale-[1.02]" 
                     : "hover:translate-y-[-5px] hover:shadow-lg"
@@ -94,7 +94,7 @@ export default function HomePage() {
                 <div className="feature-icon w-15 h-15 bg-[#00C2E0]/10 rounded-2xl flex items-center justify-center text-3xl font-bold text-[#00C2E0] mb-6">
                   ★
                 </div>
-                <h2 className="feature-title text-3xl font-bold text-[#00C2E0] mb-4 leading-tight">
+                <h2 className="feature-title text-xl sm:text-2xl md:text-3xl font-bold text-[#00C2E0] mb-3 sm:mb-4 leading-tight">
                   Motivate with Rewards
                 </h2>
                 <p className="feature-description text-[#4A5568] text-base leading-relaxed">
@@ -105,7 +105,7 @@ export default function HomePage() {
               {/* Card 3: Stay Connected */}
               <div 
                 onClick={() => handleFeatureClick(2)}
-                className={`feature-card bg-white/70 p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
+                className={`feature-card bg-white/70 p-6 sm:p-8 md:p-10 rounded-3xl cursor-pointer transition-all duration-300 border border-blue-100/50 ${
                   activeFeature === 2 
                     ? "ring-2 ring-[#00C2E0] ring-opacity-50 transform scale-[1.02]" 
                     : "hover:translate-y-[-5px] hover:shadow-lg"
@@ -114,7 +114,7 @@ export default function HomePage() {
                 <div className="feature-icon w-15 h-15 bg-[#00C2E0]/10 rounded-2xl flex items-center justify-center text-3xl font-bold text-[#00C2E0] mb-6">
                   ❤
                 </div>
-                <h2 className="feature-title text-3xl font-bold text-[#00C2E0] mb-4 leading-tight">
+                <h2 className="feature-title text-xl sm:text-2xl md:text-3xl font-bold text-[#00C2E0] mb-3 sm:mb-4 leading-tight">
                   Stay Connected
                 </h2>
                 <p className="feature-description text-[#4A5568] text-base leading-relaxed">
