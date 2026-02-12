@@ -1279,7 +1279,7 @@ export default function ChildDashboardPage() {
   const completedTasks = tasks.filter(task => task.completed && !task.approved);
 
   return (
-    <div className="dashboard-container flex min-h-screen bg-gray-50">
+    <div className="dashboard-container min-h-screen bg-gray-50">
       <NotificationAlert
         notifications={notifications}
         onDismiss={dismissNotification}
@@ -1340,7 +1340,7 @@ export default function ChildDashboardPage() {
         </div>
       </aside>
 
-      <main className="main-content lg:ml-64 flex-1 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 overflow-x-hidden">
+      <main className="w-full lg:ml-64 lg:w-auto px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 overflow-x-hidden">
         {/* Mobile Hamburger Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
