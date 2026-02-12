@@ -11,7 +11,13 @@ const inter = Inter({
 export function generateMetadata(): Metadata {
   return {
     title: "FamilyTask - Organize Your Family's Life",
-    description: "The fun and easy way to manage tasks, rewards, and family cooperation."
+    description: "The fun and easy way to manage tasks, rewards, and family cooperation.",
+    viewport: {
+      width: 'device-width',
+      initialScale: 1,
+      maximumScale: 5,
+      userScalable: true,
+    },
   };
 }
 

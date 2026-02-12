@@ -1118,8 +1118,8 @@ export default function ParentDashboard() {
       />
 
       <div className="flex">
-        {/* SIDEBAR */}
-        <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+        {/* SIDEBAR - Hidden on mobile */}
+        <aside className="sidebar hidden lg:block bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
           <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
             <i className="fas fa-smile text-3xl"></i>
             <span>FamilyTask</span>
@@ -1162,14 +1162,24 @@ export default function ParentDashboard() {
         </aside>
 
         {/* MAIN CONTENT */}
-        <div className="ml-64 flex-1 p-8">
-          <header className="mb-10">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-[#006372]">
-                  {userName ? `${userName}'s Family Dashboard` : 'Family Dashboard'}
+        <div className="lg:ml-64 flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Mobile Header */}
+          <div className="lg:hidden mb-4 bg-gradient-to-r from-[#006372] to-[#004955] text-white px-4 py-3 rounded-xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <i className="fas fa-smile text-2xl"></i>
+              <span className="font-bold text-lg">FamilyTask</span>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="px-3 py-1 bg-white/20 rounded-lg text-sm"
+            >
+              Logout
+            </button>
+          </div>
+          
+          <header className="mb-10">\n            <div className="flex items-center justify-between">\n              <div>\n                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#006372]">\n                  {userName ? `${userName}'s Family Dashboard` : 'Family Dashboard'}
                 </h1>
-                <p className="text-gray-600 mt-2">Monitor your family's tasks, rewards, and activities</p>
+                <p className="text-sm sm:text-base text-gray-600 mt-2">Monitor your family's tasks, rewards, and activities</p>
               </div>
               <div className="flex items-center gap-4">
                 

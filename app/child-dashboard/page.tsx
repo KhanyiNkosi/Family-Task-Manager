@@ -1288,7 +1288,7 @@ export default function ChildDashboardPage() {
       />
 
       {/* Sidebar Navigation - CHILD-ONLY VERSION */}
-      <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+      <aside className="sidebar hidden lg:block bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
         <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
           <i className="fas fa-smile text-3xl"></i>
           <span>FamilyTask</span>
@@ -1339,15 +1339,26 @@ export default function ChildDashboardPage() {
         </div>
       </aside>
 
-      <main className="main-content ml-64 flex-1 p-10">
+      <main className="main-content lg:ml-64 flex-1 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
+        {/* Mobile Header */}
+        <div className="lg:hidden mb-4 bg-gradient-to-r from-[#006372] to-[#004955] text-white px-4 py-3 rounded-xl flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <i className="fas fa-smile text-2xl"></i>
+            <span className="font-bold text-lg">FamilyTask</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold">{currentPoints} pts</span>
+          </div>
+        </div>
+        
         {/* Header */}
         <header className="mb-10">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-[#006372]">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#006372]">
                 {userName ? `${userName}'s Dashboard` : 'Child Dashboard'}
               </h1>
-              <p className="text-gray-600 mt-2">Complete tasks, earn points, and get rewards!</p>
+              <p className="text-sm sm:text-base text-gray-600 mt-2">Complete tasks, earn points, and get rewards!</p>
             </div>
             <div className="flex items-center gap-4">
               <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg">
