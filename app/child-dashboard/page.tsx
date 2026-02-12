@@ -1340,7 +1340,7 @@ export default function ChildDashboardPage() {
         </div>
       </aside>
 
-      <main className="main-content lg:ml-64 flex-1 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10">
+      <main className="main-content lg:ml-64 flex-1 px-4 sm:px-6 lg:px-10 py-4 sm:py-6 lg:py-10 overflow-x-hidden">
         {/* Mobile Hamburger Menu */}
         {mobileMenuOpen && (
           <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
@@ -1405,8 +1405,8 @@ export default function ChildDashboardPage() {
           </div>
         </div>
         
-        {/* Header */}
-        <header className="mb-10">
+        {/* Header - Desktop Only */}
+        <header className="hidden lg:block mb-10">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#006372]">
@@ -1449,6 +1449,14 @@ export default function ChildDashboardPage() {
             </div>
           </div>
         </header>
+
+        {/* Simple Mobile Title */}
+        <div className="lg:hidden mb-6">
+          <h1 className="text-2xl font-bold text-[#006372] mb-1">
+            {userName ? `${userName}'s Dashboard` : 'My Dashboard'}
+          </h1>
+          <p className="text-sm text-gray-600">Complete tasks, earn points, and get rewards!</p>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
