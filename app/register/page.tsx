@@ -46,8 +46,26 @@ export default function RegisterPage() {
 
     if (!formData.password) {
       newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
+    } else {
+      // Strict password validation
+      const password = formData.password;
+      const minLength = 8;
+      const hasUpperCase = /[A-Z]/.test(password);
+      const hasLowerCase = /[a-z]/.test(password);
+      const hasNumber = /[0-9]/.test(password);
+      const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+      
+      if (password.length < minLength) {
+        newErrors.password = `Password must be at least ${minLength} characters`;
+      } else if (!hasUpperCase) {
+        newErrors.password = "Password must contain at least one uppercase letter";
+      } else if (!hasLowerCase) {
+        newErrors.password = "Password must contain at least one lowercase letter";
+      } else if (!hasNumber) {
+        newErrors.password = "Password must contain at least one number";
+      } else if (!hasSpecialChar) {
+        newErrors.password = "Password must contain at least one special character (!@#$%^&*...)";
+      }
     }
 
     if (formData.password !== formData.confirmPassword) {
@@ -328,6 +346,18 @@ export default function RegisterPage() {
                   {errors.password && (
                     <p className="text-red-500 text-sm mt-1">{errors.password}</p>
                   )}
+                  {!errors.password && (
+                    <div className="mt-2 text-xs text-gray-600 space-y-1">
+                      <p className="font-medium">Password must contain:</p>
+                      <ul className="list-disc list-inside space-y-0.5 ml-2">
+                        <li>At least 8 characters</li>
+                        <li>Uppercase letter (A-Z)</li>
+                        <li>Lowercase letter (a-z)</li>
+                        <li>Number (0-9)</li>
+                        <li>Special character (!@#$%...)</li>
+                      </ul>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -477,31 +507,6 @@ export default function RegisterPage() {
                   </>
                 )}
               </button>
-
-              {/* Divider */}
-              <div className="relative flex items-center justify-center">
-                <div className="flex-1 border-t border-gray-300"></div>
-                <span className="px-4 text-gray-500 text-sm">Or continue with</span>
-                <div className="flex-1 border-t border-gray-300"></div>
-              </div>
-
-              {/* Social Login Options */}
-              <div className="grid grid-cols-2 gap-4">
-                <button
-                  type="button"
-                  className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3"
-                >
-                  <i className="fab fa-google text-red-500"></i>
-                  <span className="font-medium">Google</span>
-                </button>
-                <button
-                  type="button"
-                  className="p-3 border border-gray-300 rounded-xl hover:bg-gray-50 transition flex items-center justify-center gap-3"
-                >
-                  <i className="fab fa-apple"></i>
-                  <span className="font-medium">Apple</span>
-                </button>
-              </div>
             </form>
           </div>
         </div>

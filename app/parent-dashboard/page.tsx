@@ -26,6 +26,8 @@ interface Task {
   help_requested_at?: string | null;
   help_message?: string | null;
   category?: string;
+  photo_url?: string | null;
+  photo_uploaded_at?: string | null;
 }
 
 interface Child {
@@ -105,10 +107,13 @@ export default function ParentDashboard() {
   const navItems = [
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard", active: true },
-    { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
+    // AI features temporarily disabled - coming soon with full implementation
+    // { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
+    // { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
     { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Store" },
-    { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
     { href: "/parent-profile", icon: "fas fa-user", label: "Profile" },
+    { href: "/activity-feed", icon: "fas fa-newspaper", label: "Activity Feed" },
+    { href: "/achievements", icon: "fas fa-medal", label: "Achievements" },
   ];
 
   // State for tasks
@@ -164,10 +169,18 @@ export default function ParentDashboard() {
           resolve(true);
         }
       });
-      // Handle cancel - resolve false after a short delay
+      // Attach cancel handler
+      const cancelHandler = () => {
+        setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+        resolve(false);
+      };
+      // Wait for DOM to render modal, then attach cancel handler
       setTimeout(() => {
-        if (confirmModal.show) resolve(false);
-      }, 100);
+        const cancelBtn = document.querySelector('.confirm-modal-cancel');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', cancelHandler, { once: true });
+        }
+      }, 0);
     });
   };
 
@@ -225,10 +238,8 @@ export default function ParentDashboard() {
           // Note: Notifications are handled by database triggers and useNotifications hook
           // No need to manually create notifications here
           
-          // Reload tasks (only if not already loading)
-          if (!isLoadingData) {
-            loadTasks();
-          }
+          // Reload tasks
+          loadTasks();
         }
       )
       .subscribe();
@@ -241,15 +252,8 @@ export default function ParentDashboard() {
         (payload) => {
           console.log('Redemption change detected:', payload);
           console.log('Event type:', payload.eventType);
-          
-          // Note: Notifications are handled by database triggers and useNotifications hook
-          // No need to manually create notifications here
-          
-          // Reload redemptions (only if not already loading and not a delete event)
-          // For delete events, the local state is already updated
-          if (!isLoadingData && payload.eventType !== 'DELETE') {
-            loadRedemptions();
-          }
+          // Always reload redemptions after any event to ensure UI is in sync
+          loadRedemptions();
         }
       )
       .subscribe();
@@ -265,10 +269,8 @@ export default function ParentDashboard() {
           // Show notification for new bulletin messages (from notification system)
           // Note: The database trigger handles creating notifications for family members
           
-          // Reload bulletin messages (only if not already loading)
-          if (!isLoadingData) {
-            loadBulletinMessages();
-          }
+          // Reload bulletin messages
+          loadBulletinMessages();
         }
       )
       .subscribe();
@@ -279,7 +281,7 @@ export default function ParentDashboard() {
       supabase.removeChannel(redemptionsSubscription);
       supabase.removeChannel(bulletinSubscription);
     };
-  }, [isLoadingData]);
+  }, []); // Remove isLoadingData dependency to prevent subscription recreation
 
   const loadRedemptions = async () => {
     try {
@@ -455,26 +457,54 @@ export default function ParentDashboard() {
       console.log('Family profiles:', familyProfiles);
 
       if (familyProfiles && familyProfiles.length > 0) {
-        // For each profile, check if they're a child and get their points
+        // For each profile, check if they're a child and calculate their points
         const childrenWithPoints = [];
         
         for (const familyMember of familyProfiles) {
           const { data: userProfile } = await supabase
-            .from('user_profiles')
-            .select('role, total_points')
+            .from('profiles')
+            .select('role')
             .eq('id', familyMember.id)
             .single();
           
           // Only include children
           if (userProfile?.role === 'child') {
+            // Calculate points from approved tasks
+            const { data: approvedTasks } = await supabase
+              .from('tasks')
+              .select('points')
+              .eq('assigned_to', familyMember.id)
+              .eq('approved', true);
+            
+            const earnedPoints = approvedTasks?.reduce((sum, task) => sum + (task.points || 0), 0) || 0;
+            
+            // Calculate points spent on APPROVED redemptions only
+            const { data: redemptions } = await supabase
+              .from('reward_redemptions')
+              .select('points_spent')
+              .eq('user_id', familyMember.id)
+              .eq('status', 'approved');
+            
+            const spentPoints = redemptions?.reduce((sum, r) => sum + (r.points_spent || 0), 0) || 0;
+            
+            const currentPoints = earnedPoints - spentPoints;
+            
+            console.log(`[Points Calc] ${familyMember.full_name}:`, {
+              earnedPoints,
+              spentPoints,
+              currentPoints,
+              approvedTasksCount: approvedTasks?.length || 0
+            });
+            
             childrenWithPoints.push({
               id: familyMember.id,
               name: familyMember.full_name,
-              total_points: userProfile.total_points || 0
+              total_points: currentPoints
             });
           }
         }
         
+        console.log('[loadChildren] Setting familyChildren state:', childrenWithPoints);
         setFamilyChildren(childrenWithPoints);
         console.log('Children loaded with points:', childrenWithPoints);
       }
@@ -508,11 +538,16 @@ export default function ParentDashboard() {
         .eq('created_by', user.id)
         .order('created_at', { ascending: false });
 
-      // Apply status filter if not "all"
+      // Apply status filter
       if (taskStatusFilter === 'pending') {
+        // Pending: not completed and not approved
         query = query.eq('completed', false).eq('approved', false);
       } else if (taskStatusFilter === 'completed') {
-        query = query.or('completed.eq.true,approved.eq.true');
+        // Completed view: show only completed but not yet approved
+        query = query.eq('completed', true).eq('approved', false);
+      } else {
+        // "all" filter: exclude approved tasks (they're done and archived)
+        query = query.eq('approved', false);
       }
 
       const { data: tasks, error } = await query;
@@ -540,7 +575,9 @@ export default function ParentDashboard() {
           help_requested: task.help_requested || false,
           help_requested_at: task.help_requested_at,
           help_message: task.help_message,
-          category: task.category
+          category: task.category,
+          photo_url: task.photo_url,
+          photo_uploaded_at: task.photo_uploaded_at
         }));
         setActiveTasks(formattedTasks);
       }
@@ -698,52 +735,15 @@ export default function ParentDashboard() {
         return;
       }
 
-      console.log('Task approved successfully, now awarding points...');
+      console.log('Task approved successfully!');
 
-      // Award points to child
-      console.log('Attempting to award points via RPC...');
-      const { error: pointsError } = await supabase.rpc('increment_user_points', {
-        user_id: task.assigned_to,
-        points_to_add: task.points
-      });
-
-      if (pointsError) {
-        console.log('RPC failed, using manual update. Error:', pointsError);
-        // If RPC doesn't exist, manually update
-        const { data: userProfile, error: fetchError } = await supabase
-          .from('user_profiles')
-          .select('total_points')
-          .eq('id', task.assigned_to)
-          .single();
-
-        console.log('Current user profile:', userProfile, 'Fetch error:', fetchError);
-
-        if (userProfile) {
-          const newTotal = (userProfile.total_points || 0) + task.points;
-          console.log('Updating points from', userProfile.total_points, 'to', newTotal);
-          
-          const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update({ total_points: newTotal })
-            .eq('id', task.assigned_to);
-            
-          if (updateError) {
-            console.error('Error updating points:', updateError);
-            showAlert('Task approved but failed to award points', "warning");
-            return;
-          }
-          console.log('Points updated successfully!');
-        } else {
-          console.error('User profile not found for:', task.assigned_to);
-          showAlert('Task approved but user profile not found', "warning");
-          return;
-        }
-      } else {
-        console.log('Points awarded successfully via RPC!');
-      }
-
-      // Update local state - remove from list or mark as approved
+      // Remove task from UI immediately - it's now completed and approved
       setActiveTasks(activeTasks.filter(t => t.id !== taskId));
+      
+      // Points are calculated dynamically from approved tasks in database
+      // Reload children data to reflect updated points
+      await loadChildren();
+      
       showAlert(`Task approved! ${task.points} points awarded to child!`, "success");
     } catch (error) {
       console.error('Error in handleApproveTask:', error);
@@ -786,11 +786,37 @@ export default function ParentDashboard() {
 
   // Delete task
   const handleDeleteTask = async (taskId: string) => {
-    const confirmed = await showConfirm("Are you sure you want to delete this task?");
-    if (!confirmed) return;
-    
     try {
       const supabase = createClientSupabaseClient();
+      
+      // Check if task is completed/approved first
+      const { data: task } = await supabase
+        .from('tasks')
+        .select('approved, completed, task_name, points, assigned_to')
+        .eq('id', taskId)
+        .single();
+      
+      // If task is completed OR approved, don't delete - just hide from UI
+      if (task?.completed || task?.approved) {
+        const confirmed = await showConfirm(
+          `This task has been completed and points (${task.points}) have been earned. \n\nRemoving it will hide it from your view but the child's points will NOT be affected. Continue?`
+        );
+        
+        if (!confirmed) return;
+        
+        // Simply remove from UI without deleting from database
+        // Points calculation only counts tasks in database, so points remain
+        setActiveTasks(activeTasks.filter(t => t.id !== taskId));
+        showAlert('Task hidden - points remain in balance', "success");
+        
+        // Reload children to confirm points unchanged
+        loadChildren();
+        return;
+      }
+      
+      // For non-completed tasks, proceed with normal deletion
+      const confirmed = await showConfirm("Are you sure you want to delete this task?");
+      if (!confirmed) return;
       
       const { error } = await supabase
         .from('tasks')
@@ -961,43 +987,16 @@ export default function ParentDashboard() {
         return;
       }
 
-      // Deduct points from child
-      const { error: pointsError } = await supabase.rpc('increment_user_points', {
-        user_id: redemption.user_id,
-        points_to_add: -redemption.points_spent
-      });
-
-      if (pointsError) {
-        console.log('RPC failed, using manual update. Error:', pointsError);
-        // Manual fallback
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('total_points')
-          .eq('id', redemption.user_id)
-          .single();
-
-        if (userProfile) {
-          const newTotal = Math.max(0, (userProfile.total_points || 0) - redemption.points_spent);
-          const { error: updateError } = await supabase
-            .from('user_profiles')
-            .update({ total_points: newTotal })
-            .eq('id', redemption.user_id);
-            
-          if (updateError) {
-            console.error('Error updating points:', updateError);
-            showAlert('Redemption approved but failed to deduct points', "warning");
-            return;
-          }
-        }
-      }
-
+      // Points are calculated dynamically from approved tasks minus redemptions
+      // No need to manually deduct points - they'll be reflected automatically
+      
       // Update local state
       setRedemptions(redemptions.map(r =>
         r.id === redemptionId ? { ...r, status: 'approved', approved_at: new Date().toISOString(), approved_by: user.id } : r
       ));
       
-      // Reload children to update their points
-      loadChildren();
+      // Reload children to update their points (recalculates from tasks/redemptions)
+      await loadChildren();
       
       showAlert(`Redemption approved! ${redemption.points_spent} points deducted from child.`, "success");
     } catch (error) {
@@ -1046,12 +1045,12 @@ export default function ParentDashboard() {
 
   const handleDeleteRedemption = async (redemptionId: string) => {
     try {
-      const confirmed = await showConfirm(
-        'Delete Redemption',
-        'Are you sure you want to delete this redemption? This action cannot be undone.'
-      );
-
-      if (!confirmed) return;
+      console.log('Attempting to delete redemption:', redemptionId);
+      const confirmed = await showConfirm('Are you sure you want to delete this redemption? This action cannot be undone.');
+      if (!confirmed) {
+        console.log('Delete redemption cancelled by user.');
+        return;
+      }
 
       const supabase = createClientSupabaseClient();
 
@@ -1067,9 +1066,9 @@ export default function ParentDashboard() {
         return;
       }
 
+      console.log('Redemption deleted successfully:', redemptionId);
       // Update local state
       setRedemptions(redemptions.filter(r => r.id !== redemptionId));
-      
       showAlert('Redemption deleted successfully.', "success");
     } catch (error) {
       console.error('Error in handleDeleteRedemption:', error);
@@ -1518,6 +1517,36 @@ export default function ParentDashboard() {
                       {task.description && (
                         <p className="text-gray-600 text-sm mt-2">{task.description}</p>
                       )}
+                      {task.photo_url && (
+                        <div className="mt-3 border-t border-gray-200 pt-3">
+                          <div className="flex items-center gap-2 mb-2">
+                            <i className="fas fa-camera text-blue-500"></i>
+                            <span className="text-sm font-medium text-gray-700">Task Photo (Verification)</span>
+                          </div>
+                          <a
+                            href={task.photo_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="block rounded-lg overflow-hidden hover:opacity-90 transition-opacity"
+                          >
+                            <img
+                              src={task.photo_url}
+                              alt="Task completion photo"
+                              className="w-full max-h-64 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                e.currentTarget.style.display = 'none';
+                                const errorMsg = document.createElement('div');
+                                errorMsg.className = 'p-4 bg-red-50 border border-red-200 rounded-lg text-center';
+                                errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle text-red-500 mb-2"></i><p class="text-sm text-red-700">Photo failed to load</p>';
+                                e.currentTarget.parentElement?.appendChild(errorMsg);
+                              }}
+                            />
+                          </a>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Click to view full size • Uploaded {task.photo_uploaded_at ? new Date(task.photo_uploaded_at).toLocaleString() : 'recently'}
+                          </p>
+                        </div>
+                      )}
                     </div>
                     );
                   })
@@ -1592,8 +1621,20 @@ export default function ParentDashboard() {
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Children Progress</h2>
-                  <div className="text-sm text-gray-600">
-                    <span className="text-[#00C2E0] font-medium">{familyChildren.length}</span> children
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setFamilyChildren([]);
+                        loadChildren();
+                      }}
+                      className="text-gray-500 hover:text-[#00C2E0] transition-colors"
+                      title="Refresh points"
+                    >
+                      <i className="fas fa-sync-alt"></i>
+                    </button>
+                    <div className="text-sm text-gray-600">
+                      <span className="text-[#00C2E0] font-medium">{familyChildren.length}</span> children
+                    </div>
                   </div>
                 </div>
 
@@ -1887,8 +1928,13 @@ export default function ParentDashboard() {
               <p className="text-gray-700 mb-6">{confirmModal.message}</p>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setConfirmModal({ show: false, message: "", onConfirm: () => {} })}
-                  className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all"
+                  type="button"
+                  className="confirm-modal-cancel flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all"
+                  onClick={e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setConfirmModal({ show: false, message: '', onConfirm: () => {} });
+                  }}
                 >
                   Cancel
                 </button>

@@ -146,9 +146,10 @@ export default function ParentProfilePage() {
   const navItems: NavItem[] = [
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard" },
-    { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
+    // AI features temporarily disabled - coming soon with full implementation
+    // { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
+    // { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
     { href: "/rewards-store", icon: "fas fa-trophy", label: "Rewards Store" },
-    { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
     { href: "/parent-profile", icon: "fas fa-user", label: "Profile", active: true },
   ];
 

@@ -88,19 +88,32 @@ export default function MyRewardsPage() {
           return;
         }
 
-        // Fetch user's points from user_profiles
-        const { data: userProfile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('total_points')
-          .eq('id', user.id)
-          .single();
+        // Calculate points from approved tasks minus redemptions
+        const { data: allTasks } = await supabase
+          .from('tasks')
+          .select('points, approved')
+          .eq('assigned_to', user.id);
 
-        if (profileError) {
-          console.error('Error fetching user profile:', profileError);
-        } else if (userProfile) {
-          setMyPoints(userProfile.total_points || 0);
-          console.log('Loaded user points:', userProfile.total_points);
-        }
+        const earnedPoints = allTasks?.reduce((total: number, task: any) => {
+          if (task.approved) {
+            return total + (task.points || 0);
+          }
+          return total;
+        }, 0) || 0;
+
+        const { data: allRedemptions } = await supabase
+          .from('reward_redemptions')
+          .select('points_spent')
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
+
+        const spentPoints = allRedemptions?.reduce((total: number, redemption: any) => {
+          return total + (redemption.points_spent || 0);
+        }, 0) || 0;
+
+        const currentPoints = earnedPoints - spentPoints;
+        setMyPoints(currentPoints);
+        console.log('Loaded user points:', currentPoints, '(earned:', earnedPoints, 'spent:', spentPoints, ')');
 
         // Fetch user's family to get available rewards
         const { data: profile } = await supabase

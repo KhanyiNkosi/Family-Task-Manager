@@ -52,37 +52,105 @@ export default function LogoutButton({ variant = 'sidebar', className = '' }: Lo
   // Sidebar variant (for your dashboard sidebars)
   if (variant === 'sidebar') {
     return (
-      <button
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-        className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-600 rounded-xl hover:bg-red-500/20 transition-all font-medium border border-red-400/20 ${className}`}
-      >
-        {isLoggingOut ? (
-          <>
-            <i className="fas fa-spinner fa-spin"></i>
-            <span>Logging out...</span>
-          </>
-        ) : (
-          <>
-            <i className="fas fa-sign-out-alt"></i>
-            <span>Log Out</span>
-          </>
+      <>
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-600 rounded-xl hover:bg-red-500/20 transition-all font-medium border border-red-400/20 ${className}`}
+        >
+          {isLoggingOut ? (
+            <>
+              <i className="fas fa-spinner fa-spin"></i>
+              <span>Logging out...</span>
+            </>
+          ) : (
+            <>
+              <i className="fas fa-sign-out-alt"></i>
+              <span>Log Out</span>
+            </>
+          )}
+        </button>
+        
+        {/* Confirm Modal */}
+        {confirmModal.show && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] animate-fadeIn">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+              <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl text-yellow-600">⚠</span>
+              </div>
+              <h3 className="text-xl font-bold text-center mb-2 text-gray-800">Confirm Action</h3>
+              <p className="text-gray-700 text-center mb-6 whitespace-pre-line">{confirmModal.message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+                    if ((window as any)._confirmCancelHandler) {
+                      (window as any)._confirmCancelHandler();
+                    }
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
         )}
-      </button>
+      </>
     );
   }
 
   // Header variant (compact for headers)
   if (variant === 'header') {
     return (
-      <button
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-        className={`px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-sm font-medium ${className}`}
-      >
-        <i className="fas fa-sign-out-alt"></i>
-        {isLoggingOut ? 'Logging out...' : 'Log Out'}
-      </button>
+      <>
+        <button
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className={`px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition flex items-center gap-2 text-sm font-medium ${className}`}
+        >
+          <i className="fas fa-sign-out-alt"></i>
+          {isLoggingOut ? 'Logging out...' : 'Log Out'}
+        </button>
+        
+        {/* Confirm Modal */}
+        {confirmModal.show && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] animate-fadeIn">
+            <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-scaleIn">
+              <div className="w-16 h-16 rounded-full bg-yellow-100 flex items-center justify-center mx-auto mb-4">
+                <span className="text-3xl text-yellow-600">⚠</span>
+              </div>
+              <h3 className="text-xl font-bold text-center mb-2 text-gray-800">Confirm Action</h3>
+              <p className="text-gray-700 text-center mb-6 whitespace-pre-line">{confirmModal.message}</p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setConfirmModal({ show: false, message: "", onConfirm: () => {} });
+                    if ((window as any)._confirmCancelHandler) {
+                      (window as any)._confirmCancelHandler();
+                    }
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg font-bold hover:bg-gray-300 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmModal.onConfirm}
+                  className="flex-1 bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-lg font-bold hover:opacity-90 transition-all"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 

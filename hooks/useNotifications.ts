@@ -214,17 +214,21 @@ export function useNotifications(): UseNotificationsReturn {
             console.log('Notification change:', payload);
             
             if (payload.eventType === 'INSERT') {
-              // Add new notification
-              const newNotification = convertNotification(payload.new);
-              setNotifications(prev => [newNotification, ...prev]);
+              // Add new notification only if it's for the current user
+              if (payload.new.user_id === user.id) {
+                const newNotification = convertNotification(payload.new);
+                setNotifications(prev => [newNotification, ...prev]);
+              }
             } else if (payload.eventType === 'UPDATE') {
-              // Update existing notification
-              const updatedNotification = convertNotification(payload.new);
-              setNotifications(prev =>
-                prev.map(notif =>
-                  notif.id === updatedNotification.id ? updatedNotification : notif
-                )
-              );
+              // Update existing notification only if it's for the current user
+              if (payload.new.user_id === user.id) {
+                const updatedNotification = convertNotification(payload.new);
+                setNotifications(prev =>
+                  prev.map(notif =>
+                    notif.id === updatedNotification.id ? updatedNotification : notif
+                  )
+                );
+              }
             } else if (payload.eventType === 'DELETE') {
               // Remove notification
               setNotifications(prev =>

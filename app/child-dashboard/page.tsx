@@ -108,6 +108,12 @@ export default function ChildDashboardPage() {
   const [alertModal, setAlertModal] = useState({ show: false, message: "", type: "info" as "info" | "success" | "error" | "warning" });
   const [confirmModal, setConfirmModal] = useState({ show: false, message: "", onConfirm: () => {} });
   const [promptModal, setPromptModal] = useState({ show: false, message: "", defaultValue: "", onConfirm: (value: string) => {} });
+  
+  // Photo upload state
+  const [photoModal, setPhotoModal] = useState({ show: false, taskId: "", taskTitle: "" });
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   // Task filter and sort state
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
@@ -314,39 +320,33 @@ export default function ChildDashboardPage() {
           await loadBulletinMessages();
         }
         
-        // Calculate total points from user_profiles
-        let { data: userProfile, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('total_points')
-          .eq('id', user.id)
-          .single();
+        // Calculate total points from approved tasks minus redemptions
+        const { data: allTasks } = await supabase
+          .from('tasks')
+          .select('points, approved')
+          .eq('assigned_to', user.id);
         
-        console.log('Loading points for user:', user.id);
-        console.log('User profile data:', userProfile, 'Error:', profileError);
-        
-        // If no profile exists, create one
-        if (!userProfile && profileError) {
-          console.log('No user profile found, creating one...');
-          const { data: newProfile, error: createError } = await supabase
-            .from('user_profiles')
-            .insert({ id: user.id, role: 'child', total_points: 0 })
-            .select()
-            .single();
-          
-          if (createError) {
-            console.error('Error creating user profile:', createError);
-          } else {
-            userProfile = newProfile;
-            console.log('Created new profile:', newProfile);
+        const earnedPoints = allTasks?.reduce((total: number, task: any) => {
+          if (task.approved) {
+            return total + (task.points || 0);
           }
-        }
+          return total;
+        }, 0) || 0;
         
-        if (userProfile) {
-          console.log('Setting points to:', userProfile.total_points || 0);
-          setPoints(userProfile.total_points || 0);
-        } else {
-          console.log('No user profile found, points remain at 0');
-        }
+        const { data: allRedemptions } = await supabase
+          .from('reward_redemptions')
+          .select('points_spent')
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
+        
+        const spentPoints = allRedemptions?.reduce((total: number, redemption: any) => {
+          return total + (redemption.points_spent || 0);
+        }, 0) || 0;
+        
+        const currentPoints = earnedPoints - spentPoints;
+        
+        console.log('Points calculation:', { earnedPoints, spentPoints, currentPoints });
+        setPoints(currentPoints);
         
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -413,15 +413,31 @@ export default function ChildDashboardPage() {
                   setTasks(unapprovedTasks);
                 }
 
-                const { data: userProfile } = await supabase
-                  .from('user_profiles')
-                  .select('total_points')
-                  .eq('id', user.id)
-                  .single();
+                // Recalculate points dynamically
+                const { data: allTasks } = await supabase
+                  .from('tasks')
+                  .select('points, approved')
+                  .eq('assigned_to', user.id);
                 
-                if (userProfile) {
-                  setPoints(userProfile.total_points || 0);
-                }
+                const earnedPoints = allTasks?.reduce((total: number, task: any) => {
+                  if (task.approved) {
+                    return total + (task.points || 0);
+                  }
+                  return total;
+                }, 0) || 0;
+                
+                const { data: allRedemptions } = await supabase
+                  .from('reward_redemptions')
+                  .select('points_spent')
+                  .eq('user_id', user.id)
+                  .eq('status', 'approved');
+                
+                const spentPoints = allRedemptions?.reduce((total: number, redemption: any) => {
+                  return total + (redemption.points_spent || 0);
+                }, 0) || 0;
+                
+                const currentPoints = earnedPoints - spentPoints;
+                setPoints(currentPoints);
               };
               
               fetchUpdatedData();
@@ -438,8 +454,6 @@ export default function ChildDashboardPage() {
         { event: 'UPDATE', schema: 'public', table: 'reward_redemptions' },
         (payload) => {
           console.log('Redemption change detected:', payload);
-          
-          // Check if this redemption belongs to current user
           supabase.auth.getUser().then(({ data: { user } }) => {
             if (user && payload.new?.user_id === user.id) {
               // Show notification
@@ -456,34 +470,59 @@ export default function ChildDashboardPage() {
                 });
                 setTimeout(() => setToast({ show: false, message: "" }), 4000);
               }
-
               // Reload redemptions and points
               const fetchUpdatedData = async () => {
                 const { data: userRedemptions } = await supabase
                   .from('reward_redemptions')
-                  .select(`
-                    *,
-                    reward:rewards(*)
-                  `)
+                  .select(`*, reward:rewards(*)`)
                   .eq('user_id', user.id)
                   .order('redeemed_at', { ascending: false });
-
                 if (userRedemptions) {
                   setRedemptions(userRedemptions);
                 }
-
-                const { data: userProfile } = await supabase
-                  .from('user_profiles')
-                  .select('total_points')
-                  .eq('id', user.id)
-                  .single();
-
-                if (userProfile) {
-                  setPoints(userProfile.total_points || 0);
-                }
+                // Recalculate points dynamically
+                const { data: allTasks } = await supabase
+                  .from('tasks')
+                  .select('points, approved')
+                  .eq('assigned_to', user.id);
+                
+                const earnedPoints = allTasks?.reduce((total: number, task: any) => {
+                  if (task.approved) {
+                    return total + (task.points || 0);
+                  }
+                  return total;
+                }, 0) || 0;
+                
+                const { data: allRedemptions } = await supabase
+                  .from('reward_redemptions')
+                  .select('points_spent')
+                  .eq('user_id', user.id)
+                  .eq('status', 'approved');
+                
+                const spentPoints = allRedemptions?.reduce((total: number, redemption: any) => {
+                  return total + (redemption.points_spent || 0);
+                }, 0) || 0;
+                
+                const currentPoints = earnedPoints - spentPoints;
+                setPoints(currentPoints);
               };
-
               fetchUpdatedData();
+            }
+          });
+        }
+      )
+      .on('postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'reward_redemptions' },
+        (payload) => {
+          console.log('Redemption deleted detected:', payload);
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            if (user && payload.old?.user_id === user.id) {
+              setRedemptions(prev => prev.filter(r => r.id !== payload.old.id));
+              setToast({
+                show: true,
+                message: 'Reward redemption deleted.'
+              });
+              setTimeout(() => setToast({ show: false, message: "" }), 4000);
             }
           });
         }
@@ -545,6 +584,8 @@ export default function ChildDashboardPage() {
     { href: "/child-profile", icon: "fas fa-user", label: "My Profile", active: false },
     { href: "/my-rewards", icon: "fas fa-gift", label: "My Rewards", active: false },
     { href: "/my-goals", icon: "fas fa-bullseye", label: "My Goals", active: false },
+    { href: "/activity-feed", icon: "fas fa-newspaper", label: "Activity Feed", active: false },
+    { href: "/achievements", icon: "fas fa-trophy", label: "Badges", active: false },
   ];
   
   // === PERMISSION-CHECKED NAVIGATION HANDLER ===
@@ -739,25 +780,78 @@ export default function ChildDashboardPage() {
     }
   };
 
-  const completeTask = async (taskId: string) => {
+  const completeTask = async (taskId: string, photoFile?: File | null) => {
     try {
       const supabase = createClientSupabaseClient();
       
-      console.log('Completing task:', taskId);
+      console.log('Completing task:', taskId, 'with photo:', !!photoFile);
       
-      // Update task in database - set completed to true
+      let photo_url = null;
+      
+      // Upload photo if provided
+      if (photoFile) {
+        setUploadingPhoto(true);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
+        // Generate unique filename
+        const timestamp = Date.now();
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `task_${taskId}_${timestamp}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+
+        // Upload to Supabase Storage
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('task-photos')
+          .upload(filePath, photoFile, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadError) {
+          console.error('Upload error:', uploadError);
+          showAlert(`Failed to upload photo: ${uploadError.message}`, "error");
+          setUploadingPhoto(false);
+          return;
+        }
+
+        // Get signed URL for private bucket (expires in 10 years)
+        const { data: signedUrlData, error: urlError } = await supabase.storage
+          .from('task-photos')
+          .createSignedUrl(filePath, 315360000); // 10 years in seconds
+
+        if (urlError || !signedUrlData) {
+          console.error('URL generation error:', urlError);
+          showAlert(`Failed to generate photo URL: ${urlError?.message}`, "error");
+          setUploadingPhoto(false);
+          return;
+        }
+
+        photo_url = signedUrlData.signedUrl;
+        console.log('Photo uploaded successfully:', photo_url);
+      }
+      
+      // Update task in database
+      const updateData: any = { 
+        completed: true,
+        completed_at: new Date().toISOString()
+      };
+      
+      if (photo_url) {
+        updateData.photo_url = photo_url;
+        updateData.photo_uploaded_at = new Date().toISOString();
+      }
+      
       const { data, error } = await supabase
         .from('tasks')
-        .update({ 
-          completed: true,
-          completed_at: new Date().toISOString()
-        })
+        .update(updateData)
         .eq('id', taskId)
         .select();
 
       if (error) {
         console.error('Error completing task:', error);
         showAlert(`Failed to complete task: ${error.message}`, "error");
+        setUploadingPhoto(false);
         return;
       }
 
@@ -765,21 +859,70 @@ export default function ChildDashboardPage() {
 
       // Update local state
       setTasks(tasks.map(task => 
-        task.id === taskId ? { ...task, completed: true, completed_at: new Date().toISOString() } : task
+        task.id === taskId ? { ...task, ...updateData } : task
       ));
       
       const task = tasks.find(t => t.id === taskId);
       if (task && !task.completed) {
-        // Note: Points will be awarded when parent approves
+        const photoMsg = photo_url ? ' with photo proof' : '';
         setToast({ 
           show: true, 
-          message: `Completed "${task.title}"! Waiting for parent approval to earn ${task.points} points!` 
+          message: `Completed "${task.title}"${photoMsg}! Waiting for parent approval to earn ${task.points} points!` 
         });
         setTimeout(() => setToast({ show: false, message: "" }), 3000);
       }
+      
+      // Close photo modal and reset
+      setPhotoModal({ show: false, taskId: "", taskTitle: "" });
+      setSelectedPhoto(null);
+      setPhotoPreview("");
+      setUploadingPhoto(false);
     } catch (error) {
       console.error('Error in completeTask:', error);
       showAlert(`Error: ${error.message}`, "error");
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        showAlert("Photo must be smaller than 5MB", "error");
+        return;
+      }
+      
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        showAlert("Please select an image file", "error");
+        return;
+      }
+      
+      setSelectedPhoto(file);
+      
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const openPhotoModal = (taskId: string, taskTitle: string) => {
+    setPhotoModal({ show: true, taskId, taskTitle });
+    setSelectedPhoto(null);
+    setPhotoPreview("");
+  };
+
+  const completeTaskWithoutPhoto = (taskId: string) => {
+    completeTask(taskId, null);
+  };
+
+  const completeTaskWithPhoto = () => {
+    if (photoModal.taskId) {
+      completeTask(photoModal.taskId, selectedPhoto);
     }
   };
 
@@ -1175,7 +1318,7 @@ export default function ChildDashboardPage() {
         
                 <div className="mt-auto pt-6 border-t border-white/20 space-y-3">
           <button
-            onClick={() => window.history.back()}
+            onClick={() => router.back()}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
           >
             <i className="fas fa-arrow-left"></i>
@@ -1197,58 +1340,50 @@ export default function ChildDashboardPage() {
       </aside>
 
       <main className="main-content ml-64 flex-1 p-10">
-        {/* Header with permission badge */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
+        {/* Header */}
+        <header className="mb-10">
+          <div className="flex items-center justify-between">
+            <div>
               <h1 className="text-3xl font-bold text-[#006372]">
                 {userName ? `${userName}'s Dashboard` : 'Child Dashboard'}
               </h1>
-              <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
-                <i className="fas fa-child mr-1"></i> Child Account
-              </span>
+              <p className="text-gray-600 mt-2">Complete tasks, earn points, and get rewards!</p>
             </div>
-            <p className="text-gray-600">Complete tasks, earn points, and get rewards!</p>
-          </div>
-          
-                      <div className="mt-4 md:mt-0 flex items-center gap-4">
-              
+            <div className="flex items-center gap-4">
               <div className="bg-gradient-to-r from-cyan-500 to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg">
-              <div className="text-sm font-medium">My Points</div>
-              <div className="text-2xl font-bold flex items-center gap-2">
-                <i className="fas fa-star text-yellow-300"></i> {points.toLocaleString()}
+                <div className="text-sm font-medium">My Points</div>
+                <div className="text-2xl font-bold flex items-center gap-2">
+                  <i className="fas fa-star text-yellow-300"></i> {points.toLocaleString()}
+                </div>
               </div>
-            </div>
-            
-            <button
-              onClick={getPepTalk}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
-            >
-              <i className="fas fa-sparkles mr-2"></i>
-              Pep Talk!
-            </button>
-              {/* Child Avatar Badge */}
+              
+              <button
+                onClick={getPepTalk}
+                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-5 py-3 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg"
+              >
+                <i className="fas fa-sparkles mr-2"></i>
+                Pep Talk!
+              </button>
+              
               <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
-             <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gradient-to-r from-cyan-500 to-teal-500">
-  {isClient && profileImage ? (
-    <img 
-      src={profileImage} 
-      alt="Child Profile" 
-      className="w-full h-full object-cover"
-    />
-  ) : (
-    <div className="w-full h-full flex items-center justify-center text-white font-bold">
-      <i className="fas fa-child"></i>
-    </div>
-  )}
-</div>
-
-               
+                <div className="w-8 h-8 rounded-full flex items-center justify-center overflow-hidden bg-gradient-to-r from-cyan-500 to-teal-500">
+                  {isClient && profileImage ? (
+                    <img 
+                      src={profileImage} 
+                      alt="Child Profile" 
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-white font-bold">
+                      <i className="fas fa-child"></i>
+                    </div>
+                  )}
+                </div>
                 <span className="font-medium text-gray-700">Child Dashboard</span>
               </div>
-              
+            </div>
           </div>
-        </div>
+        </header>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
@@ -1441,7 +1576,7 @@ export default function ChildDashboardPage() {
                   {!task.completed && (
                     <div className="flex gap-2 mt-3">
                       <button
-                        onClick={() => completeTask(task.id)}
+                        onClick={() => openPhotoModal(task.id, task.title)}
                         className="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity"
                       >
                         <i className="fas fa-check mr-2"></i>Mark Complete
@@ -1926,6 +2061,119 @@ export default function ChildDashboardPage() {
                   className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-cyan-500 to-teal-500 hover:opacity-90 transition-all"
                 >
                   Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Upload Modal */}
+      {photoModal.show && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn"
+          onClick={() => !uploadingPhoto && setPhotoModal({ show: false, taskId: "", taskTitle: "" })}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-lg mx-4 w-full animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 bg-gradient-to-r from-cyan-500 to-teal-500 rounded-t-2xl">
+              <div className="flex items-center gap-3 text-white">
+                <div className="text-3xl">📸</div>
+                <h3 className="text-lg font-bold">Complete Task</h3>
+              </div>
+            </div>
+            <div className="p-6">
+              <h4 className="font-semibold text-gray-900 mb-4">{photoModal.taskTitle}</h4>
+              
+              <p className="text-gray-600 text-sm mb-6">
+                Add a photo to show you completed the task! (Optional but helps parents approve faster)
+              </p>
+
+              {/* Photo Upload Area */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📷 Task Photo (Optional)
+                </label>
+                
+                {!photoPreview ? (
+                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl hover:border-cyan-500 cursor-pointer bg-gray-50 hover:bg-cyan-50 transition">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <div className="text-4xl mb-3">📸</div>
+                      <p className="mb-2 text-sm text-gray-600 font-semibold">
+                        Click to upload or take photo
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        PNG, JPG up to 5MB
+                      </p>
+                    </div>
+                    <input
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePhotoSelect}
+                      disabled={uploadingPhoto}
+                    />
+                  </label>
+                ) : (
+                  <div className="relative">
+                    <img
+                      src={photoPreview}
+                      alt="Preview"
+                      className="w-full h-64 object-cover rounded-xl"
+                    />
+                    {!uploadingPhoto && (
+                      <button
+                        onClick={() => {
+                          setSelectedPhoto(null);
+                          setPhotoPreview("");
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setPhotoModal({ show: false, taskId: "", taskTitle: "" });
+                    setSelectedPhoto(null);
+                    setPhotoPreview("");
+                  }}
+                  disabled={uploadingPhoto}
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-200 hover:bg-gray-300 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => completeTaskWithoutPhoto(photoModal.taskId)}
+                  disabled={uploadingPhoto}
+                  className="flex-1 py-3 rounded-xl font-bold text-gray-700 bg-gray-300 hover:bg-gray-400 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Skip Photo
+                </button>
+                <button
+                  onClick={completeTaskWithPhoto}
+                  disabled={uploadingPhoto || !selectedPhoto}
+                  className="flex-1 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingPhoto ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin mr-2"></i>
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      ✓ Complete
+                    </>
+                  )}
                 </button>
               </div>
             </div>

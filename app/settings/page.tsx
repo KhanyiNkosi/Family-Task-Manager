@@ -21,9 +21,6 @@ export default function SettingsPage() {
               notifications: settingsData.notifications,
               emailUpdates: settingsData.email_updates,
               soundEffects: settingsData.sound_effects,
-              darkMode: settingsData.dark_mode,
-              language: settingsData.language,
-              timezone: settingsData.timezone,
               dailyReminders: settingsData.daily_reminders,
               weeklyReports: settingsData.weekly_reports,
             });
@@ -37,19 +34,13 @@ export default function SettingsPage() {
     notifications: true,
     emailUpdates: true,
     soundEffects: false,
-    darkMode: false,
-    language: "English",
-    timezone: "UTC-5",
     dailyReminders: true,
     weeklyReports: false,
   });
 
   const [familyMembers, setFamilyMembers] = useState<any[]>([]);
-
-  const [newMemberName, setNewMemberName] = useState("");
-  const [newMemberRole, setNewMemberRole] = useState("child");
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
+  const [familyCode, setFamilyCode] = useState<string>("");
+  const [currentUserId, setCurrentUserId] = useState<string>("");
   const [profileImage, setProfileImage] = useState("");
 
   // Modal states
@@ -96,141 +87,192 @@ export default function SettingsPage() {
 
     // Load family members from Supabase
     async function loadFamilyMembers() {
-      // Get current user
-      const supabase = require("@/app/lib/supabase").supabase;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      // Get user's family_id
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('family_id')
-        .eq('id', user.id)
-        .single();
-      if (!profile?.family_id) return;
-      // Load all profiles in the family
-      const { data: members } = await supabase
-        .from('profiles')
-        .select('id, full_name, role')
-        .eq('family_id', profile.family_id);
-      setFamilyMembers(members || []);
+      try {
+        // Get current user
+        const supabase = require("@/app/lib/supabase").supabase;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          console.log('No user found');
+          return;
+        }
+        
+        setCurrentUserId(user.id);
+        
+        // Get user's family_id from profiles
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('family_id, role')
+          .eq('id', user.id)
+          .single();
+          
+        if (profileError) {
+          console.error('Profile error:', profileError);
+          return;
+        }
+        
+        if (!profile?.family_id) {
+          console.log('No family_id found in profile');
+          return;
+        }
+        
+        // Use family_id as the family code (it's the same thing)
+        setFamilyCode(profile.family_id || '');
+        
+        // Load all profiles in the family with calculated points from tasks
+        const { data: members, error: membersError } = await supabase
+          .from('profiles')
+          .select(`
+            id, 
+            full_name, 
+            role
+          `)
+          .eq('family_id', profile.family_id);
+          
+        if (membersError) {
+          console.error('Members error:', membersError);
+          return;
+        }
+        
+        // Calculate points for each member from tasks
+        if (members && members.length > 0) {
+          const membersWithPoints = await Promise.all(
+            members.map(async (member: any) => {
+              const { data: tasks } = await supabase
+                .from('tasks')
+                .select('points, completed, approved')
+                .eq('assigned_to', member.id);
+              
+              const earnedPoints = tasks?.reduce((total: number, task: any) => {
+                // Count points for approved tasks (approval is when points are awarded)
+                if (task.approved) {
+                  return total + (task.points || 0);
+                }
+                return total;
+              }, 0) || 0;
+              
+              // Subtract points spent on APPROVED reward redemptions only
+              const { data: redemptions } = await supabase
+                .from('reward_redemptions')
+                .select('points_spent')
+                .eq('user_id', member.id)
+                .eq('status', 'approved');
+              
+              const spentPoints = redemptions?.reduce((total: number, redemption: any) => {
+                return total + (redemption.points_spent || 0);
+              }, 0) || 0;
+              
+              const points = earnedPoints - spentPoints;
+              
+              return { ...member, points };
+            })
+          );
+          
+          console.log('Loaded family members with points:', membersWithPoints);
+          setFamilyMembers(membersWithPoints || []);
+        } else {
+          console.log('No members found');
+          setFamilyMembers([]);
+        }
+      } catch (error) {
+        console.error('Error loading family members:', error);
+      }
     }
     loadFamilyMembers();
   }, []);
 
-  const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
+  const handleSettingChange = async (key: string, value: any) => {
+    // Update local state
+    const newSettings = {
+      ...settings,
       [key]: value
-    }));
-    // Save to Supabase
-    async function saveSetting() {
+    };
+    setSettings(newSettings);
+    
+    // Save to Supabase immediately with the new value
+    try {
       const supabase = require("@/app/lib/supabase").supabase;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      // Upsert all fields from current settings state
+      
+      // Map frontend keys to database columns
+      const dbColumnMap: { [k: string]: string } = {
+        'notifications': 'notifications',
+        'emailUpdates': 'email_updates',
+        'soundEffects': 'sound_effects',
+        'dailyReminders': 'daily_reminders',
+        'weeklyReports': 'weekly_reports',
+      };
+      
+      // Build update object with proper column names
       const updatedSettings: { [k: string]: any } = {
         user_id: user.id,
-        notifications: key === 'notifications' ? value : settings.notifications,
-        email_updates: key === 'emailUpdates' ? value : settings.emailUpdates,
-        sound_effects: key === 'soundEffects' ? value : settings.soundEffects,
-        dark_mode: key === 'darkMode' ? value : settings.darkMode,
-        language: key === 'language' ? value : settings.language,
-        timezone: key === 'timezone' ? value : settings.timezone,
-        daily_reminders: key === 'dailyReminders' ? value : settings.dailyReminders,
-        weekly_reports: key === 'weeklyReports' ? value : settings.weeklyReports,
       };
-      // If the changed key is not in updatedSettings, add it
-      if (!(key in updatedSettings)) {
-        updatedSettings[key] = value;
-      }
+      
+      // Add all current settings with proper column names
+      Object.keys(newSettings).forEach(k => {
+        const dbColumn = dbColumnMap[k] || k;
+        updatedSettings[dbColumn] = newSettings[k as keyof typeof settings];
+      });
+      
       const { error } = await supabase
         .from('user_settings')
-        .upsert(updatedSettings, { onConflict: ['user_id'] });
+        .upsert(updatedSettings, { onConflict: 'user_id' });
+        
       if (error) {
         showAlert('Failed to save settings: ' + error.message, 'error');
+        console.error('Settings save error:', error);
       }
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      showAlert('Failed to save settings', 'error');
     }
-    saveSetting();
-  };
-
-  const handleSaveSettings = () => {
-    setIsSaving(true);
-    
-    setTimeout(() => {
-      setIsSaving(false);
-      setSaveMessage("Settings saved successfully!");
-      setTimeout(() => setSaveMessage(""), 3000);
-    }, 1000);
   };
 
   const handleResetPoints = async () => {
-    const confirmed = await showConfirm("Are you sure you want to reset all points? This cannot be undone.");
-    if (confirmed) {
-      setFamilyMembers(members => 
-        members.map(member => ({ ...member, points: 0 }))
-      );
-      showAlert("All points have been reset to zero.", "success");
-    }
-  };
-
-  const handleAddFamilyMember = () => {
-    if (!newMemberName.trim()) {
-      showAlert("Please enter a name for the family member.", "warning");
-      return;
-    }
-    // Add new member to Supabase
-    async function addMember() {
+    const confirmed = await showConfirm("Are you sure you want to reset all family members' points? This will mark all completed/approved tasks as incomplete.");
+    if (!confirmed) return;
+    
+    const doubleConfirm = await showConfirm("This cannot be undone! All task progress will be lost. Continue?");
+    if (!doubleConfirm) return;
+    
+    try {
       const supabase = require("@/app/lib/supabase").supabase;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      
       // Get user's family_id
       const { data: profile } = await supabase
         .from('profiles')
         .select('family_id')
         .eq('id', user.id)
         .single();
+        
       if (!profile?.family_id) return;
-      // Insert new profile
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert({
-          full_name: newMemberName.trim(),
-          role: newMemberRole,
-          family_id: profile.family_id
-        });
+      
+      // Reset all tasks for the family (mark as not completed/approved)
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          completed: false, 
+          approved: false,
+          completed_at: null
+        })
+        .eq('family_id', profile.family_id);
+        
       if (error) {
-        showAlert("Failed to add member: " + error.message, "error");
+        showAlert("Failed to reset points: " + error.message, "error");
       } else {
-        showAlert(`${newMemberName.trim()} has been added to the family!`, "success");
-        setNewMemberName("");
-        setNewMemberRole("child");
-        // Reload members
-        const { data: members } = await supabase
-          .from('profiles')
-          .select('id, full_name, role, total_points, active')
-          .eq('family_id', profile.family_id);
-        setFamilyMembers(members || []);
+        showAlert("All family points have been reset!", "success");
+        // Reload members to show updated points
+        window.location.reload();
       }
+    } catch (error) {
+      console.error('Reset points error:', error);
+      showAlert("Failed to reset points", "error");
     }
-    addMember();
   };
 
-  const handleToggleMemberStatus = (id: number) => {
-    async function toggleStatus() {
-      const supabase = require("@/app/lib/supabase").supabase;
-      const member = familyMembers.find(m => m.id === id);
-      if (!member) return;
-      // No active column, so just reload members
-      const { data: members } = await supabase
-        .from('profiles')
-        .select('id, full_name, role, total_points')
-        .eq('family_id', member.family_id);
-      setFamilyMembers(members || []);
-    }
-    toggleStatus();
-  };
-
-  const handleRemoveMember = async (id: number, name: string) => {
+  const handleRemoveMember = async (id: string, name: string) => {
     const confirmed = await showConfirm(`Are you sure you want to remove ${name} from the family?`);
     if (confirmed) {
       const supabase = require("@/app/lib/supabase").supabase;
@@ -242,35 +284,13 @@ export default function SettingsPage() {
         showAlert("Failed to remove member: " + error.message, "error");
       } else {
         showAlert(`${name} removed from the family!`, "success");
-        // Reload members
-        const { data: members } = await supabase
-          .from('profiles')
-          .select('id, full_name, role')
-          .eq('family_id', familyMembers[0]?.family_id);
-        setFamilyMembers(members || []);
+        // Reload page to refresh members list
+        window.location.reload();
       }
     }
   };
 
-  const handleExportData = () => {
-    const exportData = {
-      settings,
-      familyMembers,
-      exportedAt: new Date().toISOString(),
-    };
-    
-    const dataStr = JSON.stringify(exportData, null, 2);
-    const dataBlob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `familytask-backup-${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showAlert("Data exported successfully!", "success");
-  };
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -299,12 +319,7 @@ export default function SettingsPage() {
                   Dashboard
                 </button>
               </Link>
-              <Link href="/ai-suggester">
-                <button className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg font-medium transition">
-                  <i className="fas fa-robot mr-2"></i>
-                  AI Assistant
-                </button>
-              </Link>
+              {/* AI Assistant temporarily disabled - coming soon */}
               <Link 
                 href="/parent-profile"
                 className="flex items-center justify-center w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full transition-all overflow-hidden"
@@ -322,24 +337,7 @@ export default function SettingsPage() {
       </header>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* LOGO SECTION - ADDED AS REQUESTED */}
-        <div className="text-center mb-12">
-          <div className="flex justify-center items-center gap-4 mb-6">
-            <div className="w-16 h-16 bg-[#00C2E0] rounded-full relative flex justify-center items-center overflow-hidden">
-              <div className="eyes absolute top-5 w-10 h-3 flex justify-between">
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-                <div className="w-3 h-3 bg-white rounded-full"></div>
-              </div>
-              <div className="smile absolute bottom-4 w-8 h-4 border-b-3 border-white rounded-b-full"></div>
-            </div>
-            <h1 className="text-5xl font-black text-[#006372]">FamilyTask</h1>
-          </div>
-          <p className="text-gray-600 text-lg max-w-2xl mx-auto">
-            Manage your family account settings and preferences
-          </p>
-        </div>
-
-        {/* Original Header */}
+        {/* Page Header */}
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-[#006372]">Settings</h1>
           <p className="text-gray-600 mt-2">Manage your family account and preferences</p>
@@ -394,62 +392,54 @@ export default function SettingsPage() {
                 </button>
               </div>
 
-              <div className="space-y-4 mb-8">
-                {familyMembers.map((member) => (
-                  <div key={member.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        member.role === "admin" ? "bg-[#00C2E0]" : "bg-purple-500"
-                      } text-white font-bold`}>
-                        {member.full_name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-800">{member.full_name}</div>
-                        <div className="text-sm text-gray-500 capitalize">
-                          {member.role}
+              <div className="space-y-4">
+                {familyMembers.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <i className="fas fa-users text-4xl mb-4 opacity-30"></i>
+                    <p className="font-medium mb-2">No family members loaded</p>
+                    <p className="text-sm">Check the browser console for errors, or try refreshing the page.</p>
+                  </div>
+                ) : (
+                  familyMembers.map((member) => (
+                    <div key={member.id} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                          member.role === "parent" ? "bg-[#00C2E0]" : "bg-purple-500"
+                        } text-white font-bold`}>
+                          {member.full_name?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-800">{member.full_name || 'Unknown'}</div>
+                          <div className="text-sm text-gray-500 capitalize">
+                            {member.role || 'No role'} • {member.points || 0} points
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-4">
+                        {member.role !== "parent" && member.id !== currentUserId && (
+                          <button
+                            onClick={() => handleRemoveMember(member.id, member.full_name)}
+                            className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      {/* No activate/deactivate button since no active column */}
-                      {member.role !== "admin" && (
-                        <button
-                          onClick={() => handleRemoveMember(member.id, member.name)}
-                          className="px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
-                        >
-                          Remove
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
-
-              {/* Add Family Member */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">Add Family Member</h3>
-                <div className="flex gap-4">
-                  <input
-                    type="text"
-                    value={newMemberName}
-                    onChange={(e) => setNewMemberName(e.target.value)}
-                    placeholder="Enter name"
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00C2E0]"
-                  />
-                  <select
-                    value={newMemberRole}
-                    onChange={(e) => setNewMemberRole(e.target.value)}
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00C2E0]"
-                  >
-                    <option value="child">Child</option>
-                    <option value="parent">Parent</option>
-                  </select>
-                  <button
-                    onClick={handleAddFamilyMember}
-                    className="px-6 py-2 bg-[#00C2E0] text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Add
-                  </button>
+              
+              <div className="mt-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                <div className="flex items-start gap-3">
+                  <i className="fas fa-info-circle text-blue-600 mt-1"></i>
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">How to add family members</p>
+                    <p className="text-sm text-blue-700 mt-1">
+                      Share your <strong>Family Code</strong> (shown on the right) with family members. 
+                      They can enter this code when creating their account to join your family.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -457,131 +447,34 @@ export default function SettingsPage() {
 
           {/* Right Column - App Settings */}
           <div className="space-y-8">
-            {/* Display Settings */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Display Settings</h2>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border border-gray-100 rounded-xl">
-                  <div>
-                    <div className="font-medium text-gray-800">Dark Mode</div>
-                    <div className="text-sm text-gray-500">Switch to dark theme</div>
-                  </div>
+
+            {/* Family Code */}
+            {familyCode ? (
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl shadow-xl p-6 text-white">
+                <h2 className="text-2xl font-bold mb-4">Family Code</h2>
+                <p className="mb-4 opacity-90">Share this code with family members to join</p>
+                
+                <div className="bg-white/20 backdrop-blur-sm rounded-xl p-4 text-center">
+                  <div className="text-lg font-mono font-bold mb-2 break-all">{familyCode}</div>
                   <button
-                    onClick={() => handleSettingChange("darkMode", !settings.darkMode)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      settings.darkMode ? "bg-gray-800" : "bg-gray-300"
-                    }`}
+                    onClick={() => {
+                      navigator.clipboard.writeText(familyCode);
+                      showAlert("Family code copied to clipboard!", "success");
+                    }}
+                    className="text-sm opacity-90 hover:opacity-100 transition"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        settings.darkMode ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
+                    <i className="fas fa-copy mr-2"></i>
+                    Click to copy
                   </button>
                 </div>
-
-                <div className="p-4 border border-gray-100 rounded-xl">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Language
-                  </label>
-                  <select
-                    value={settings.language}
-                    onChange={(e) => handleSettingChange("language", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00C2E0]"
-                  >
-                    <option>English</option>
-                    <option>Spanish</option>
-                    <option>French</option>
-                    <option>German</option>
-                  </select>
-                </div>
-
-                <div className="p-4 border border-gray-100 rounded-xl">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Timezone
-                  </label>
-                  <select
-                    value={settings.timezone}
-                    onChange={(e) => handleSettingChange("timezone", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00C2E0]"
-                  >
-                    <option>UTC-5 (EST)</option>
-                    <option>UTC-8 (PST)</option>
-                    <option>UTC+0 (GMT)</option>
-                    <option>UTC+1 (CET)</option>
-                    <option>UTC+2 (EET)</option>
-                  </select>
-                </div>
               </div>
-            </div>
-
-            {/* Data Management */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Data Management</h2>
-              
-              <div className="space-y-4">
-                <button
-                  onClick={handleExportData}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-100 text-blue-700 rounded-xl font-medium hover:bg-blue-200 transition-colors"
-                >
-                  <i className="fas fa-download"></i>
-                  Export Family Data
-                </button>
-                
-                <button
-                  onClick={() => showAlert("This would open a file picker in a real app", "info")}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-green-100 text-green-700 rounded-xl font-medium hover:bg-green-200 transition-colors"
-                >
-                  <i className="fas fa-upload"></i>
-                  Import Family Data
-                </button>
-                
-                <button
-                  onClick={async () => {
-                    const confirmed = await showConfirm("This will delete all your data. This action cannot be undone!");
-                    if (confirmed) {
-                      showAlert("Data deletion would happen here in a real app", "info");
-                    }
-                  }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-100 text-red-700 rounded-xl font-medium hover:bg-red-200 transition-colors"
-                >
-                  <i className="fas fa-trash"></i>
-                  Delete All Data
-                </button>
+            ) : (
+              <div className="bg-gray-100 rounded-2xl shadow-xl p-6 text-gray-600">
+                <h2 className="text-2xl font-bold mb-4">Family Code</h2>
+                <p className="mb-4">Loading family code...</p>
+                <p className="text-sm">If this doesn't load, check the browser console for errors.</p>
               </div>
-            </div>
-
-            {/* Save Settings */}
-            <div className="bg-gradient-to-r from-cyan-500 to-teal-500 rounded-2xl shadow-xl p-6 text-white">
-              <h2 className="text-2xl font-bold mb-4">Save Changes</h2>
-              <p className="mb-6 opacity-90">Your settings are automatically saved, but you can manually save them here.</p>
-              
-              <button
-                onClick={handleSaveSettings}
-                disabled={isSaving}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white text-[#006372] rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50"
-              >
-                {isSaving ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin"></i>
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-save"></i>
-                    Save All Settings
-                  </>
-                )}
-              </button>
-              
-              {saveMessage && (
-                <div className="mt-4 p-3 bg-white/20 rounded-lg text-center animate-pulse">
-                  <i className="fas fa-check-circle mr-2"></i>
-                  {saveMessage}
-                </div>
-              )}
-            </div>
+            )}
 
             {/* App Info */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
@@ -597,7 +490,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span>Family Members</span>
-                  <span className="font-medium">{familyMembers.filter(m => m.active).length} active</span>
+                  <span className="font-medium">{familyMembers.length}</span>
                 </div>
                 <div className="pt-4 border-t">
                   <button

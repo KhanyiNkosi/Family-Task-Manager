@@ -1,6 +1,5 @@
 ﻿import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import * as Sentry from '@sentry/nextjs';
 import "./globals.css";
 import Header from "@/components/Header";
 
@@ -12,10 +11,7 @@ const inter = Inter({
 export function generateMetadata(): Metadata {
   return {
     title: "FamilyTask - Organize Your Family's Life",
-    description: "The fun and easy way to manage tasks, rewards, and family cooperation.",
-    other: {
-      ...Sentry.getTraceData()
-    }
+    description: "The fun and easy way to manage tasks, rewards, and family cooperation."
   };
 }
 

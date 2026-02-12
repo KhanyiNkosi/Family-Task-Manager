@@ -70,31 +70,92 @@ export default function ChildProfilePage() {
           setChildName(profile.full_name);
         }
         
-        // Load points from user_profiles
-        const { data: userProfile } = await supabase
-          .from('user_profiles')
-          .select('total_points')
-          .eq('id', user.id)
-          .single();
-        
-        const points = userProfile?.total_points || 0;
-        setTotalPoints(points);
-        
-        // Calculate level (100 points per level)
-        const calculatedLevel = Math.floor(points / 100) + 1;
-        setLevel(calculatedLevel);
-        
-        // Load tasks completed count
-        const { data: tasks } = await supabase
+        // Calculate points from completed/approved tasks
+        const { data: allTasks } = await supabase
           .from('tasks')
-          .select('id, status')
+          .select('points, completed, approved')
           .eq('assigned_to', user.id);
         
-        const completed = tasks?.filter((t: any) => t.status === 'completed').length || 0;
+        const earnedPoints = allTasks?.reduce((total: number, task: any) => {
+          // Count points for approved tasks (approval is when points are awarded)
+          if (task.approved) {
+            return total + (task.points || 0);
+          }
+          return total;
+        }, 0) || 0;
+        
+        // Subtract points spent on APPROVED reward redemptions only
+        const { data: allRedemptions } = await supabase
+          .from('reward_redemptions')
+          .select('points_spent')
+          .eq('user_id', user.id)
+          .eq('status', 'approved');
+        
+        const spentPoints = allRedemptions?.reduce((total: number, redemption: any) => {
+          return total + (redemption.points_spent || 0);
+        }, 0) || 0;
+        
+        const currentPoints = earnedPoints - spentPoints;
+        setTotalPoints(currentPoints);
+        
+        // Calculate level (100 points per level)
+        const calculatedLevel = Math.floor(currentPoints / 100) + 1;
+        setLevel(calculatedLevel);
+        
+        // Load tasks completed count and recent activities
+        const { data: tasks } = await supabase
+          .from('tasks')
+          .select('id, title, points, completed, approved, completed_at')
+          .eq('assigned_to', user.id)
+          .order('completed_at', { ascending: false, nullsFirst: false });
+        
+        const completed = tasks?.filter((t: any) => t.approved).length || 0;
         setTasksCompleted(completed);
         
-        // Load recent activities
-        const activities = JSON.parse(localStorage.getItem('childActivities') || '[]');
+        // Load reward redemptions
+        const { data: redemptions } = await supabase
+          .from('reward_redemptions')
+          .select(`
+            id,
+            points_spent,
+            redeemed_at,
+            status,
+            reward:rewards(title)
+          `)
+          .eq('user_id', user.id)
+          .order('redeemed_at', { ascending: false });
+        
+        // Combine tasks and redemptions into activity feed
+        const activities: any[] = [];
+        
+        // Add approved tasks to activity feed
+        tasks?.forEach((task: any) => {
+          if (task.approved) {
+            activities.push({
+              title: `Task Approved: ${task.title}`,
+              time: task.completed_at ? new Date(task.completed_at).toLocaleDateString() : 'Recently',
+              points: task.points || 0,
+              icon: 'fa-check-circle',
+              color: 'text-green-600',
+              timestamp: task.completed_at || new Date()
+            });
+          }
+        });
+        
+        // Add reward redemptions
+        redemptions?.forEach((redemption: any) => {
+          activities.push({
+            title: `Redeemed: ${redemption.reward?.title || 'Reward'}`,
+            time: new Date(redemption.redeemed_at).toLocaleDateString(),
+            points: -(redemption.points_spent || 0),
+            icon: 'fa-gift',
+            color: redemption.status === 'approved' ? 'text-blue-600' : 'text-orange-600',
+            timestamp: redemption.redeemed_at
+          });
+        });
+        
+        // Sort by timestamp and take top 5
+        activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         setRecentActivities(activities.slice(0, 5));
         
       } catch (error) {
@@ -192,41 +253,43 @@ export default function ChildProfilePage() {
 
       {/* Main Content */}
       <main className="main-content flex-1 flex flex-col overflow-auto">
-        {/* Header */}
-        <header className="page-header px-10 py-5 flex justify-between items-center bg-white border-b border-[#e2e8f0]">
-          <Link
-            href="/child-dashboard"
-            className="breadcrumb flex items-center gap-2 text-[#00C2E0] font-bold no-underline text-lg"
-          >
-            <i className="fas fa-chevron-left"></i> My Profile
-          </Link>
-          <div className="header-actions flex items-center gap-4">
-            
-            <div className="user-avatar-small w-10 h-10 rounded-full bg-[#E0F7FA] text-[#00C2E0] flex items-center justify-center font-bold border border-[#B2EBF2] overflow-hidden">
-              {isClient && profileImage ? (
-                <img 
-                  src={profileImage} 
-                  alt="Profile" 
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <i className="fas fa-user"></i>
-              )}
+        <div className="ml-0 flex-1 p-8">
+          {/* Header */}
+          <header className="mb-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-[#006372]">My Profile</h1>
+                <p className="text-gray-600 mt-2">Manage your profile picture and view your progress</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 flex items-center justify-center">
+                    {isClient && profileImage ? (
+                      <img 
+                        src={profileImage} 
+                        alt="Profile" 
+                        className="w-full h-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <i className="fas fa-child text-white text-sm"></i>
+                    )}
+                  </div>
+                  <span className="font-medium text-gray-700">Child Account</span>
+                </div>
+                <Link href="/child-settings">
+                  <button className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
+                    <i className="fas fa-cog text-gray-600"></i>
+                  </button>
+                </Link>
+              </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Content Body */}
-        <div className="content-body px-10 py-8 max-w-5xl">
-          <h1 className="view-title text-3xl font-black text-[#00C2E0] flex items-center gap-3 mb-1">
-            <i className="far fa-user"></i> My Profile
-          </h1>
-          <p className="view-subtitle text-[#64748b] text-base mb-8">
-            Manage your profile picture and view your progress.
-          </p>
+          {/* Content Body */}
+          <div>
 
-          {/* Tabs */}
-          <div className="tabs-container bg-[#eef2f6] p-1.5 rounded-xl flex gap-1 mb-8">
+            {/* Tabs */}
+            <div className="tabs-container bg-[#eef2f6] p-1.5 rounded-xl flex gap-1 mb-8">
             <button
               onClick={() => setActiveTab("profile")}
               className={`tab-button flex-1 py-3.5 px-4 rounded-lg text-base font-bold transition-colors ${activeTab === "profile" ? "bg-white text-[#00C2E0] shadow-sm" : "text-[#64748b] hover:text-[#00C2E0]"}`}
@@ -436,6 +499,7 @@ export default function ChildProfilePage() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </main>
 

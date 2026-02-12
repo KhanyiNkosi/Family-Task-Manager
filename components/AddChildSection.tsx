@@ -83,20 +83,45 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
           if (childIds.length > 0) {
             const { data: userProfiles } = await supabase
               .from('user_profiles')
-              .select('id, role, total_points')
+              .select('id, role')
               .in('id', childIds)
               .eq('role', 'child');
 
-            const childrenData = childProfiles.map(child => {
+            // Calculate points dynamically for each child
+            const childrenDataPromises = childProfiles.map(async (child) => {
               const userProfile = userProfiles?.find(up => up.id === child.id);
+              if (!userProfile) return null;
+
+              // Calculate points from approved tasks
+              const { data: approvedTasks } = await supabase
+                .from('tasks')
+                .select('points')
+                .eq('assigned_to', child.id)
+                .eq('approved', true);
+              
+              const earnedPoints = approvedTasks?.reduce((sum, task) => sum + (task.points || 0), 0) || 0;
+              
+              // Calculate points spent on APPROVED redemptions only
+              const { data: redemptions } = await supabase
+                .from('reward_redemptions')
+                .select('points_spent')
+                .eq('user_id', child.id)
+                .eq('status', 'approved');
+              
+              const spentPoints = redemptions?.reduce((sum, r) => sum + (r.points_spent || 0), 0) || 0;
+              
+              const currentPoints = earnedPoints - spentPoints;
+
               return {
                 id: child.id,
                 name: child.full_name,
                 email: child.email,
-                points: userProfile?.total_points || 0,
+                points: currentPoints,
                 joinedAt: child.created_at,
               };
-            }).filter(child => userProfiles?.some(up => up.id === child.id));
+            });
+
+            const childrenData = (await Promise.all(childrenDataPromises)).filter(child => child !== null) as Child[];
 
             console.log('Children loaded:', childrenData);
             setChildren(childrenData);
