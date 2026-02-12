@@ -1231,7 +1231,11 @@ export default function ParentDashboard() {
             </button>
           </div>
           
-          <header className="mb-10">\n            <div className="flex items-center justify-between">\n              <div>\n                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#006372]">\n                  {userName ? `${userName}'s Family Dashboard` : 'Family Dashboard'}
+          <header className="mb-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#006372]">
+                  {userName ? `${userName}'s Family Dashboard` : 'Family Dashboard'}
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600 mt-2">Monitor your family's tasks, rewards, and activities</p>
               </div>

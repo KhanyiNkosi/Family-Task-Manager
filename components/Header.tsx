@@ -40,8 +40,8 @@ export default function Header() {
   };
 
   return (
-    <header className="header-container fixed top-0 left-0 right-0 z-50 bg-[#F0F9FF]/40 backdrop-blur-[8px] border-b border-white/30 shadow-[0_4px_30px_rgba(0,0,0,0.05)] px-20 py-5 flex justify-between items-center">
-      <div className="logo-group flex items-center gap-[10px] text-[#00C2E0] font-bold text-2xl">
+    <header className="header-container fixed top-0 left-0 right-0 z-50 bg-[#F0F9FF]/40 backdrop-blur-[8px] border-b border-white/30 shadow-[0_4px_30px_rgba(0,0,0,0.05)] px-4 sm:px-8 md:px-12 lg:px-20 py-3 sm:py-4 md:py-5 flex justify-between items-center">
+      <div className="logo-group flex items-center gap-2 sm:gap-[10px] text-[#00C2E0] font-bold text-lg sm:text-xl md:text-2xl">
         <div 
           className="smiley-icon w-11 h-11 bg-[#00C2E0] rounded-full relative flex justify-center items-center overflow-hidden cursor-pointer"
           onClick={handleSmileyClick}
@@ -59,7 +59,7 @@ export default function Header() {
         {/* Fixed: Exact About link styling */}
         <Link 
           href="/about"
-          className="nav-link no-underline text-[#4A5568] mr-10 text-base font-medium relative transition-colors duration-300 hover:text-[#00C2E0] after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-[#00C2E0] after:transition-all after:duration-300 hover:after:w-full"
+          className="nav-link no-underline text-[#4A5568] mr-4 sm:mr-6 md:mr-10 text-sm sm:text-base font-medium relative transition-colors duration-300 hover:text-[#00C2E0] after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-0 after:h-0.5 after:bg-[#00C2E0] after:transition-all after:duration-300 hover:after:w-full"
         >
           About
         </Link>
@@ -69,7 +69,7 @@ export default function Header() {
           onClick={handleLoginClick}
           onMouseDown={(e) => e.currentTarget.style.transform = 'translateY(0)'}
           onMouseUp={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-          className="login-button bg-[#00C2E0] text-white px-7 py-3 rounded-xl font-bold text-base cursor-pointer border-none shadow-[0_10px_15px_-3px_rgba(0,194,224,0.4)] hover:shadow-[0_12px_20px_-3px_rgba(0,194,224,0.5)] hover:transform hover:-translate-y-[2px] active:transform active:translate-y-0 active:shadow-[0_8px_12px_-3px_rgba(0,194,224,0.4)] transition-all duration-300"
+          className="login-button bg-[#00C2E0] text-white px-4 sm:px-6 md:px-7 py-2 sm:py-2.5 md:py-3 rounded-xl font-bold text-sm sm:text-base cursor-pointer border-none shadow-[0_10px_15px_-3px_rgba(0,194,224,0.4)] hover:shadow-[0_12px_20px_-3px_rgba(0,194,224,0.5)] hover:transform hover:-translate-y-[2px] active:transform active:translate-y-0 active:shadow-[0_8px_12px_-3px_rgba(0,194,224,0.4)] transition-all duration-300"
         >
           Log In
         </button>

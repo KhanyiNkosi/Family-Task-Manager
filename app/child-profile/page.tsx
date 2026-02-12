@@ -12,6 +12,7 @@ export default function ChildProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [childName, setChildName] = useState("Child");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [level, setLevel] = useState(1);
@@ -218,7 +219,7 @@ export default function ChildProfilePage() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar - Matching /profile design */}
-      <aside className="sidebar w-64 bg-[#006372] text-white flex flex-col py-6">
+      <aside className="sidebar hidden lg:flex w-64 bg-[#006372] text-white flex-col py-6">
         <div className="sidebar-brand px-6 pb-10 text-2xl font-black flex items-center gap-2.5">
           <i className="far fa-smile-beam"></i> FamilyTask
         </div>
@@ -253,12 +254,76 @@ export default function ChildProfilePage() {
 
       {/* Main Content */}
       <main className="main-content flex-1 flex flex-col overflow-auto">
-        <div className="ml-0 flex-1 p-8">
+        <div className="lg:ml-0 flex-1 px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+          {/* Mobile Hamburger Menu */}
+          {mobileMenuOpen && (
+            <div className="lg:hidden fixed inset-0 z-50 bg-black/50" onClick={() => setMobileMenuOpen(false)}>
+              <div className="w-64 h-full bg-[#006372] text-white p-6" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3 text-2xl font-extrabold">
+                    <i className="far fa-smile-beam text-3xl"></i>
+                    <span>FamilyTask</span>
+                  </div>
+                  <button onClick={() => setMobileMenuOpen(false)} className="text-2xl">
+                    <i className="fas fa-times"></i>
+                  </button>
+                </div>
+                <nav className="space-y-2">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3.5 px-4 py-3 rounded-lg transition-all text-white/80 hover:bg-white/10 hover:text-white"
+                    >
+                      <i className={`${item.icon} w-5 text-center`}></i>
+                      <span className="font-medium">{item.label}</span>
+                    </Link>
+                  ))}
+                </nav>
+                <div className="mt-auto pt-6 border-t border-white/10 space-y-3 absolute bottom-6 left-6 right-6">
+                  <Link
+                    href="/child-settings"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white/10 text-white/90 rounded-xl hover:bg-white/20 transition-all font-medium"
+                  >
+                    <i className="fas fa-cog"></i>
+                    My Settings
+                  </Link>
+                  <button
+                    onClick={() => { handleLogout(); setMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/20 text-red-100 rounded-xl hover:bg-red-500/30 transition-all font-medium border border-red-400/30"
+                  >
+                    <i className="fas fa-sign-out-alt"></i>
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Mobile Header */}
+          <div className="lg:hidden mb-4 bg-gradient-to-r from-[#006372] to-[#004955] text-white px-4 py-3 rounded-xl flex items-center justify-between">
+            <button onClick={() => setMobileMenuOpen(true)} className="text-2xl">
+              <i className="fas fa-bars"></i>
+            </button>
+            <div className="flex items-center gap-3">
+              <i className="fas fa-smile text-2xl"></i>
+              <span className="font-bold text-lg">FamilyTask</span>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="px-3 py-1 bg-white/20 rounded-lg text-sm"
+            >
+              Logout
+            </button>
+          </div>
+          
           {/* Header */}
           <header className="mb-10">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-[#006372]">My Profile</h1>
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#006372]">My Profile</h1>
                 <p className="text-gray-600 mt-2">Manage your profile picture and view your progress</p>
               </div>
               <div className="flex items-center gap-4">
