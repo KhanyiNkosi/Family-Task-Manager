@@ -1347,7 +1347,7 @@ export default function ChildDashboardPage() {
             <span className="font-bold text-lg">FamilyTask</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold">{currentPoints} pts</span>
+            <span className="text-sm font-semibold">{points} pts</span>
           </div>
         </div>
         
