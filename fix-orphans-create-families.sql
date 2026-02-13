@@ -10,23 +10,31 @@ DECLARE
   v_family_id UUID;
   v_created_count INTEGER := 0;
   v_parent_id UUID;
+  v_family_id_text TEXT;
 BEGIN
   RAISE NOTICE '====================================';
   RAISE NOTICE 'Creating missing families records...';
   RAISE NOTICE '====================================';
   
   -- For each distinct orphaned family_id
-  FOR v_family_id IN (
-    SELECT DISTINCT p.family_id
+  FOR v_family_id_text IN (
+    SELECT DISTINCT p.family_id::text
     FROM profiles p
     WHERE p.family_id IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id)
+      AND NOT EXISTS (
+        SELECT 1 FROM families f 
+        WHERE f.id::text = p.family_id::text
+      )
   ) LOOP
+    
+    -- Convert text back to UUID
+    v_family_id := v_family_id_text::UUID;
     
     -- Try to find a parent in this family
     SELECT id INTO v_parent_id
     FROM profiles
-    WHERE family_id = v_family_id AND role = 'parent'
+    WHERE family_id::text = v_family_id_text 
+      AND role = 'parent'
     LIMIT 1;
     
     -- Create the family record (adapt based on your actual families table schema)
@@ -77,18 +85,19 @@ SELECT
 FROM profiles p
 WHERE p.family_id IS NOT NULL
   AND NOT EXISTS (
-    SELECT 1 FROM families f WHERE f.id = p.family_id
+    SELECT 1 FROM families f 
+    WHERE f.id::text = p.family_id::text
   );
 
 -- Show created families
 SELECT 
   'Newly Created Families' as check_name,
-  f.id,
+  f.id::text as family_id,
   f.created_at,
   COUNT(p.id) as member_count,
-  STRING_AGG(p.email, ', ') as members
+  STRING_AGG(p.email, ', ' ORDER BY p.email) as members
 FROM families f
-JOIN profiles p ON p.family_id = f.id
+JOIN profiles p ON p.family_id::text = f.id::text
 WHERE f.created_at > NOW() - INTERVAL '5 minutes'
 GROUP BY f.id, f.created_at
 ORDER BY f.created_at DESC;

@@ -23,13 +23,19 @@ BEGIN
   SELECT COUNT(*) INTO v_orphaned_profiles
   FROM profiles p
   WHERE p.family_id IS NOT NULL
-    AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id);
+    AND NOT EXISTS (
+      SELECT 1 FROM families f 
+      WHERE f.id::text = p.family_id::text
+    );
   
   -- Check activity_feed
   SELECT COUNT(*) INTO v_orphaned_activity
   FROM activity_feed af
   WHERE af.family_id IS NOT NULL
-    AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = af.family_id);
+    AND NOT EXISTS (
+      SELECT 1 FROM families f 
+      WHERE f.id::text = af.family_id::text
+    );
   
   IF v_orphaned_profiles > 0 THEN
     RAISE EXCEPTION 'Cannot add FK: % orphaned profiles still exist. Fix them first!', v_orphaned_profiles;
@@ -70,7 +76,10 @@ BEGIN
   UPDATE activity_feed
   SET family_id = NULL
   WHERE family_id IS NOT NULL
-    AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = family_id);
+    AND NOT EXISTS (
+      SELECT 1 FROM families f 
+      WHERE f.id::text = family_id::text
+    );
   
   GET DIAGNOSTICS v_fixed_count = ROW_COUNT;
   
@@ -106,7 +115,10 @@ BEGIN
     UPDATE tasks
     SET family_id = NULL
     WHERE family_id IS NOT NULL
-      AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = family_id);
+      AND NOT EXISTS (
+        SELECT 1 FROM families f 
+        WHERE f.id::text = family_id::text
+      );
     
     -- Add FK
     ALTER TABLE tasks DROP CONSTRAINT IF EXISTS tasks_family_id_fkey;
@@ -163,7 +175,10 @@ SELECT
   COUNT(*) as orphan_count
 FROM profiles p
 WHERE p.family_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id)
+  AND NOT EXISTS (
+    SELECT 1 FROM families f 
+    WHERE f.id::text = p.family_id::text
+  )
 UNION ALL
 SELECT 
   'Final Orphan Check' as check_name,
@@ -171,7 +186,10 @@ SELECT
   COUNT(*) as orphan_count
 FROM activity_feed af
 WHERE af.family_id IS NOT NULL
-  AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = af.family_id);
+  AND NOT EXISTS (
+    SELECT 1 FROM families f 
+    WHERE f.id::text = af.family_id::text
+  );
 
 RAISE NOTICE '====================================';
 RAISE NOTICE '✅ FOREIGN KEY CONSTRAINTS ADDED';

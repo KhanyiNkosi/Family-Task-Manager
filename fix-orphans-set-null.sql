@@ -8,14 +8,15 @@
 -- Show what will be updated before we do it
 SELECT 
   'Profiles that will be updated' as check_name,
-  p.id,
+  p.id::text as profile_id,
   p.email,
   p.role,
-  p.family_id as current_invalid_family_id
+  p.family_id::text as current_invalid_family_id
 FROM profiles p
 WHERE p.family_id IS NOT NULL
   AND NOT EXISTS (
-    SELECT 1 FROM families f WHERE f.id = p.family_id
+    SELECT 1 FROM families f 
+    WHERE f.id::text = p.family_id::text
   );
 
 -- Perform the update
@@ -33,7 +34,8 @@ BEGIN
     updated_at = NOW()
   WHERE family_id IS NOT NULL
     AND NOT EXISTS (
-      SELECT 1 FROM families f WHERE f.id = family_id
+      SELECT 1 FROM families f 
+      WHERE f.id::text = family_id::text
     );
   
   GET DIAGNOSTICS v_updated_count = ROW_COUNT;
@@ -49,16 +51,17 @@ SELECT
 FROM profiles p
 WHERE p.family_id IS NOT NULL
   AND NOT EXISTS (
-    SELECT 1 FROM families f WHERE f.id = p.family_id
+    SELECT 1 FROM families f 
+    WHERE f.id::text = p.family_id::text
   );
 
 -- Show profiles that were updated (now have NULL family_id and recent updated_at)
 SELECT 
   'Updated Profiles' as check_name,
-  p.id,
+  p.id::text as profile_id,
   p.email,
   p.role,
-  p.family_id as new_family_id,
+  p.family_id::text as new_family_id,
   p.updated_at
 FROM profiles p
 WHERE p.family_id IS NULL
@@ -70,7 +73,7 @@ SELECT
   'Profile Family Status Summary' as check_name,
   CASE 
     WHEN p.family_id IS NULL THEN 'No family assigned'
-    WHEN EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id) THEN 'Valid family'
+    WHEN EXISTS (SELECT 1 FROM families f WHERE f.id::text = p.family_id::text) THEN 'Valid family'
     ELSE 'Orphaned (should not exist)'
   END as status,
   COUNT(*) as count
@@ -78,6 +81,6 @@ FROM profiles p
 GROUP BY 
   CASE 
     WHEN p.family_id IS NULL THEN 'No family assigned'
-    WHEN EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id) THEN 'Valid family'
+    WHEN EXISTS (SELECT 1 FROM families f WHERE f.id::text = p.family_id::text) THEN 'Valid family'
     ELSE 'Orphaned (should not exist)'
   END;
