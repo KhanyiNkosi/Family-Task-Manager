@@ -59,41 +59,69 @@ END
 
 **When to run:** THIRD (after data repair)
 
-## 📋 Deployment Steps
+## 📋 Deployment Steps (UPDATED - Based on Current State)
 
-### Step 0: Fix Type Mismatch (CRITICAL FIRST STEP)
+### ✅ Current Status After Partial Migration:
+- **families.id**: UUID ✅ (type conversion succeeded!)
+- **profiles.family_id**: UUID ✅ (types now match!)
+- **FK constraints**: Missing ❌ (dropped but not recreated)
+- **RLS policies**: Exist ✅ (were recreated)
+- **Orphaned profiles**: 4 profiles need fixing ⚠️
+
+### Step 1: Inspect the Orphaned Profiles
 ```bash
 # 1. Open Supabase Dashboard → SQL Editor
-# 2. Copy contents of fix-families-type-mismatch.sql
-# 3. Execute the entire script
-# 4. Check output - should show type conversion successful
+# 2. Copy contents of list-orphaned-profiles.sql
+# 3. Execute to see details about the 4 orphaned profiles
+```
+
+**This will show you:**
+- Which profiles have invalid family_ids
+- Whether they are parents or children
+- If any activity_feed records use those family_ids
+
+### Step 2: Choose Your Orphan Fix Strategy
+
+**Option A: Create Missing Families** (Recommended if users are active)
+```bash
+# Use this if the orphaned profiles SHOULD have valid families
+# Execute: fix-orphans-create-families.sql
+# Creates families table entries for the missing family_ids
+```
+
+**Option B: Remove Invalid References** (Use if orphans are stale accounts)
+```bash
+# Use this if the orphaned family links are invalid/old
+# Execute: fix-orphans-set-null.sql
+# Sets family_id to NULL for orphaned profiles
+```
+
+### Step 3: Add Foreign Key Constraints
+```bash
+# After orphans are fixed (Step 2)
+# Execute: add-foreign-keys.sql
+# This adds proper FK constraints with cascading deletes
 ```
 
 **Expected output:**
 ```
-✅ All families.id values are valid UUIDs
-✅ Converted families.id from TEXT to UUID
-✅ Re-created PRIMARY KEY constraint on families.id
+✅ Orphan check passed
 ✅ Added FK constraint: profiles.family_id → families.id
 ✅ Added FK constraint: activity_feed.family_id → families.id
-✅ Type mismatch FIXED - both are UUID
+✅ Created indexes for FK columns
 ```
 
-**If you see errors about non-UUID values:**
-```sql
--- Check what the invalid values are:
-SELECT id FROM families 
-WHERE id !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
-
--- You'll need to fix or remove these before proceeding
-```
-
-### Step 1: Apply Data Repair Fix
+### Step 4: Run Data Repair (If Needed)
 ```bash
-# 1. In same SQL Editor (after Step 0 completes)
-# 2. Copy contents of fix-activity-feed-constraint.sql
-# 3. Execute the entire script
-# 4. Check output - should show families created and repairs completed
+# If you have OTHER orphaned data beyond the 4 profiles
+# Execute: fix-activity-feed-constraint.sql
+# This was created earlier but may not be needed now
+```
+
+### Step 5: Fix Registration Trigger
+```bash
+# Execute: fix-registration-flow.sql
+# Updates the trigger to create families table entries for new parents
 ```
 
 **Expected output:**
@@ -104,77 +132,85 @@ Activity feeds with family: Z
 Orphaned profiles remaining: 0  ← This MUST be 0
 ```
 
-### Step 2: Update Registration Trigger
-```bash
-# 1. In same SQL Editor
-# 2. Copy contents of fix-registration-flow.sql
-# 3. Execute the entire script
-# 4. Check verification queries at bottom
-```
-
-**Expected output:**
-```
-✅ Trigger function replaced
-✅ Trigger recreated
-✅ Orphaned profiles check: 0
-✅ Recent registrations show family_status = "Family Exists"
-```
-
-### Step 3: Test Complete Registration Flow
+### Step 6: Test Complete Registration Flow
 ```bash
 # Test as PARENT:
 1. Go to your app registration page
 2. Sign up as parent with email/password
 3. Check Supabase Dashboard → families table
-   → Should see new family with generated code
+   → Should see new family created
 4. Check profiles table → family_id should match families.id
 
 # Test as CHILD:
-1. Copy the family_code from parent's family
-2. Sign up as child using that family_code
+1. Get family_id from parent's profile (use as family_code)
+2. Sign up as child using that family_id as code
 3. Check profiles table → family_id should match parent's
 4. Have child complete a task
    → Should NOT get 409 error
    → Should create activity_feed entry successfully
 ```
 
-### Step 4: Push Code Changes
+### Step 7: Push Code Changes
 ```bash
 git push origin main
 ```
 
-**Commits ready to push:**
+**Commits ready to push (9 commits):**
 - ✅ Profile icon duplication fix
 - ✅ Activity feed constraint fix (SQL)
 - ✅ Registration flow fix (SQL)
+- ✅ Type mismatch fix (SQL)
+- ✅ RLS policy handling
+- ✅ family_code column flexibility
+- ✅ Orphan fix scripts
+- ✅ FK constraint restoration
 
 ## 🔍 How to Verify Everything Works
 
-### Check 1: No More Orphaned Families
+### Check 1: Type Mismatch Fixed ✅ (COMPLETED)
+```sql
+-- Both should show 'uuid'
+SELECT data_type FROM information_schema.columns
+WHERE table_name = 'families' AND column_name = 'id';
+
+SELECT data_type FROM information_schema.columns
+WHERE table_name = 'profiles' AND column_name = 'family_id';
+```
+
+### Check 2: No More Orphaned Profiles (After Step 2-3)
 ```sql
 -- Should return 0 rows
-SELECT p.id, p.email, p.family_id
+SELECT COUNT(*) as orphan_count
 FROM profiles p
-LEFT JOIN families f ON p.family_id = f.id
-WHERE p.family_id IS NOT NULL AND f.id IS NULL;
+WHERE p.family_id IS NOT NULL 
+  AND NOT EXISTS (SELECT 1 FROM families f WHERE f.id = p.family_id);
 ```
 
-### Check 2: All Families Have Family Codes
+### Check 3: Foreign Keys Exist (After Step 3)
 ```sql
--- Should show all families with codes
-SELECT id, family_code, created_at, created_by
-FROM families
-ORDER BY created_at DESC;
+-- Should show FK constraints
+SELECT constraint_name, table_name
+FROM information_schema.table_constraints
+WHERE constraint_type = 'FOREIGN KEY'
+  AND table_name IN ('profiles', 'activity_feed', 'tasks')
+  AND constraint_name LIKE '%family_id%';
 ```
 
-### Check 3: New Registrations Work
+### Check 4: RLS Policies Active ✅ (COMPLETED)
+```sql
+-- Should show 4 policies
+SELECT policyname, cmd
+FROM pg_policies
+WHERE tablename = 'families';
+```
+
+### Check 5: New Registrations Work (After Step 5)
 ```sql
 -- Register a test parent, then check:
 SELECT 
   u.email,
   p.role,
   p.family_id,
-  f.family_code,
   CASE WHEN f.id IS NOT NULL THEN '✅ OK' ELSE '❌ Missing' END as status
 FROM auth.users u
 JOIN profiles p ON u.id = p.id
@@ -183,7 +219,7 @@ WHERE u.email = 'test-parent@example.com';
 -- Status should be '✅ OK'
 ```
 
-### Check 4: Children Can Complete Tasks
+### Check 6: Children Can Complete Tasks (After Step 5)
 ```bash
 # In your app:
 1. Login as child
