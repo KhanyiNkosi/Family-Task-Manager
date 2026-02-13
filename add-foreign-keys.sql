@@ -1,7 +1,8 @@
 -- ============================================================================
 -- ADD FOREIGN KEY CONSTRAINTS - Run AFTER fixing orphaned profiles
 -- ============================================================================
--- This adds proper FK constraints now that types match and orphans are fixed
+-- This adds proper FK constraints after types match and orphans are fixed
+-- NOTE: Run convert-profiles-family-id-to-text.sql FIRST if not already done
 -- ============================================================================
 
 BEGIN;
@@ -9,6 +10,38 @@ BEGIN;
 RAISE NOTICE '====================================';
 RAISE NOTICE 'Adding Foreign Key Constraints...';
 RAISE NOTICE '====================================';
+
+-- ============================================================================
+-- STEP 0: VERIFY TYPES MATCH
+-- ============================================================================
+
+DO $$
+DECLARE
+  v_profiles_type TEXT;
+  v_families_type TEXT;
+BEGIN
+  SELECT data_type INTO v_profiles_type
+  FROM information_schema.columns
+  WHERE table_schema = 'public' 
+    AND table_name = 'profiles' 
+    AND column_name = 'family_id';
+  
+  SELECT data_type INTO v_families_type
+  FROM information_schema.columns
+  WHERE table_schema = 'public'
+    AND table_name = 'families' 
+    AND column_name = 'id';
+  
+  RAISE NOTICE 'profiles.family_id type: %', v_profiles_type;
+  RAISE NOTICE 'families.id type: %', v_families_type;
+  
+  IF v_profiles_type != v_families_type THEN
+    RAISE EXCEPTION 'Type mismatch! Run convert-profiles-family-id-to-text.sql first. profiles.family_id=%, families.id=%', 
+      v_profiles_type, v_families_type;
+  END IF;
+  
+  RAISE NOTICE '✅ Types match: both are %', v_profiles_type;
+END $$;
 
 -- ============================================================================
 -- STEP 1: VERIFY NO ORPHANS REMAIN
@@ -25,7 +58,7 @@ BEGIN
   WHERE p.family_id IS NOT NULL
     AND NOT EXISTS (
       SELECT 1 FROM families f 
-      WHERE f.id::text = p.family_id::text
+      WHERE f.id = p.family_id
     );
   
   -- Check activity_feed
@@ -34,7 +67,7 @@ BEGIN
   WHERE af.family_id IS NOT NULL
     AND NOT EXISTS (
       SELECT 1 FROM families f 
-      WHERE f.id::text = af.family_id::text
+      WHERE f.id = af.family_id
     );
   
   IF v_orphaned_profiles > 0 THEN
@@ -78,7 +111,7 @@ BEGIN
   WHERE family_id IS NOT NULL
     AND NOT EXISTS (
       SELECT 1 FROM families f 
-      WHERE f.id::text = family_id::text
+      WHERE f.id = family_id
     );
   
   GET DIAGNOSTICS v_fixed_count = ROW_COUNT;
@@ -117,7 +150,7 @@ BEGIN
     WHERE family_id IS NOT NULL
       AND NOT EXISTS (
         SELECT 1 FROM families f 
-        WHERE f.id::text = family_id::text
+        WHERE f.id = family_id
       );
     
     -- Add FK
@@ -177,7 +210,7 @@ FROM profiles p
 WHERE p.family_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM families f 
-    WHERE f.id::text = p.family_id::text
+    WHERE f.id = p.family_id
   )
 UNION ALL
 SELECT 
@@ -188,7 +221,7 @@ FROM activity_feed af
 WHERE af.family_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM families f 
-    WHERE f.id::text = af.family_id::text
+    WHERE f.id = af.family_id
   );
 
 RAISE NOTICE '====================================';

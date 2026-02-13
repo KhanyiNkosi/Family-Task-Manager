@@ -3,20 +3,20 @@
 -- ============================================================================
 -- This creates families table entries for orphaned family_ids
 -- Run this if the orphaned profiles SHOULD have valid families
+-- NOTE: Works with both TEXT and UUID types (uses casting for safety)
 -- ============================================================================
 
 DO $$
 DECLARE
-  v_family_id UUID;
+  v_family_id_text TEXT;
   v_created_count INTEGER := 0;
   v_parent_id UUID;
-  v_family_id_text TEXT;
 BEGIN
   RAISE NOTICE '====================================';
   RAISE NOTICE 'Creating missing families records...';
   RAISE NOTICE '====================================';
   
-  -- For each distinct orphaned family_id
+  -- For each distinct orphaned family_id (cast to text for type safety)
   FOR v_family_id_text IN (
     SELECT DISTINCT p.family_id::text
     FROM profiles p
@@ -26,9 +26,6 @@ BEGIN
         WHERE f.id::text = p.family_id::text
       )
   ) LOOP
-    
-    -- Convert text back to UUID
-    v_family_id := v_family_id_text::UUID;
     
     -- Try to find a parent in this family
     SELECT id INTO v_parent_id
@@ -47,7 +44,7 @@ BEGIN
     ) THEN
       -- Has created_by column
       INSERT INTO families (id, created_at, created_by)
-      VALUES (v_family_id, NOW(), v_parent_id)
+      VALUES (v_family_id_text, NOW(), v_parent_id)
       ON CONFLICT (id) DO NOTHING;
     ELSE
       -- No created_by column
@@ -58,18 +55,18 @@ BEGIN
           AND column_name = 'created_at'
       ) THEN
         INSERT INTO families (id, created_at)
-        VALUES (v_family_id, NOW())
+        VALUES (v_family_id_text, NOW())
         ON CONFLICT (id) DO NOTHING;
       ELSE
         -- Minimal schema - just id
         INSERT INTO families (id)
-        VALUES (v_family_id)
+        VALUES (v_family_id_text)
         ON CONFLICT (id) DO NOTHING;
       END IF;
     END IF;
     
     v_created_count := v_created_count + 1;
-    RAISE NOTICE '✅ Created family record for family_id: %', v_family_id;
+    RAISE NOTICE '✅ Created family record for family_id: %', v_family_id_text;
     
   END LOOP;
   
