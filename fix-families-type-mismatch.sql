@@ -32,7 +32,54 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- STEP 2: DROP DEPENDENT OBJECTS
+-- STEP 2: BACKUP AND DROP RLS POLICIES ON FAMILIES TABLE
+-- ============================================================================
+
+-- Show existing policies before dropping (for reference)
+DO $$
+DECLARE
+  policy_record RECORD;
+BEGIN
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'EXISTING RLS POLICIES ON families:';
+  RAISE NOTICE '====================================';
+  
+  FOR policy_record IN (
+    SELECT 
+      schemaname,
+      tablename,
+      policyname,
+      permissive,
+      roles,
+      cmd,
+      qual,
+      with_check
+    FROM pg_policies
+    WHERE tablename = 'families'
+  ) LOOP
+    RAISE NOTICE 'Policy: % (%, %)', 
+      policy_record.policyname, 
+      policy_record.cmd,
+      policy_record.permissive;
+    RAISE NOTICE '  USING: %', policy_record.qual;
+    RAISE NOTICE '  WITH CHECK: %', policy_record.with_check;
+  END LOOP;
+END $$;
+
+-- Drop all RLS policies on families table
+DROP POLICY IF EXISTS families_select_owner_or_member ON families;
+DROP POLICY IF EXISTS families_insert_parent ON families;
+DROP POLICY IF EXISTS families_update_owner ON families;
+DROP POLICY IF EXISTS families_delete_owner ON families;
+DROP POLICY IF EXISTS families_select_policy ON families;
+DROP POLICY IF EXISTS families_insert_policy ON families;
+DROP POLICY IF EXISTS families_update_policy ON families;
+DROP POLICY IF EXISTS families_delete_policy ON families;
+
+RAISE NOTICE '✅ Dropped all RLS policies on families table';
+
+-- ============================================================================
+-- STEP 3: DROP DEPENDENT FOREIGN KEY CONSTRAINTS
 -- ============================================================================
 
 -- Drop any existing foreign key constraints (if they exist)
@@ -55,7 +102,7 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- ============================================================================
--- STEP 3: ALTER families.id from TEXT to UUID
+-- STEP 4: ALTER families.id from TEXT to UUID
 -- ============================================================================
 
 -- Convert the column type
@@ -71,7 +118,7 @@ ALTER TABLE families ADD PRIMARY KEY (id);
 RAISE NOTICE '✅ Re-created PRIMARY KEY constraint on families.id';
 
 -- ============================================================================
--- STEP 4: ALTER families.family_code from TEXT to TEXT (ensure consistency)
+-- STEP 5: ALTER families.family_code from TEXT to TEXT (ensure consistency)
 -- ============================================================================
 
 -- Make sure family_code is TEXT and has proper constraints
@@ -88,7 +135,7 @@ EXCEPTION WHEN duplicate_object THEN
 END $$;
 
 -- ============================================================================
--- STEP 5: ADD FOREIGN KEY CONSTRAINTS
+-- STEP 6: ADD FOREIGN KEY CONSTRAINTS
 -- ============================================================================
 
 -- Add FK from profiles.family_id to families.id
@@ -135,7 +182,67 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- STEP 6: CREATE INDEX for Performance
+-- STEP 7: RECREATE RLS POLICIES ON FAMILIES TABLE
+-- ============================================================================
+
+-- Enable RLS on families table
+ALTER TABLE families ENABLE ROW LEVEL SECURITY;
+
+RAISE NOTICE '✅ Enabled RLS on families table';
+
+-- Policy: Allow users to view their own family or families they are members of
+CREATE POLICY families_select_owner_or_member ON families
+  FOR SELECT
+  USING (
+    id IN (
+      SELECT family_id 
+      FROM profiles 
+      WHERE id = auth.uid() AND family_id IS NOT NULL
+    )
+  );
+
+RAISE NOTICE '✅ Created policy: families_select_owner_or_member';
+
+-- Policy: Allow parents to insert families
+CREATE POLICY families_insert_parent ON families
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM profiles 
+      WHERE id = auth.uid() AND role = 'parent'
+    )
+  );
+
+RAISE NOTICE '✅ Created policy: families_insert_parent';
+
+-- Policy: Allow family owners to update their family
+CREATE POLICY families_update_owner ON families
+  FOR UPDATE
+  USING (
+    id IN (
+      SELECT family_id 
+      FROM profiles 
+      WHERE id = auth.uid() AND role = 'parent'
+    )
+  );
+
+RAISE NOTICE '✅ Created policy: families_update_owner';
+
+-- Policy: Allow family owners to delete their family
+CREATE POLICY families_delete_owner ON families
+  FOR DELETE
+  USING (
+    id IN (
+      SELECT family_id 
+      FROM profiles 
+      WHERE id = auth.uid() AND role = 'parent'
+    )
+  );
+
+RAISE NOTICE '✅ Created policy: families_delete_owner';
+
+-- ============================================================================
+-- STEP 8: CREATE INDEXES for Performance
 -- ============================================================================
 
 -- Index on families.id (should exist as PK, but explicit for clarity)
@@ -150,7 +257,7 @@ CREATE INDEX IF NOT EXISTS idx_activity_feed_family_id ON activity_feed(family_i
 RAISE NOTICE '✅ Created indexes for FK columns';
 
 -- ============================================================================
--- STEP 7: VERIFY THE MIGRATION
+-- STEP 9: VERIFY THE MIGRATION
 -- ============================================================================
 
 DO $$
@@ -227,6 +334,20 @@ BEGIN
       rec.foreign_table_name, rec.foreign_column_name;
   END LOOP;
   
+  -- Show RLS policies
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'RLS POLICIES ON FAMILIES:';
+  RAISE NOTICE '====================================';
+  
+  FOR rec IN (
+    SELECT policyname, cmd
+    FROM pg_policies
+    WHERE tablename = 'families'
+    ORDER BY policyname
+  ) LOOP
+    RAISE NOTICE '✅ % (%)', rec.policyname, rec.cmd;
+  END LOOP;
+  
 END $$;
 
 COMMIT;
@@ -258,6 +379,10 @@ LIMIT 5;
 
 RAISE NOTICE '====================================';
 RAISE NOTICE '✅ TYPE MISMATCH FIX COMPLETE';
+RAISE NOTICE '====================================';
+RAISE NOTICE '✅ families.id converted from TEXT to UUID';
+RAISE NOTICE '✅ Foreign key constraints added';
+RAISE NOTICE '✅ RLS policies recreated';
 RAISE NOTICE '====================================';
 RAISE NOTICE 'Next: Run fix-activity-feed-constraint.sql to repair orphaned data';
 RAISE NOTICE 'Then: Run fix-registration-flow.sql to fix future registrations';
