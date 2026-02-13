@@ -118,20 +118,30 @@ ALTER TABLE families ADD PRIMARY KEY (id);
 RAISE NOTICE '✅ Re-created PRIMARY KEY constraint on families.id';
 
 -- ============================================================================
--- STEP 5: ALTER families.family_code from TEXT to TEXT (ensure consistency)
+-- STEP 5: ALTER families.family_code (if column exists)
 -- ============================================================================
 
--- Make sure family_code is TEXT and has proper constraints
-ALTER TABLE families 
-  ALTER COLUMN family_code TYPE TEXT;
-
--- Add unique constraint if not exists
 DO $$
 BEGIN
-  ALTER TABLE families ADD CONSTRAINT families_family_code_key UNIQUE (family_code);
-  RAISE NOTICE '✅ Added unique constraint on families.family_code';
-EXCEPTION WHEN duplicate_object THEN
-  RAISE NOTICE '⚠️ Unique constraint on family_code already exists';
+  -- Check if family_code column exists
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'families' AND column_name = 'family_code'
+  ) THEN
+    -- Make sure family_code is TEXT and has proper constraints
+    ALTER TABLE families 
+      ALTER COLUMN family_code TYPE TEXT;
+    
+    -- Add unique constraint if not exists
+    BEGIN
+      ALTER TABLE families ADD CONSTRAINT families_family_code_key UNIQUE (family_code);
+      RAISE NOTICE '✅ Added unique constraint on families.family_code';
+    EXCEPTION WHEN duplicate_object THEN
+      RAISE NOTICE '⚠️ Unique constraint on family_code already exists';
+    END;
+  ELSE
+    RAISE NOTICE '⚠️ families.family_code column does not exist - skipping';
+  END IF;
 END $$;
 
 -- ============================================================================
@@ -357,25 +367,79 @@ COMMIT;
 -- ============================================================================
 
 -- Show a sample of families with their types verified
-SELECT 
-  id,
-  family_code,
-  created_at,
-  pg_typeof(id) as id_type,
-  pg_typeof(family_code) as code_type
-FROM families
-LIMIT 5;
+DO $$
+BEGIN
+  -- Check if family_code exists before querying it
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'families' AND column_name = 'family_code'
+  ) THEN
+    -- Query with family_code
+    RAISE NOTICE 'Families table sample (with family_code):';
+    FOR rec IN (
+      SELECT 
+        id::text as id_text,
+        family_code,
+        created_at,
+        pg_typeof(id)::text as id_type
+      FROM families
+      LIMIT 5
+    ) LOOP
+      RAISE NOTICE '  ID: %, Code: %, Type: %', rec.id_text, rec.family_code, rec.id_type;
+    END LOOP;
+  ELSE
+    -- Query without family_code
+    RAISE NOTICE 'Families table sample (no family_code column):';
+    FOR rec IN (
+      SELECT 
+        id::text as id_text,
+        created_at,
+        pg_typeof(id)::text as id_type
+      FROM families
+      LIMIT 5
+    ) LOOP
+      RAISE NOTICE '  ID: %, Type: %', rec.id_text, rec.id_type;
+    END LOOP;
+  END IF;
+END $$;
 
 -- Show sample joins working correctly now
-SELECT 
-  p.email,
-  p.role,
-  p.family_id,
-  f.family_code,
-  '✅ Types match - join works' as status
-FROM profiles p
-INNER JOIN families f ON p.family_id = f.id
-LIMIT 5;
+DO $$
+BEGIN
+  RAISE NOTICE 'Sample profile-family joins:';
+  
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'families' AND column_name = 'family_code'
+  ) THEN
+    -- Join with family_code
+    FOR rec IN (
+      SELECT 
+        p.email,
+        p.role,
+        p.family_id::text as family_id_text,
+        f.family_code
+      FROM profiles p
+      INNER JOIN families f ON p.family_id = f.id
+      LIMIT 5
+    ) LOOP
+      RAISE NOTICE '  ✅ %: % (family_id: %, code: %)', rec.email, rec.role, rec.family_id_text, rec.family_code;
+    END LOOP;
+  ELSE
+    -- Join without family_code
+    FOR rec IN (
+      SELECT 
+        p.email,
+        p.role,
+        p.family_id::text as family_id_text
+      FROM profiles p
+      INNER JOIN families f ON p.family_id = f.id
+      LIMIT 5
+    ) LOOP
+      RAISE NOTICE '  ✅ %: % (family_id: %)', rec.email, rec.role, rec.family_id_text;
+    END LOOP;
+  END IF;
+END $$;
 
 RAISE NOTICE '====================================';
 RAISE NOTICE '✅ TYPE MISMATCH FIX COMPLETE';

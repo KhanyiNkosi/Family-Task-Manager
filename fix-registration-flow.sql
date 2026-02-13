@@ -25,15 +25,53 @@ BEGIN
     v_family_id := gen_random_uuid();
     
     -- CREATE THE FAMILIES TABLE ENTRY (This was missing!)
-    INSERT INTO public.families (id, family_code, created_at, created_by)
-    VALUES (
-      v_family_id,
-      -- Generate readable 8-character family code from UUID
-      UPPER(SUBSTRING(REPLACE(v_family_id::text, '-', '') FROM 1 FOR 8)),
-      NOW(),
-      NEW.id
-    )
-    ON CONFLICT (id) DO NOTHING;
+    -- Check if family_code column exists
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns 
+      WHERE table_schema = 'public' 
+        AND table_name = 'families' 
+        AND column_name = 'family_code'
+    ) THEN
+      -- Insert with family_code
+      INSERT INTO public.families (id, family_code, created_at, created_by)
+      VALUES (
+        v_family_id,
+        -- Generate readable 8-character family code from UUID
+        UPPER(SUBSTRING(REPLACE(v_family_id::text, '-', '') FROM 1 FOR 8)),
+        NOW(),
+        NEW.id
+      )
+      ON CONFLICT (id) DO NOTHING;
+    ELSE
+      -- Insert without family_code (column doesn't exist)
+      -- Check what columns DO exist and insert accordingly
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+          AND table_name = 'families' 
+          AND column_name = 'created_by'
+      ) THEN
+        -- Has created_at and created_by
+        INSERT INTO public.families (id, created_at, created_by)
+        VALUES (v_family_id, NOW(), NEW.id)
+        ON CONFLICT (id) DO NOTHING;
+      ELSIF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' 
+          AND table_name = 'families' 
+          AND column_name = 'created_at'
+      ) THEN
+        -- Has created_at only
+        INSERT INTO public.families (id, created_at)
+        VALUES (v_family_id, NOW())
+        ON CONFLICT (id) DO NOTHING;
+      ELSE
+        -- Minimal insert - just id
+        INSERT INTO public.families (id)
+        VALUES (v_family_id)
+        ON CONFLICT (id) DO NOTHING;
+      END IF;
+    END IF;
     
     RAISE NOTICE 'Created family % for parent %', v_family_id, NEW.id;
   
@@ -64,14 +102,43 @@ BEGIN
       
       IF v_family_id IS NOT NULL THEN
         -- Create the missing family record
-        INSERT INTO public.families (id, family_code, created_at, created_by)
-        VALUES (
-          v_family_id,
-          UPPER(SUBSTRING(REPLACE(v_family_id::text, '-', '') FROM 1 FOR 8)),
-          NOW(),
-          (SELECT id FROM profiles WHERE family_id = v_family_id AND role = 'parent' LIMIT 1)
-        )
-        ON CONFLICT (id) DO NOTHING;
+        -- Check if family_code column exists
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns 
+          WHERE table_schema = 'public' 
+            AND table_name = 'families' 
+            AND column_name = 'family_code'
+        ) THEN
+          -- Insert with family_code
+          INSERT INTO public.families (id, family_code, created_at, created_by)
+          VALUES (
+            v_family_id,
+            UPPER(SUBSTRING(REPLACE(v_family_id::text, '-', '') FROM 1 FOR 8)),
+            NOW(),
+            (SELECT id FROM profiles WHERE family_id = v_family_id AND role = 'parent' LIMIT 1)
+          )
+          ON CONFLICT (id) DO NOTHING;
+        ELSE
+          -- Insert without family_code
+          IF EXISTS (
+            SELECT 1 FROM information_schema.columns 
+            WHERE table_schema = 'public' 
+              AND table_name = 'families' 
+              AND column_name = 'created_by'
+          ) THEN
+            INSERT INTO public.families (id, created_at, created_by)
+            VALUES (
+              v_family_id, 
+              NOW(),
+              (SELECT id FROM profiles WHERE family_id = v_family_id AND role = 'parent' LIMIT 1)
+            )
+            ON CONFLICT (id) DO NOTHING;
+          ELSE
+            INSERT INTO public.families (id, created_at)
+            VALUES (v_family_id, NOW())
+            ON CONFLICT (id) DO NOTHING;
+          END IF;
+        END IF;
         
         RAISE WARNING 'Created missing family record % during child registration', v_family_id;
       ELSE
