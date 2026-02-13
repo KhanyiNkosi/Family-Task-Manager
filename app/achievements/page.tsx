@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
+import ProfileIcon from "@/app/components/ProfileIcon";
 
 interface Achievement {
   id: string;
@@ -410,6 +411,7 @@ export default function AchievementsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-white pb-24">
+      <ProfileIcon />
       {/* Header */}
       <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white shadow-lg">
         <div className="container mx-auto px-4 py-6">

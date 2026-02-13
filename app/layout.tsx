@@ -1,7 +1,6 @@
 ﻿import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import ProfileIcon from "@/app/components/ProfileIcon";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -45,7 +44,6 @@ export default function RootLayout({
         />
       </head>
       <body className={`${inter.className} bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE] min-h-screen`}>
-        <ProfileIcon />
         {children}
       </body>
     </html>

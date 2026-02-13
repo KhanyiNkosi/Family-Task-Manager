@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import ProfileIcon from "@/app/components/ProfileIcon";
 
 export default function ParentDashboardPage() {
   const [activeView, setActiveView] = useState("dashboard");
@@ -231,6 +232,7 @@ export default function ParentDashboardPage() {
 
   return (
     <div className="dashboard-container flex min-h-screen bg-gray-50">
+      <ProfileIcon />
       {/* Sidebar Navigation - CONSISTENT WITH OTHER PAGES */}
       <aside className="sidebar bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
         <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
