@@ -39,6 +39,7 @@ export default function ParentProfilePage() {
   const [isClient, setIsClient] = useState(false);
   const [tempImage, setTempImage] = useState("");
   const [profileImage, setProfileImage] = useState("");
+  const [profileStorageKey, setProfileStorageKey] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<ParentProfile>({
     id: "1",
@@ -81,10 +82,8 @@ export default function ParentProfilePage() {
     });
   };
   
-  // Load profile image from localStorage on component mount
+  // Load profile data on component mount
   useEffect(() => {
-    const savedImage = localStorage.getItem("parentProfileImage") || "";
-    setProfileImage(savedImage);
     setIsClient(true);
     
     // Fetch profile data from Supabase
@@ -106,6 +105,13 @@ export default function ParentProfilePage() {
       }
       
       const userId = session.user.id;
+      const storageKey = `parentProfileImage:${userId}`;
+      setProfileStorageKey(storageKey);
+
+      const cachedImage = localStorage.getItem(storageKey) || "";
+      if (cachedImage) {
+        setProfileImage(cachedImage);
+      }
       
       // Fetch parent profile from database
       const dbProfile = await fetchParentProfile(userId);
@@ -122,7 +128,10 @@ export default function ParentProfilePage() {
         // If database has profile image, use it
         if (dbProfile.profile_image) {
           setProfileImage(dbProfile.profile_image);
-          localStorage.setItem("parentProfileImage", dbProfile.profile_image);
+          localStorage.setItem(storageKey, dbProfile.profile_image);
+        } else {
+          setProfileImage("");
+          localStorage.removeItem(storageKey);
         }
       }
       
@@ -207,12 +216,13 @@ export default function ParentProfilePage() {
         showAlert(`Database error: ${updateError.message || "Unknown error"}`, "error");
         return;
       }
+      const storageKey = profileStorageKey || `parentProfileImage:${userId}`;
       if (updateData.profile_image) {
         setProfileImage(updateData.profile_image);
-        localStorage.setItem("parentProfileImage", updateData.profile_image);
+        localStorage.setItem(storageKey, updateData.profile_image);
       } else {
         setProfileImage("");
-        localStorage.removeItem("parentProfileImage");
+        localStorage.removeItem(storageKey);
       }
       setProfile({ ...editedProfile });
       setIsEditing(false);
@@ -264,8 +274,11 @@ export default function ParentProfilePage() {
             return;
           }
         }
+        const storageKey = profileStorageKey || `parentProfileImage:${session?.user?.id || ""}`;
         setProfileImage("");
-        localStorage.removeItem("parentProfileImage");
+        if (storageKey !== "parentProfileImage:") {
+          localStorage.removeItem(storageKey);
+        }
         showAlert("Profile picture removed!", "success");
       } catch (error) {
         showAlert("Error removing profile picture. Please try again.", "error");
@@ -398,7 +411,9 @@ export default function ParentProfilePage() {
                         sessionStorage.removeItem('userRole');
                         sessionStorage.removeItem('userEmail');
                         sessionStorage.removeItem('userName');
-                        localStorage.removeItem('parentProfileImage');
+                        if (profileStorageKey) {
+                          localStorage.removeItem(profileStorageKey);
+                        }
                         router.push('/');
                       }
                       setMobileMenuOpen(false);
@@ -430,7 +445,9 @@ export default function ParentProfilePage() {
                   sessionStorage.removeItem('userRole');
                   sessionStorage.removeItem('userEmail');
                   sessionStorage.removeItem('userName');
-                  localStorage.removeItem('parentProfileImage');
+                  if (profileStorageKey) {
+                    localStorage.removeItem(profileStorageKey);
+                  }
                   router.push('/');
                 }
               }}

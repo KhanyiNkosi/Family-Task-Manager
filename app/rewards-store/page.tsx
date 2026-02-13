@@ -60,8 +60,31 @@ export default function RewardsStorePage() {
   }, []);
 
   useEffect(() => {
-    const savedImage = localStorage.getItem("parentProfileImage") || "";
-    setProfileImage(savedImage);
+    let isMounted = true;
+
+    const loadProfileImage = async () => {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        if (isMounted) {
+          setProfileImage("");
+        }
+        return;
+      }
+
+      const storageKey = `parentProfileImage:${user.id}`;
+      const savedImage = localStorage.getItem(storageKey) || "";
+      if (isMounted) {
+        setProfileImage(savedImage);
+      }
+    };
+
+    loadProfileImage();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const loadRewards = async () => {

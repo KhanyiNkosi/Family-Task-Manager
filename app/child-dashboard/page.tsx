@@ -69,18 +69,33 @@ export default function ChildDashboardPage() {
     dismissNotification 
   } = useNotifications();
 
-  // Load avatar from localStorage
- useEffect(() => {
-  setIsClient(true);
-  const savedAvatar = localStorage.getItem("childAvatar") || "child";
-  console.log("Dashboard loading child avatar:", savedAvatar);
-  setChildAvatar(savedAvatar);
-  
-  // Load profile picture from localStorage
-  const savedProfileImage = localStorage.getItem("childProfileImage") || "";
-  console.log("Dashboard loading child profile image:", savedProfileImage ? "Image found" : "No image");
-  setProfileImage(savedProfileImage);
-}, []);
+  // Load avatar and profile image from localStorage (per user)
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadLocalProfile = async () => {
+      setIsClient(true);
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const avatarKey = user ? `childAvatar:${user.id}` : "childAvatar";
+      const imageKey = user ? `childProfileImage:${user.id}` : "childProfileImage";
+
+      const savedAvatar = localStorage.getItem(avatarKey) || "child";
+      const savedProfileImage = localStorage.getItem(imageKey) || "";
+
+      if (isMounted) {
+        setChildAvatar(savedAvatar);
+        setProfileImage(savedProfileImage);
+      }
+    };
+
+    loadLocalProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Avatar options (same as child-profile)
   const avatars = [
@@ -152,6 +167,29 @@ export default function ChildDashboardPage() {
         }
       });
     });
+  };
+
+  // === LOGOUT HANDLER ===
+  const handleLogout = async () => {
+    const confirmed = await showConfirm("Are you sure you want to log out?");
+    if (confirmed) {
+      // Clear session storage
+      sessionStorage.removeItem("userRole");
+      sessionStorage.removeItem("userEmail");
+      sessionStorage.removeItem("userName");
+      
+      // Clear localStorage items
+      localStorage.removeItem("familytask-user-role");
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        localStorage.removeItem(`childProfileImage:${user.id}`);
+        localStorage.removeItem(`childAvatar:${user.id}`);
+      }
+      
+      // Redirect to logout page
+      router.push("/logout");
+    }
   };
 
   // === CHILD-ONLY PERMISSION SYSTEM ===
@@ -1400,8 +1438,18 @@ export default function ChildDashboardPage() {
             <i className="fas fa-smile text-2xl"></i>
             <span className="font-bold text-lg">FamilyTask</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold">{points} pts</span>
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <div className="text-xs opacity-80">Points</div>
+              <div className="text-sm font-bold">{points}</div>
+            </div>
+            <button 
+              onClick={handleLogout}
+              className="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 transition-colors flex items-center justify-center"
+              title="Logout"
+            >
+              <i className="fas fa-sign-out-alt text-sm"></i>
+            </button>
           </div>
         </div>
         

@@ -82,11 +82,18 @@ export default function SettingsPage() {
           setUserRole(profile?.role || "");
         }
         loadUserRole();
-    const savedImage = localStorage.getItem("parentProfileImage") || "";
-    setProfileImage(savedImage);
+    const supabase = require("@/app/lib/supabase").supabase;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const storageKey = `parentProfileImage:${user.id}`;
+      const savedImage = localStorage.getItem(storageKey) || "";
+      setProfileImage(savedImage);
+    } else {
+      setProfileImage("");
+    }
 
     // Load family members from Supabase
-    async function loadFamilyMembers() {
+        async function loadFamilyMembers() {
       try {
         // Get current user
         const supabase = require("@/app/lib/supabase").supabase;

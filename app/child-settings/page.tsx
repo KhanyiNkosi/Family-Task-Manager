@@ -56,9 +56,14 @@ export default function ChildSettingsPage() {
 
   useEffect(() => {
     const loadSettings = async () => {
-      // Load profile image and avatar
-      const savedImage = localStorage.getItem("childProfileImage") || "";
-      const savedAvatar = localStorage.getItem("childAvatar") || "";
+      // Load profile image and avatar (per user)
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const imageKey = user ? `childProfileImage:${user.id}` : "childProfileImage";
+      const avatarKey = user ? `childAvatar:${user.id}` : "childAvatar";
+      const savedImage = localStorage.getItem(imageKey) || "";
+      const savedAvatar = localStorage.getItem(avatarKey) || "";
       setProfileImage(savedImage);
       setChildAvatar(savedAvatar);
 
@@ -75,9 +80,6 @@ export default function ChildSettingsPage() {
 
       // Load user name from Supabase
       try {
-        const supabase = createClientSupabaseClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        
         if (user) {
           const { data: profile } = await supabase
             .from('profiles')

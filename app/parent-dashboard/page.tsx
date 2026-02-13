@@ -96,12 +96,50 @@ export default function ParentDashboard() {
   } = useNotifications();
 
   
-  // Load profile image from localStorage
+  // Load profile image for the current parent (avoid cross-account reuse)
   useEffect(() => {
-    setIsClient(true);
-    const savedImage = localStorage.getItem("parentProfileImage") || "";
-    console.log("Dashboard loading profile image:", savedImage ? "Image found" : "No image");
-    setParentProfileImage(savedImage);
+    let isMounted = true;
+
+    const loadProfileImage = async () => {
+      setIsClient(true);
+      const supabase = createClientSupabaseClient();
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        if (isMounted) {
+          setParentProfileImage("");
+        }
+        return;
+      }
+
+      const userId = session.user.id;
+      const storageKey = `parentProfileImage:${userId}`;
+      const cachedImage = localStorage.getItem(storageKey) || "";
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("profile_image")
+        .eq("id", userId)
+        .single();
+
+      const profileImage = profile?.profile_image || cachedImage || "";
+
+      if (profileImage) {
+        localStorage.setItem(storageKey, profileImage);
+      } else {
+        localStorage.removeItem(storageKey);
+      }
+
+      if (isMounted) {
+        setParentProfileImage(profileImage);
+      }
+    };
+
+    loadProfileImage();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Navigation items

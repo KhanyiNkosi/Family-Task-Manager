@@ -32,17 +32,23 @@ export default function MyRewardsPage() {
   
   // CHILD-ONLY REWARDS VIEW - NO DUPLICATE VARIABLES
   useEffect(() => {
-    const role = sessionStorage.getItem("userRole") || "child";
-    setUserRole(role);
-    
-    // Load profile picture and avatar from localStorage
-    const savedProfileImage = localStorage.getItem("childProfileImage") || "";
-    const savedAvatar = localStorage.getItem("childAvatar") || "child";
-    setProfileImage(savedProfileImage);
-    setChildAvatar(savedAvatar);
-    
-    // STRICT: Parents CANNOT access child rewards
-    
+    const loadLocalProfile = async () => {
+      const role = sessionStorage.getItem("userRole") || "child";
+      setUserRole(role);
+
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const imageKey = user ? `childProfileImage:${user.id}` : "childProfileImage";
+      const avatarKey = user ? `childAvatar:${user.id}` : "childAvatar";
+
+      const savedProfileImage = localStorage.getItem(imageKey) || "";
+      const savedAvatar = localStorage.getItem(avatarKey) || "child";
+      setProfileImage(savedProfileImage);
+      setChildAvatar(savedAvatar);
+    };
+
+    loadLocalProfile();
   }, [router]);
 
   const [availableRewards, setAvailableRewards] = useState<Reward[]>([]);

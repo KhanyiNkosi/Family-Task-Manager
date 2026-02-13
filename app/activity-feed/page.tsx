@@ -54,6 +54,7 @@ export default function ActivityFeedPage() {
   const [userRole, setUserRole] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userId, setUserId] = useState<string>("");
+  const [familyId, setFamilyId] = useState<string>("");
   const [expandedActivity, setExpandedActivity] = useState<string | null>(null);
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [newComment, setNewComment] = useState<Record<string, string>>({});
@@ -77,7 +78,7 @@ export default function ActivityFeedPage() {
     // Get user profile
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, full_name')
+      .select('role, full_name, family_id')
       .eq('id', session.user.id)
       .single();
 
@@ -85,9 +86,10 @@ export default function ActivityFeedPage() {
       setUserRole(profile.role);
       setUserName(profile.full_name);
       setUserId(session.user.id);
+      setFamilyId(profile.family_id || "");
     }
 
-    loadActivities(session.user.id);
+    loadActivities(session.user.id, profile?.family_id || "");
   };
 
   const showAlert = (message: string, type: "info" | "success" | "error" | "warning" = "info") => {
@@ -111,14 +113,22 @@ export default function ActivityFeedPage() {
     });
   };
 
-  const loadActivities = async (currentUserId?: string) => {
+  const loadActivities = async (currentUserId?: string, currentFamilyId?: string) => {
     const supabase = createClientSupabaseClient();
     const userIdToUse = currentUserId || userId;
+    const familyIdToUse = currentFamilyId || familyId;
+
+    if (!familyIdToUse) {
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
     
     // Load activities with stats
     const { data, error } = await supabase
       .from('activity_feed_with_stats')
       .select('*')
+      .eq('family_id', familyIdToUse)
       .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(50);

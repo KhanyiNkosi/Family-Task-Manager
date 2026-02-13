@@ -8,11 +8,12 @@ DECLARE
   parent_family_id UUID;
 BEGIN
   -- Insert into profiles table (with conflict handling)
-  INSERT INTO public.profiles (id, email, full_name, family_id)
+  INSERT INTO public.profiles (id, email, full_name, role, family_id)
   VALUES (
     NEW.id,
     NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'name', NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'role', 'child'),
     CASE
       -- If parent, generate new family_id
       WHEN COALESCE(NEW.raw_user_meta_data->>'role', 'child') = 'parent' THEN gen_random_uuid()
@@ -23,6 +24,7 @@ BEGIN
   ON CONFLICT (id) DO UPDATE SET
     email = EXCLUDED.email,
     full_name = EXCLUDED.full_name,
+    role = EXCLUDED.role,
     updated_at = NOW();
 
   -- Insert into user_profiles table with role and initial points (with conflict handling)

@@ -9,6 +9,7 @@ export default function ChildProfilePage() {
   const [activeTab, setActiveTab] = useState<"profile" | "activity">("profile");
   const [profileImage, setProfileImage] = useState("");
   const [tempImage, setTempImage] = useState("");
+  const [profileStorageKey, setProfileStorageKey] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [childName, setChildName] = useState("Child");
@@ -47,9 +48,6 @@ export default function ChildProfilePage() {
 
   useEffect(() => {
     const loadProfileData = async () => {
-      const savedImage = localStorage.getItem("childProfileImage") || "";
-      setProfileImage(savedImage);
-      
       try {
         const supabase = createClientSupabaseClient();
         const { data: { user } } = await supabase.auth.getUser();
@@ -59,6 +57,11 @@ export default function ChildProfilePage() {
           setIsClient(true);
           return;
         }
+
+        const storageKey = `childProfileImage:${user.id}`;
+        setProfileStorageKey(storageKey);
+        const savedImage = localStorage.getItem(storageKey) || "";
+        setProfileImage(savedImage);
         
         // Load profile data from Supabase
         const { data: profile } = await supabase
@@ -184,7 +187,8 @@ export default function ChildProfilePage() {
 
   const handleSave = () => {
     setProfileImage(tempImage);
-    localStorage.setItem("childProfileImage", tempImage);
+    const storageKey = profileStorageKey || "childProfileImage";
+    localStorage.setItem(storageKey, tempImage);
     setIsEditing(false);
     showAlert("Profile picture saved!", "success");
   };
@@ -196,7 +200,8 @@ export default function ChildProfilePage() {
 
   const handleRemove = () => {
     setProfileImage("");
-    localStorage.removeItem("childProfileImage");
+    const storageKey = profileStorageKey || "childProfileImage";
+    localStorage.removeItem(storageKey);
     showAlert("Profile picture removed!", "success");
   };
 

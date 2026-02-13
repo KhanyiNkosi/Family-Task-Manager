@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { createClientSupabaseClient } from "@/lib/supabaseClient";
 
 interface Goal {
   id: number;
@@ -63,17 +64,34 @@ export default function MyGoalsPage() {
   };
 
   useEffect(() => {
-    // Load profile image
-    const savedImage = localStorage.getItem("childProfileImage") || "";
-    const savedAvatar = localStorage.getItem("childAvatar") || "";
-    setProfileImage(savedImage);
-    setChildAvatar(savedAvatar);
+    let isMounted = true;
 
-    // Load goals from localStorage
-    const savedGoals = localStorage.getItem("childGoals");
-    if (savedGoals) {
-      setGoals(JSON.parse(savedGoals));
-    }
+    const loadLocalProfile = async () => {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const imageKey = user ? `childProfileImage:${user.id}` : "childProfileImage";
+      const avatarKey = user ? `childAvatar:${user.id}` : "childAvatar";
+
+      const savedImage = localStorage.getItem(imageKey) || "";
+      const savedAvatar = localStorage.getItem(avatarKey) || "";
+
+      if (isMounted) {
+        setProfileImage(savedImage);
+        setChildAvatar(savedAvatar);
+      }
+
+      const savedGoals = localStorage.getItem("childGoals");
+      if (savedGoals && isMounted) {
+        setGoals(JSON.parse(savedGoals));
+      }
+    };
+
+    loadLocalProfile();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const saveGoals = (updatedGoals: Goal[]) => {
