@@ -42,7 +42,69 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- STEP 2: DROP DEPENDENT CONSTRAINTS (if any exist)
+-- STEP 2: BACKUP AND DROP RLS POLICIES THAT REFERENCE profiles.family_id
+-- ============================================================================
+
+-- Show existing policies before dropping (for audit trail)
+DO $$
+DECLARE
+  policy_record RECORD;
+BEGIN
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'RLS POLICIES THAT MAY REFERENCE profiles:';
+  RAISE NOTICE '====================================';
+  
+  FOR policy_record IN (
+    SELECT 
+      schemaname,
+      tablename,
+      policyname,
+      permissive,
+      roles,
+      cmd,
+      qual,
+      with_check
+    FROM pg_policies
+    WHERE qual LIKE '%profiles%' 
+       OR with_check LIKE '%profiles%'
+       OR qual LIKE '%family_id%'
+       OR with_check LIKE '%family_id%'
+    ORDER BY tablename, policyname
+  ) LOOP
+    RAISE NOTICE 'Policy: %.% (%, %)', 
+      policy_record.tablename,
+      policy_record.policyname, 
+      policy_record.cmd,
+      policy_record.permissive;
+    RAISE NOTICE '  USING: %', policy_record.qual;
+    IF policy_record.with_check IS NOT NULL THEN
+      RAISE NOTICE '  WITH CHECK: %', policy_record.with_check;
+    END IF;
+  END LOOP;
+END $$;
+
+-- Drop RLS policies on profiles table
+DROP POLICY IF EXISTS profiles_select_own ON profiles;
+DROP POLICY IF EXISTS profiles_select_family ON profiles;
+DROP POLICY IF EXISTS profiles_insert_own ON profiles;
+DROP POLICY IF EXISTS profiles_update_own ON profiles;
+DROP POLICY IF EXISTS profiles_delete_own ON profiles;
+
+-- Drop RLS policies on storage.objects that reference profiles
+DROP POLICY IF EXISTS "Parents can delete family task photos" ON storage.objects;
+DROP POLICY IF EXISTS "Users can view their family photos" ON storage.objects;
+DROP POLICY IF EXISTS "Users can upload family photos" ON storage.objects;
+
+-- Drop any other policies that might reference profiles.family_id
+DROP POLICY IF EXISTS tasks_select_family ON tasks;
+DROP POLICY IF EXISTS tasks_insert_family ON tasks;
+DROP POLICY IF EXISTS tasks_update_family ON tasks;
+DROP POLICY IF EXISTS tasks_delete_family ON tasks;
+
+RAISE NOTICE '✅ Dropped all RLS policies that may reference profiles.family_id';
+
+-- ============================================================================
+-- STEP 3: DROP DEPENDENT CONSTRAINTS (if any exist)
 -- ============================================================================
 
 DO $$
@@ -60,7 +122,7 @@ EXCEPTION WHEN OTHERS THEN
 END $$;
 
 -- ============================================================================
--- STEP 3: CONVERT profiles.family_id from UUID to TEXT
+-- STEP 4: ALTER profiles.family_id from UUID to TEXT
 -- ============================================================================
 
 -- Convert the column type (UUID values will automatically convert to text)
@@ -70,7 +132,156 @@ ALTER TABLE profiles
 RAISE NOTICE '✅ Converted profiles.family_id from UUID to TEXT';
 
 -- ============================================================================
--- STEP 4: VERIFY THE CONVERSION
+-- STEP 5: RECREATE RLS POLICIES
+-- ============================================================================
+
+-- Enable RLS on profiles table (if not already enabled)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+
+-- Recreate profiles table policies
+CREATE POLICY profiles_select_family ON profiles
+  FOR SELECT
+  USING (
+    id = auth.uid() OR
+    family_id IN (
+      SELECT family_id FROM profiles WHERE id = auth.uid()
+    )
+  );
+
+RAISE NOTICE '✅ Created policy: profiles_select_family';
+
+CREATE POLICY profiles_insert_own ON profiles
+  FOR INSERT
+  WITH CHECK (id = auth.uid());
+
+RAISE NOTICE '✅ Created policy: profiles_insert_own';
+
+CREATE POLICY profiles_update_own ON profiles
+  FOR UPDATE
+  USING (id = auth.uid());
+
+RAISE NOTICE '✅ Created policy: profiles_update_own';
+
+CREATE POLICY profiles_delete_own ON profiles
+  FOR DELETE
+  USING (id = auth.uid());
+
+RAISE NOTICE '✅ Created policy: profiles_delete_own';
+
+-- Recreate storage.objects policies (if storage schema exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'storage') THEN
+    
+    -- Enable RLS on storage.objects
+    EXECUTE 'ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY';
+    
+    -- Parents can delete family task photos
+    EXECUTE '
+      CREATE POLICY "Parents can delete family task photos" ON storage.objects
+      FOR DELETE
+      USING (
+        bucket_id = ''task-photos'' AND
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+            AND profiles.role = ''parent''
+            AND profiles.family_id = (storage.objects.metadata->>''family_id'')::text
+        )
+      )
+    ';
+    RAISE NOTICE '✅ Created policy: Parents can delete family task photos';
+    
+    -- Users can view their family photos
+    EXECUTE '
+      CREATE POLICY "Users can view their family photos" ON storage.objects
+      FOR SELECT
+      USING (
+        bucket_id = ''task-photos'' AND
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+            AND profiles.family_id = (storage.objects.metadata->>''family_id'')::text
+        )
+      )
+    ';
+    RAISE NOTICE '✅ Created policy: Users can view their family photos';
+    
+    -- Users can upload family photos
+    EXECUTE '
+      CREATE POLICY "Users can upload family photos" ON storage.objects
+      FOR INSERT
+      WITH CHECK (
+        bucket_id = ''task-photos'' AND
+        EXISTS (
+          SELECT 1 FROM profiles
+          WHERE profiles.id = auth.uid()
+            AND profiles.family_id = (storage.objects.metadata->>''family_id'')::text
+        )
+      )
+    ';
+    RAISE NOTICE '✅ Created policy: Users can upload family photos';
+    
+  ELSE
+    RAISE NOTICE '⚠️ storage schema does not exist - skipping storage policies';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error recreating storage policies: %', SQLERRM;
+END $$;
+
+-- Recreate task policies (if they existed)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'tasks') THEN
+    
+    CREATE POLICY tasks_select_family ON tasks
+      FOR SELECT
+      USING (
+        family_id IN (
+          SELECT family_id FROM profiles WHERE id = auth.uid()
+        )
+      );
+    RAISE NOTICE '✅ Created policy: tasks_select_family';
+    
+    CREATE POLICY tasks_insert_family ON tasks
+      FOR INSERT
+      WITH CHECK (
+        family_id IN (
+          SELECT family_id FROM profiles WHERE id = auth.uid()
+        )
+      );
+    RAISE NOTICE '✅ Created policy: tasks_insert_family';
+    
+    CREATE POLICY tasks_update_family ON tasks
+      FOR UPDATE
+      USING (
+        family_id IN (
+          SELECT family_id FROM profiles WHERE id = auth.uid()
+        )
+      );
+    RAISE NOTICE '✅ Created policy: tasks_update_family';
+    
+    CREATE POLICY tasks_delete_family ON tasks
+      FOR DELETE
+      USING (
+        family_id IN (
+          SELECT family_id FROM profiles WHERE id = auth.uid()
+        ) AND
+        EXISTS (
+          SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'parent'
+        )
+      );
+    RAISE NOTICE '✅ Created policy: tasks_delete_family';
+    
+  ELSE
+    RAISE NOTICE '⚠️ tasks table does not exist - skipping task policies';
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  RAISE WARNING 'Error recreating task policies: %', SQLERRM;
+END $$;
+
+-- ============================================================================
+-- STEP 6: VERIFY THE CONVERSION
 -- ============================================================================
 
 DO $$
@@ -128,6 +339,21 @@ BEGIN
   ELSE
     RAISE NOTICE '✅ No orphaned profiles (ready for FK constraint)';
   END IF;
+  
+  -- Show recreated RLS policies
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'RLS POLICIES RECREATED:';
+  RAISE NOTICE '====================================';
+  
+  FOR rec IN (
+    SELECT tablename, policyname, cmd
+    FROM pg_policies
+    WHERE tablename IN ('profiles', 'tasks', 'objects')
+    ORDER BY tablename, policyname
+  ) LOOP
+    RAISE NOTICE '✅ %.% (%)', rec.tablename, rec.policyname, rec.cmd;
+  END LOOP;
+  
 END $$;
 
 COMMIT;
@@ -168,5 +394,8 @@ SELECT
 
 RAISE NOTICE '====================================';
 RAISE NOTICE '✅ PROFILES.FAMILY_ID CONVERTED TO TEXT';
+RAISE NOTICE '====================================';
+RAISE NOTICE '✅ Column type converted from UUID to TEXT';
+RAISE NOTICE '✅ RLS policies recreated on profiles, storage, tasks';
 RAISE NOTICE '====================================';
 RAISE NOTICE 'Next: Run add-foreign-keys.sql to add FK constraints';
