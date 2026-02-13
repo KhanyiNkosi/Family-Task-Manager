@@ -5,30 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function SettingsPage() {
-      // Load settings from Supabase
-      useEffect(() => {
-        async function loadSettings() {
-          const supabase = require("@/app/lib/supabase").supabase;
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          const { data: settingsData } = await supabase
-            .from('user_settings')
-            .select('*')
-            .eq('user_id', user.id)
-            .single();
-          if (settingsData) {
-            setSettings({
-              notifications: settingsData.notifications,
-              emailUpdates: settingsData.email_updates,
-              soundEffects: settingsData.sound_effects,
-              dailyReminders: settingsData.daily_reminders,
-              weeklyReports: settingsData.weekly_reports,
-            });
-          }
-        }
-        loadSettings();
-      }, []);
-    const [userRole, setUserRole] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
   const router = useRouter();
   const [settings, setSettings] = useState({
     notifications: true,
@@ -68,32 +45,57 @@ export default function SettingsPage() {
     });
   };
 
+  // Load settings from Supabase
   useEffect(() => {
-        // Get current user role
-        async function loadUserRole() {
-          const supabase = require("@/app/lib/supabase").supabase;
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return;
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', user.id)
-            .single();
-          setUserRole(profile?.role || "");
-        }
-        loadUserRole();
-    const supabase = require("@/app/lib/supabase").supabase;
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const storageKey = `parentProfileImage:${user.id}`;
-      const savedImage = localStorage.getItem(storageKey) || "";
-      setProfileImage(savedImage);
-    } else {
-      setProfileImage("");
+    async function loadSettings() {
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: settingsData } = await supabase
+        .from('user_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      if (settingsData) {
+        setSettings({
+          notifications: settingsData.notifications,
+          emailUpdates: settingsData.email_updates,
+          soundEffects: settingsData.sound_effects,
+          dailyReminders: settingsData.daily_reminders,
+          weeklyReports: settingsData.weekly_reports,
+        });
+      }
+    }
+    loadSettings();
+  }, []);
+
+  useEffect(() => {
+    async function loadUserRole() {
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+      setUserRole(profile?.role || "");
+    }
+
+    async function loadProfileImage() {
+      const supabase = require("@/app/lib/supabase").supabase;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const storageKey = `parentProfileImage:${user.id}`;
+        const savedImage = localStorage.getItem(storageKey) || "";
+        setProfileImage(savedImage);
+      } else {
+        setProfileImage("");
+      }
     }
 
     // Load family members from Supabase
-        async function loadFamilyMembers() {
+    async function loadFamilyMembers() {
       try {
         // Get current user
         const supabase = require("@/app/lib/supabase").supabase;
@@ -184,6 +186,8 @@ export default function SettingsPage() {
         console.error('Error loading family members:', error);
       }
     }
+    loadUserRole();
+    loadProfileImage();
     loadFamilyMembers();
   }, []);
 
