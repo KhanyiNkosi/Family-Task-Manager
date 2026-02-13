@@ -8,9 +8,12 @@
 
 BEGIN;
 
-RAISE NOTICE '====================================';
-RAISE NOTICE 'Converting profiles.family_id to TEXT...';
-RAISE NOTICE '====================================';
+DO $$
+BEGIN
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'Converting profiles.family_id to TEXT...';
+  RAISE NOTICE '====================================';
+END $$;
 
 -- ============================================================================
 -- STEP 1: VALIDATION - Show current data types
@@ -101,7 +104,10 @@ DROP POLICY IF EXISTS tasks_insert_family ON tasks;
 DROP POLICY IF EXISTS tasks_update_family ON tasks;
 DROP POLICY IF EXISTS tasks_delete_family ON tasks;
 
-RAISE NOTICE '✅ Dropped all RLS policies that may reference profiles.family_id';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Dropped all RLS policies that may reference profiles.family_id';
+END $$;
 
 -- ============================================================================
 -- STEP 3: DROP DEPENDENT CONSTRAINTS (if any exist)
@@ -129,7 +135,10 @@ END $$;
 ALTER TABLE profiles 
   ALTER COLUMN family_id TYPE TEXT USING family_id::TEXT;
 
-RAISE NOTICE '✅ Converted profiles.family_id from UUID to TEXT';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Converted profiles.family_id from UUID to TEXT';
+END $$;
 
 -- ============================================================================
 -- STEP 5: RECREATE RLS POLICIES
@@ -148,25 +157,22 @@ CREATE POLICY profiles_select_family ON profiles
     )
   );
 
-RAISE NOTICE '✅ Created policy: profiles_select_family';
-
 CREATE POLICY profiles_insert_own ON profiles
   FOR INSERT
   WITH CHECK (id = auth.uid());
-
-RAISE NOTICE '✅ Created policy: profiles_insert_own';
 
 CREATE POLICY profiles_update_own ON profiles
   FOR UPDATE
   USING (id = auth.uid());
 
-RAISE NOTICE '✅ Created policy: profiles_update_own';
-
 CREATE POLICY profiles_delete_own ON profiles
   FOR DELETE
   USING (id = auth.uid());
 
-RAISE NOTICE '✅ Created policy: profiles_delete_own';
+DO $$
+BEGIN
+  RAISE NOTICE '✅ Created policies on profiles table';
+END $$;
 
 -- Recreate storage.objects policies (if storage schema exists)
 DO $$
@@ -392,10 +398,13 @@ SELECT
     ELSE '❌ Types still do not match'
   END as status;
 
-RAISE NOTICE '====================================';
-RAISE NOTICE '✅ PROFILES.FAMILY_ID CONVERTED TO TEXT';
-RAISE NOTICE '====================================';
-RAISE NOTICE '✅ Column type converted from UUID to TEXT';
-RAISE NOTICE '✅ RLS policies recreated on profiles, storage, tasks';
-RAISE NOTICE '====================================';
-RAISE NOTICE 'Next: Run add-foreign-keys.sql to add FK constraints';
+DO $$
+BEGIN
+  RAISE NOTICE '====================================';
+  RAISE NOTICE '✅ PROFILES.FAMILY_ID CONVERTED TO TEXT';
+  RAISE NOTICE '====================================';
+  RAISE NOTICE '✅ Column type converted from UUID to TEXT';
+  RAISE NOTICE '✅ RLS policies recreated on profiles, storage, tasks';
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'Next: Run add-foreign-keys.sql to add FK constraints';
+END $$;
