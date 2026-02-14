@@ -245,8 +245,7 @@ SELECT
     WHEN f.id IS NOT NULL THEN '✅ Family Exists'
     WHEN p.family_id IS NULL THEN '⚠️ No Family Assigned'
     ELSE '❌ Orphaned - Family Missing'
-  END as family_status,
-  f.family_code
+  END as family_status
 FROM auth.users u
 LEFT JOIN profiles p ON u.id = p.id
 LEFT JOIN families f ON p.family_id = f.id
