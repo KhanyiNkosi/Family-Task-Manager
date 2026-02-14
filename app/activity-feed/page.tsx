@@ -328,11 +328,10 @@ export default function ActivityFeedPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 to-white">
-      <ProfileIcon />
       {/* Header */}
       <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white shadow-lg">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between pr-16">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4 min-w-0 flex-1">
               <button
                 onClick={() => router.back()}
@@ -345,9 +344,12 @@ export default function ActivityFeedPage() {
                 <p className="text-cyan-100 text-sm truncate">See what's happening in your family</p>
               </div>
             </div>
-            <div className="text-right hidden sm:block flex-shrink-0">
-              <p className="text-sm text-cyan-100 truncate">{userName}</p>
-              <p className="text-xs text-cyan-200">{userRole === 'parent' ? 'Parent' : 'Child'}</p>
+            <div className="flex items-center space-x-3 flex-shrink-0">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm text-cyan-100 truncate">{userName}</p>
+                <p className="text-xs text-cyan-200">{userRole === 'parent' ? 'Parent' : 'Child'}</p>
+              </div>
+              <ProfileIcon />
             </div>
           </div>
         </div>

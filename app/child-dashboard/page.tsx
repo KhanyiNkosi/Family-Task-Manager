@@ -7,6 +7,8 @@ import LogoutButton from "@/app/components/LogoutButton";
 import NotificationAlert from '@/components/NotificationAlert';
 import { useNotifications } from '@/hooks/useNotifications';
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
+import PremiumGuard from '@/components/PremiumGuard';
+import { usePremium } from '@/hooks/usePremium';
 
 interface Task {
   id: string;
@@ -2215,49 +2217,68 @@ export default function ChildDashboardPage() {
               {/* Photo Upload Area */}
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  📷 Task Photo (Optional)
+                  📷 Task Photo (Optional) {' '}
+                  <span className="text-purple-600 text-xs">👑 Premium</span>
                 </label>
                 
-                {!photoPreview ? (
-                  <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl hover:border-cyan-500 cursor-pointer bg-gray-50 hover:bg-cyan-50 transition">
-                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <div className="text-4xl mb-3">📸</div>
-                      <p className="mb-2 text-sm text-gray-600 font-semibold">
-                        Click to upload or take photo
+                <PremiumGuard
+                  fallback={
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6 text-center">
+                      <div className="text-4xl mb-3">👑</div>
+                      <h4 className="font-bold text-gray-800 mb-2">Premium Feature</h4>
+                      <p className="text-gray-600 text-sm mb-4">
+                        Upgrade to Premium to upload photo proof of completed tasks and get faster approval!
                       </p>
-                      <p className="text-xs text-gray-500">
-                        PNG, JPG up to 5MB
-                      </p>
-                    </div>
-                    <input
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handlePhotoSelect}
-                      disabled={uploadingPhoto}
-                    />
-                  </label>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={photoPreview}
-                      alt="Preview"
-                      className="w-full h-64 object-cover rounded-xl"
-                    />
-                    {!uploadingPhoto && (
                       <button
-                        onClick={() => {
-                          setSelectedPhoto(null);
-                          setPhotoPreview("");
-                        }}
-                        className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition"
+                        onClick={() => window.location.href = '/pricing'}
+                        className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-2 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition"
                       >
-                        <i className="fas fa-times"></i>
+                        Upgrade Now
                       </button>
-                    )}
-                  </div>
-                )}
+                    </div>
+                  }
+                >
+                  {!photoPreview ? (
+                    <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed border-gray-300 rounded-xl hover:border-cyan-500 cursor-pointer bg-gray-50 hover:bg-cyan-50 transition">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <div className="text-4xl mb-3">📸</div>
+                        <p className="mb-2 text-sm text-gray-600 font-semibold">
+                          Click to upload or take photo
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          PNG, JPG up to 5MB
+                        </p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        capture="environment"
+                        onChange={handlePhotoSelect}
+                        disabled={uploadingPhoto}
+                      />
+                    </label>
+                  ) : (
+                    <div className="relative">
+                      <img
+                        src={photoPreview}
+                        alt="Preview"
+                        className="w-full h-64 object-cover rounded-xl"
+                      />
+                      {!uploadingPhoto && (
+                        <button
+                          onClick={() => {
+                            setSelectedPhoto(null);
+                            setPhotoPreview("");
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition"
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </PremiumGuard>
               </div>
 
               {/* Action Buttons */}

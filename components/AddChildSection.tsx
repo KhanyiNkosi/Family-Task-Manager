@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
+import { usePremium } from '@/hooks/usePremium';
+import Link from 'next/link';
 
 interface Child {
   id: string;
@@ -21,6 +23,7 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
   const [loading, setLoading] = useState(true);
   const [showCode, setShowCode] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const { isPremium, isLoading: premiumLoading } = usePremium();
 
   useEffect(() => {
     fetchFamilyData();
@@ -171,6 +174,40 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
 
   return (
     <div className="space-y-4">
+      {/* Premium Child Limit Warning */}
+      {!premiumLoading && !isPremium && children.length >= 3 && (
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="text-3xl">👑</div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-800 mb-1">Child Limit Reached</h3>
+              <p className="text-gray-600 text-sm mb-3">
+                You've reached the maximum of 3 children on the free plan. Upgrade to Premium for unlimited children!
+              </p>
+              <Link
+                href="/pricing"
+                className="inline-block bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transform hover:scale-105 transition text-sm"
+              >
+                Upgrade to Premium
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Premium Badge for Unlimited Children */}
+      {!premiumLoading && isPremium && (
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl p-3 shadow-md">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">👑</span>
+            <div className="flex-1">
+              <h3 className="font-bold text-sm">Premium Member</h3>
+              <p className="text-purple-100 text-xs">Unlimited children • Photo verification • Custom rewards</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Compact Family Code Card */}
       <div className="bg-white rounded-xl p-4 shadow-md border border-blue-100">
         <div className="flex items-center justify-between">
