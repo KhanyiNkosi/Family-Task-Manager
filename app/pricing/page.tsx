@@ -95,7 +95,7 @@ export default function PricingPage() {
             <ul className="space-y-3 mb-8">
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>
-                <span className="text-gray-700">Up to 3 children</span>
+                <span className="text-gray-700">1 child</span>
               </li>
               <li className="flex items-start">
                 <span className="text-green-500 mr-2">✓</span>

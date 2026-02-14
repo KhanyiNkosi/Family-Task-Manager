@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
+import PremiumGuard from '@/components/PremiumGuard';
+import { usePremium } from '@/hooks/usePremium';
 
 interface Reward {
   id: string;
@@ -19,6 +21,7 @@ interface Reward {
 
 export default function RewardsStorePage() {
   const router = useRouter();
+  const { isPremium } = usePremium();
 
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [newRewardTitle, setNewRewardTitle] = useState("");
@@ -266,63 +269,81 @@ export default function RewardsStorePage() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-[#006372] flex items-center gap-3">
                   <i className="fas fa-plus-circle"></i>
-                  Add New Reward
+                  Add New Reward {!isPremium && <span className="text-purple-600 text-sm ml-2">👑 Premium</span>}
                 </h2>
                 <div className="text-sm text-gray-500">
                   {rewards.length} rewards in store
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <PremiumGuard
+                fallback={
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-8 text-center">
+                    <div className="text-6xl mb-4">👑</div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Custom Rewards - Premium Feature</h3>
+                    <p className="text-gray-600 mb-6">
+                      Create unlimited custom rewards for your family! Free tier includes basic pre-set rewards.
+                    </p>
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-8 py-3 rounded-lg font-semibold hover:shadow-xl transform hover:scale-105 transition"
+                    >
+                      Upgrade to Premium
+                    </button>
+                  </div>
+                }
+              >
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Reward Name *</label>
+                      <input
+                        type="text"
+                        value={newRewardTitle}
+                        onChange={(e) => setNewRewardTitle(e.target.value)}
+                        className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+                        placeholder="e.g., Special Pizza Night"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Point Cost *</label>
+                      <input
+                        type="number"
+                        value={newRewardPoints}
+                        onChange={(e) => setNewRewardPoints(e.target.value)}
+                        className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
+                        placeholder="Enter points required"
+                        min="1"
+                      />
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Reward Name *</label>
-                    <input
-                      type="text"
-                      value={newRewardTitle}
-                      onChange={(e) => setNewRewardTitle(e.target.value)}
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
+                    <textarea
+                      value={newRewardDescription}
+                      onChange={(e) => setNewRewardDescription(e.target.value)}
                       className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
-                      placeholder="e.g., Special Pizza Night"
+                      rows={3}
+                      placeholder="Describe what the child earns with this reward..."
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Point Cost *</label>
-                    <input
-                      type="number"
-                      value={newRewardPoints}
-                      onChange={(e) => setNewRewardPoints(e.target.value)}
-                      className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
-                      placeholder="Enter points required"
-                      min="1"
-                    />
+
+                  <div className="flex items-center justify-end">
+                    <button
+                      onClick={handleCreateReward}
+                      disabled={!newRewardTitle.trim() || !newRewardDescription.trim() || parseInt(newRewardPoints) <= 0}
+                      className={`px-8 py-3.5 rounded-xl font-bold transition ${
+                        newRewardTitle.trim() && newRewardDescription.trim() && parseInt(newRewardPoints) > 0
+                          ? "bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 hover:shadow-lg"
+                          : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                      }`}
+                    >
+                      <i className="fas fa-plus mr-2"></i> Add to Store
+                    </button>
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Description *</label>
-                  <textarea
-                    value={newRewardDescription}
-                    onChange={(e) => setNewRewardDescription(e.target.value)}
-                    className="w-full p-3.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#00C2E0] focus:border-transparent"
-                    rows={3}
-                    placeholder="Describe what the child earns with this reward..."
-                  />
-                </div>
-
-                <div className="flex items-center justify-end">
-                  <button
-                    onClick={handleCreateReward}
-                    disabled={!newRewardTitle.trim() || !newRewardDescription.trim() || parseInt(newRewardPoints) <= 0}
-                    className={`px-8 py-3.5 rounded-xl font-bold transition ${
-                      newRewardTitle.trim() && newRewardDescription.trim() && parseInt(newRewardPoints) > 0
-                        ? "bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white hover:opacity-90 hover:shadow-lg"
-                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
-                  >
-                    <i className="fas fa-plus mr-2"></i> Add to Store
-                  </button>
-                </div>
-              </div>
+              </PremiumGuard>
             </div>
 
             {/* Rewards List */}

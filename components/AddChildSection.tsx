@@ -175,14 +175,14 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
   return (
     <div className="space-y-4">
       {/* Premium Child Limit Warning */}
-      {!premiumLoading && !isPremium && children.length >= 3 && (
+      {!premiumLoading && !isPremium && children.length >= 1 && (
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-300 rounded-xl p-4">
           <div className="flex items-start gap-3">
             <div className="text-3xl">👑</div>
             <div className="flex-1">
               <h3 className="font-bold text-gray-800 mb-1">Child Limit Reached</h3>
               <p className="text-gray-600 text-sm mb-3">
-                You've reached the maximum of 3 children on the free plan. Upgrade to Premium for unlimited children!
+                You've reached the maximum of 1 child on the free plan. Upgrade to Premium for unlimited children!
               </p>
               <Link
                 href="/pricing"
