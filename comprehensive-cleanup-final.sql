@@ -9,16 +9,19 @@
 
 BEGIN;
 
-RAISE NOTICE '====================================';
-RAISE NOTICE 'STARTING COMPREHENSIVE CLEANUP';
-RAISE NOTICE '====================================';
+-- Announce start
+DO $$
+BEGIN
+  RAISE NOTICE '====================================';
+  RAISE NOTICE 'STARTING COMPREHENSIVE CLEANUP';
+  RAISE NOTICE '====================================';
+  RAISE NOTICE '';
+  RAISE NOTICE 'STEP 1: Updating tasks policies...';
+END $$;
 
 -- ============================================================================
 -- STEP 1: Update Tasks Policies (Remove ::text casts)
 -- ============================================================================
-
-RAISE NOTICE '';
-RAISE NOTICE 'STEP 1: Updating tasks policies...';
 
 -- Fix tasks_parents_delete
 DROP POLICY IF EXISTS tasks_parents_delete ON tasks;
@@ -32,7 +35,11 @@ CREATE POLICY tasks_parents_delete ON tasks
       WHERE id = auth.uid() AND role = 'parent'
     )
   );
-RAISE NOTICE '  ✅ Updated tasks_parents_delete';
+
+DO $$
+BEGIN
+  RAISE NOTICE '  ✅ Updated tasks_parents_delete';
+END $$;
 
 -- Fix tasks_parents_insert
 DROP POLICY IF EXISTS tasks_parents_insert ON tasks;
@@ -46,7 +53,11 @@ CREATE POLICY tasks_parents_insert ON tasks
       WHERE id = auth.uid() AND role = 'parent'
     )
   );
-RAISE NOTICE '  ✅ Updated tasks_parents_insert';
+
+DO $$
+BEGIN
+  RAISE NOTICE '  ✅ Updated tasks_parents_insert';
+END $$;
 
 -- Fix tasks_parents_update
 DROP POLICY IF EXISTS tasks_parents_update ON tasks;
@@ -67,14 +78,17 @@ CREATE POLICY tasks_parents_update ON tasks
       WHERE id = auth.uid() AND role = 'parent'
     )
   );
-RAISE NOTICE '  ✅ Updated tasks_parents_update';
+
+DO $$
+BEGIN
+  RAISE NOTICE '  ✅ Updated tasks_parents_update';
+  RAISE NOTICE '';
+  RAISE NOTICE 'STEP 2: Removing old get_user_family(UUID) signature...';
+END $$;
 
 -- ============================================================================
 -- STEP 2: Drop old get_user_family(UUID) signature
 -- ============================================================================
-
-RAISE NOTICE '';
-RAISE NOTICE 'STEP 2: Removing old get_user_family(UUID) signature...';
 
 DO $$
 DECLARE
@@ -100,9 +114,12 @@ COMMIT;
 -- VERIFICATION: Confirm all cleanup completed
 -- ============================================================================
 
-RAISE NOTICE '';
-RAISE NOTICE 'VERIFICATION:';
-RAISE NOTICE '--------------';
+DO $$
+BEGIN
+  RAISE NOTICE '';
+  RAISE NOTICE 'VERIFICATION:';
+  RAISE NOTICE '--------------';
+END $$;
 
 -- Check 1: No remaining ::text casts on family function calls
 DO $$
