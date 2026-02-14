@@ -415,23 +415,23 @@ export default function AchievementsPage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white shadow-lg">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
+          <div className="flex items-center justify-between pr-16">
+            <div className="flex items-center space-x-4 min-w-0 flex-1">
               <button
                 onClick={() => router.back()}
-                className="text-white hover:bg-white/20 p-2 rounded-lg transition"
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition flex-shrink-0"
               >
                 ← Back
               </button>
-              <div>
-                <h1 className="text-2xl font-bold">🏆 Achievements</h1>
-                <p className="text-cyan-100 text-sm">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold truncate">🏆 Achievements</h1>
+                <p className="text-cyan-100 text-sm truncate">
                   {userRole === 'parent' ? 'Family badges and progress' : 'Unlock badges and level up!'}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-cyan-100">{userName}</p>
+            <div className="text-right hidden sm:block flex-shrink-0">
+              <p className="text-sm text-cyan-100 truncate">{userName}</p>
               {userRole !== 'parent' && (
                 <p className="text-xs text-cyan-200">{earnedCount} / {achievements.length} earned</p>
               )}

@@ -70,10 +70,10 @@ export default function ProfileIcon() {
   }
 
   return (
-    <div className="fixed top-4 right-4 z-[60]">
+    <div className="fixed top-4 right-4 z-50 pointer-events-none">
       <Link
         href={state.profileHref}
-        className="flex items-center justify-center w-11 h-11 rounded-full border border-white/60 bg-white/80 shadow-lg shadow-cyan-500/20 backdrop-blur-sm hover:shadow-cyan-500/40 transition"
+        className="pointer-events-auto flex items-center justify-center w-11 h-11 rounded-full border border-white/60 bg-white/90 shadow-lg shadow-cyan-500/20 backdrop-blur-sm hover:shadow-cyan-500/40 transition-all hover:scale-105"
         title="Profile"
       >
         {state.imageUrl ? (
