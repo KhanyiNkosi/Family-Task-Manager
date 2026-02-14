@@ -24,30 +24,21 @@ DROP FUNCTION IF EXISTS public.validate_family_code_text(text) CASCADE;
 -- CREATE independent TEXT-returning version
 -- ============================================================================
 
--- TEMPLATE: Replace this with actual implementation from validate_family_code
--- but with ::text casts added to return TEXT instead of UUID
+-- Based on source from validate_family_code (UUID version):
+-- SELECT id::uuid, owner_id, name FROM public.families WHERE invitation_code = code
 
-CREATE OR REPLACE FUNCTION public.validate_family_code_text(p_code text)
+CREATE OR REPLACE FUNCTION public.validate_family_code_text(code text)
 RETURNS TABLE(family_id text, owner_id text, name text)
-LANGUAGE plpgsql
-SECURITY DEFINER
+LANGUAGE sql
+STABLE
 AS $function$
-BEGIN
-  -- PLACEHOLDER - REPLACE WITH ACTUAL LOGIC FROM validate_family_code
-  -- Example structure (update with real implementation):
-  
-  RETURN QUERY
   SELECT 
-    f.id::text as family_id,              -- Cast UUID to TEXT
-    f.owner_id::text as owner_id,         -- Cast UUID to TEXT
-    f.name::text as name                  -- Already TEXT, but explicit
-  FROM families f
-  WHERE f.id = p_code                     -- id is already TEXT after migration
-    OR f.family_code = p_code;            -- Match by code (if column exists)
-    
-  -- NOTE: The actual logic from validate_family_code should be pasted here
-  -- with ::text casts on any UUID columns
-END;
+    id,                    -- families.id is already TEXT (not casting)
+    owner_id::text,        -- owner_id is UUID, cast to TEXT
+    name                   -- name is already TEXT
+  FROM public.families
+  WHERE invitation_code = code
+  LIMIT 1;
 $function$;
 
 DO $$
