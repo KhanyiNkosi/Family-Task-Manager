@@ -49,9 +49,12 @@ SET
   subscription_renews_at = NOW() + INTERVAL '1 year',
   license_key = 'TEST-' || substring(gen_random_uuid()::text, 1, 8)
 WHERE email IN (
-  'parent1@example.com',    -- 👈 CHANGE THESE
-  'parent2@example.com',    -- 👈 CHANGE THESE
-  'child1@example.com'      -- 👈 CHANGE THESE
+  'mvaleliso.mdluli@gmail.com',
+  'nqobileoctavia24@gmail.com',
+  'emeldahlatshwayo59@gmail.com',
+  'hlatshwayonoluthando02@gmail.com',
+  'kometsilwandle@gmail.com',
+  'nkosik8@gmail.com'
 );
 
 -- ============================================================================
@@ -91,8 +94,12 @@ SET
   subscription_renews_at = NULL,
   license_key = NULL
 WHERE email IN (
-  'account1@example.com',   -- 👈 CHANGE THESE
-  'account2@example.com'    -- 👈 CHANGE THESE
+  'mvaleliso.mdluli@gmail.com',
+  'nqobileoctavia24@gmail.com',
+  'emeldahlatshwayo59@gmail.com',
+  'hlatshwayonoluthando02@gmail.com',
+  'kometsilwandle@gmail.com',
+  'nkosik8@gmail.com'
 );
 
 -- ============================================================================
@@ -199,7 +206,14 @@ SELECT
   END as access_level,
   subscription_renews_at
 FROM profiles
-WHERE email = 'your-email@example.com';  -- 👈 CHANGE THIS
+WHERE email IN (
+  'mvaleliso.mdluli@gmail.com',
+  'nqobileoctavia24@gmail.com',
+  'emeldahlatshwayo59@gmail.com',
+  'hlatshwayonoluthando02@gmail.com',
+  'kometsilwandle@gmail.com',
+  'nkosik8@gmail.com'
+);
 
 -- ============================================================================
 -- NOTES:
