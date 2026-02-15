@@ -389,6 +389,7 @@ export default function MyRewardsPage() {
       }
 
       // Create a notification for the PARENT (not the child)
+      console.log('Creating reward suggestion notification for parent:', parentProfile.id);
       const { error } = await supabase
         .from('notifications')
         .insert({
@@ -415,7 +416,8 @@ export default function MyRewardsPage() {
         showAlert('Failed to send suggestion: ' + error.message, "error");
         return;
       }
-
+      
+      console.log('✅ Reward suggestion notification created successfully');
       showAlert(`Reward suggestion sent to parents!\n\n"${name}"\nYour parents will review your suggestion.`, "success");
     } catch (error) {
       console.error('Error in handleSuggestReward:', error);

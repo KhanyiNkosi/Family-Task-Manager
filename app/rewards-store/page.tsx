@@ -228,11 +228,16 @@ export default function RewardsStorePage() {
   };
 
   const loadSuggestions = async () => {
+    console.log('🔍 loadSuggestions called on Rewards Store page');
     try {
       const supabase = createClientSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) return;
+      if (!user) {
+        console.log('No user logged in, skipping suggestions load');
+        return;
+      }
+      console.log('Loading suggestions for user:', user.id);
 
       // Load reward suggestion notifications for this parent
       const { data: notificationsData, error } = await supabase
