@@ -757,8 +757,13 @@ export default function ParentDashboard() {
         return;
       }
 
-      // Update local state - remove from active tasks since it's now completed and approved
-      setActiveTasks(activeTasks?.filter(task => task.id !== taskId));
+      // Update local state - keep task but mark as completed and approved
+      const updatedTasks = activeTasks?.map(task =>
+        task.id === taskId 
+          ? { ...task, status: "approved" as const, completed: true, approved: true, completed_at: new Date().toISOString() } 
+          : task
+      );
+      setActiveTasks(updatedTasks);
       
       // Reload children to update points
       await loadChildren();
@@ -1154,6 +1159,16 @@ export default function ParentDashboard() {
   const totalPoints = familyChildren?.reduce((sum, child) => sum + (child.total_points || 0), 0) || 0;
   const pendingTasks = activeTasks?.filter(task => task.status === 'pending').length || 0;
   const completedTasks = activeTasks?.filter(task => task.completed && task.approved).length || 0;
+  
+  // Debug logging (remove after testing)
+  if (typeof window !== 'undefined') {
+    console.log('Task counts:', { 
+      total: activeTasks?.length, 
+      pending: pendingTasks, 
+      completed: completedTasks,
+      completedAndApproved: activeTasks?.filter(t => t.completed && t.approved).length
+    });
+  }
 
   const handleLogout = async () => {
     const confirmed = await showConfirm("Are you sure you want to logout?");

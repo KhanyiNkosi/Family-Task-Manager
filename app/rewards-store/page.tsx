@@ -249,7 +249,10 @@ export default function RewardsStorePage() {
       }
 
       if (notificationsData) {
+        console.log('Loaded suggestions:', notificationsData.length, notificationsData);
         setSuggestions(notificationsData as RewardSuggestion[]);
+      } else {
+        console.log('No suggestions found');
       }
     } catch (error) {
       // Ignore AbortError - normal when navigating away
