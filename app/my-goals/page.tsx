@@ -72,6 +72,7 @@ export default function MyGoalsPage() {
 
       const imageKey = user ? `childProfileImage:${user.id}` : "childProfileImage";
       const avatarKey = user ? `childAvatar:${user.id}` : "childAvatar";
+      const goalsKey = user ? `childGoals:${user.id}` : "childGoals";  // ✅ User-specific key
 
       const savedImage = localStorage.getItem(imageKey) || "";
       const savedAvatar = localStorage.getItem(avatarKey) || "";
@@ -81,7 +82,7 @@ export default function MyGoalsPage() {
         setChildAvatar(savedAvatar);
       }
 
-      const savedGoals = localStorage.getItem("childGoals");
+      const savedGoals = localStorage.getItem(goalsKey);  // ✅ Load user's own goals
       if (savedGoals && isMounted) {
         setGoals(JSON.parse(savedGoals));
       }
@@ -94,9 +95,15 @@ export default function MyGoalsPage() {
     };
   }, []);
 
-  const saveGoals = (updatedGoals: Goal[]) => {
+  const saveGoals = async (updatedGoals: Goal[]) => {
     setGoals(updatedGoals);
-    localStorage.setItem("childGoals", JSON.stringify(updatedGoals));
+    
+    // Save to user-specific localStorage key
+    const supabase = createClientSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    const goalsKey = user ? `childGoals:${user.id}` : "childGoals";  // ✅ User-specific key
+    
+    localStorage.setItem(goalsKey, JSON.stringify(updatedGoals));  // ✅ Save to user's own key
   };
 
   const calculateDueDate = (type: 'daily' | 'weekly' | 'monthly'): string => {

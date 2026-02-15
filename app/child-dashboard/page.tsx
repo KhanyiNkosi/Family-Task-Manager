@@ -35,6 +35,7 @@ interface Reward {
   created_by: string;
   created_at: string;
   is_active: boolean;
+  is_default?: boolean;
 }
 
 interface RewardRedemption {
@@ -1793,7 +1794,16 @@ export default function ChildDashboardPage() {
                       ) : (
                         <>
                           <div className="flex justify-between items-start mb-3">
-                            <h4 className="font-bold text-gray-800">{reward.title}</h4>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-bold text-gray-800">{reward.title}</h4>
+                                {reward.is_default && (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                                    ✓ Free
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                             <div className="font-bold text-[#00C2E0] flex items-center gap-1">
                               <i className="fas fa-star text-amber-500 text-sm"></i>
                               {reward.points_cost}

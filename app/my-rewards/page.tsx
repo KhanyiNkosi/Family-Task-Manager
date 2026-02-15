@@ -375,21 +375,38 @@ export default function MyRewardsPage() {
         return;
       }
 
-      // Create a notification for the parents
+      // Find the parent in the family to send notification
+      const { data: parentProfile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('family_id', profile.family_id)
+        .eq('role', 'parent')
+        .single();
+
+      if (!parentProfile) {
+        showAlert('Could not find a parent to send suggestion to', "error");
+        return;
+      }
+
+      // Create a notification for the PARENT (not the child)
       const { error } = await supabase
         .from('notifications')
         .insert({
-          user_id: user.id,
+          user_id: parentProfile.id,  // ✅ Send to parent, not child
           family_id: profile.family_id,
-          type: 'reward_suggestion',
-          title: 'New Reward Suggestion',
+          type: 'info',
+          title: 'New Reward Suggestion 💡',
           message: `${profile.full_name || 'Your child'} suggested a new reward: "${name}" - ${description} (${points || '?'} points)`,
+          action_url: '/rewards-store',
+          action_text: 'View Suggestions',
           read: false,
           metadata: {
             suggestion_type: 'reward',
             reward_name: name,
             reward_description: description,
-            suggested_points: points || null
+            suggested_points: points || null,
+            suggested_by: user.id,
+            suggested_by_name: profile.full_name
           }
         });
 
