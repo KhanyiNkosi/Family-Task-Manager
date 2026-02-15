@@ -155,6 +155,8 @@ export default function RewardsStorePage() {
         setRewards(rewardsData);
       }
     } catch (error) {
+      // Ignore AbortError - normal when navigating away
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error in loadRewards:', error);
     }
   };
@@ -250,6 +252,8 @@ export default function RewardsStorePage() {
         setSuggestions(notificationsData as RewardSuggestion[]);
       }
     } catch (error) {
+      // Ignore AbortError - normal when navigating away
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error in loadSuggestions:', error);
     }
   };
@@ -423,6 +427,8 @@ export default function RewardsStorePage() {
         setRedemptions(familyRedemptions);
       }
     } catch (error) {
+      // Ignore AbortError - normal when navigating away
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error in loadRedemptions:', error);
     }
   };

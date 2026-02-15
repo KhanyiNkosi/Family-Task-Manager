@@ -1152,13 +1152,6 @@ export default function ParentDashboard() {
   const totalPoints = familyChildren?.reduce((sum, child) => sum + (child.total_points || 0), 0) || 0;
   const pendingTasks = activeTasks?.filter(task => task.status === 'pending').length || 0;
   const completedTasks = activeTasks?.filter(task => task.completed && task.approved).length || 0;
-  
-  console.log('Dashboard stats:', { 
-    totalTasks: activeTasks?.length,
-    pendingTasks, 
-    completedTasks,
-    activeTasks: activeTasks?.map(t => ({ title: t.title, completed: t.completed, approved: t.approved }))
-  });
 
   const handleLogout = async () => {
     const confirmed = await showConfirm("Are you sure you want to logout?");
