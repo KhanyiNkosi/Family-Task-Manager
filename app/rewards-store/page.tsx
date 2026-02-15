@@ -615,20 +615,44 @@ export default function RewardsStorePage() {
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-purple-100">
-                    <button
-                      onClick={() => handleApproveSuggestion(suggestion)}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition font-semibold"
-                    >
-                      <i className="fas fa-check mr-2"></i> Approve & Add
-                    </button>
-                    <button
-                      onClick={() => handleRejectSuggestion(suggestion)}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
-                    >
-                      <i className="fas fa-times mr-2"></i> Reject
-                    </button>
-                  </div>
+                  <PremiumGuard
+                    fallback={
+                      <div className="mt-4 pt-4 border-t border-purple-100">
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-4 text-center mb-3">
+                          <div className="text-2xl mb-2">👑</div>
+                          <p className="text-sm font-semibold text-gray-800 mb-1">Approving Suggestions - Premium Feature</p>
+                          <p className="text-xs text-gray-600 mb-2">Upgrade to approve custom reward suggestions from children</p>
+                          <button
+                            onClick={() => router.push('/pricing')}
+                            className="text-xs bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition"
+                          >
+                            Upgrade to Premium
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => handleRejectSuggestion(suggestion)}
+                          className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
+                        >
+                          <i className="fas fa-times mr-2"></i> Reject
+                        </button>
+                      </div>
+                    }
+                  >
+                    <div className="flex items-center gap-2 mt-4 pt-4 border-t border-purple-100">
+                      <button
+                        onClick={() => handleApproveSuggestion(suggestion)}
+                        className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition font-semibold"
+                      >
+                        <i className="fas fa-check mr-2"></i> Approve & Add
+                      </button>
+                      <button
+                        onClick={() => handleRejectSuggestion(suggestion)}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
+                      >
+                        <i className="fas fa-times mr-2"></i> Reject
+                      </button>
+                    </div>
+                  </PremiumGuard>
                 </div>
               ))}
             </div>

@@ -737,12 +737,35 @@ export default function ParentDashboard() {
   };
 
   // Complete task
-  const handleCompleteTask = (taskId: string) => {
-    const updatedTasks = activeTasks?.map(task =>
-      task.id === taskId ? { ...task, status: "completed" as const } : task
-    );
-    setActiveTasks(updatedTasks);
-    showAlert("Task marked as completed!", "success");
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Update task in database
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          completed: true,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error completing task:', error);
+        showAlert('Failed to mark task as completed', "error");
+        return;
+      }
+
+      // Update local state
+      const updatedTasks = activeTasks?.map(task =>
+        task.id === taskId ? { ...task, status: "completed" as const, completed: true } : task
+      );
+      setActiveTasks(updatedTasks);
+      showAlert("Task marked as completed!", "success");
+    } catch (error) {
+      console.error('Error in handleCompleteTask:', error);
+      showAlert('Failed to mark task as completed', "error");
+    }
   };
 
   // Approve task completion
