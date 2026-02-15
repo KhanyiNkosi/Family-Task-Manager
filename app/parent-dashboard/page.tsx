@@ -64,6 +64,7 @@ interface Reward {
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  is_default?: boolean;
 }
 
 interface RewardRedemption {
@@ -1126,7 +1127,7 @@ export default function ParentDashboard() {
 
   // Calculate totals
   const totalPoints = familyChildren?.reduce((sum, child) => sum + (child.total_points || 0), 0) || 0;
-  const pendingTasks = activeTasks?.filter(task => !task.completed).length || 0;
+  const pendingTasks = activeTasks?.filter(task => task.status === 'pending').length || 0;
   const completedTasks = activeTasks?.filter(task => task.completed && task.approved).length || 0;
   
   console.log('Dashboard stats:', { 

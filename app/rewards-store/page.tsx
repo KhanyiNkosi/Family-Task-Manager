@@ -17,6 +17,34 @@ interface Reward {
   created_at: string;
   updated_at: string;
   is_active: boolean;
+  is_default?: boolean;
+}
+
+interface RewardSuggestion {
+  id: string;
+  title: string;
+  message: string;
+  created_at: string;
+  metadata: {
+    reward_name: string;
+    reward_description: string;
+    suggested_points: number;
+    suggested_by: string;
+    suggested_by_name: string;
+  };
+}
+
+interface RewardRedemption {
+  id: string;
+  reward_id: string;
+  user_id: string;
+  points_spent: number;
+  status: 'pending' | 'approved' | 'rejected';
+  redeemed_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  reward?: Reward;
+  user?: { id: string; full_name: string };
 }
 
 export default function RewardsStorePage() {
@@ -24,6 +52,8 @@ export default function RewardsStorePage() {
   const { isPremium } = usePremium();
 
   const [rewards, setRewards] = useState<Reward[]>([]);
+  const [suggestions, setSuggestions] = useState<RewardSuggestion[]>([]);
+  const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [newRewardTitle, setNewRewardTitle] = useState("");
   const [newRewardDescription, setNewRewardDescription] = useState("");
   const [newRewardPoints, setNewRewardPoints] = useState("50");
@@ -60,6 +90,8 @@ export default function RewardsStorePage() {
 
   useEffect(() => {
     loadRewards();
+    loadSuggestions();
+    loadRedemptions();
   }, []);
 
   useEffect(() => {
@@ -193,6 +225,291 @@ export default function RewardsStorePage() {
     }
   };
 
+  const loadSuggestions = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Load reward suggestion notifications for this parent
+      const { data: notificationsData, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('action_url', '/rewards-store')
+        .eq('read', false)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading suggestions:', error);
+        return;
+      }
+
+      if (notificationsData) {
+        setSuggestions(notificationsData as RewardSuggestion[]);
+      }
+    } catch (error) {
+      console.error('Error in loadSuggestions:', error);
+    }
+  };
+
+  const handleApproveSuggestion = async (suggestion: RewardSuggestion) => {
+    const confirmed = await showConfirm(`Create reward "${suggestion.metadata.reward_name}" for ${suggestion.metadata.suggested_points} points?`);
+    if (!confirmed) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in', "error");
+        return;
+      }
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) {
+        showAlert('Family ID not found', "error");
+        return;
+      }
+
+      // Create the reward
+      const { data: newReward, error: rewardError } = await supabase
+        .from('rewards')
+        .insert({
+          title: suggestion.metadata.reward_name,
+          description: suggestion.metadata.reward_description || null,
+          points_cost: suggestion.metadata.suggested_points,
+          family_id: profile.family_id,
+          created_by: user.id,
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (rewardError) {
+        console.error('Error creating reward:', rewardError);
+        showAlert('Failed to create reward: ' + rewardError.message, "error");
+        return;
+      }
+
+      // Mark notification as read (or delete it)
+      const { error: notifError } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', suggestion.id);
+
+      if (notifError) {
+        console.error('Error updating notification:', notifError);
+      }
+
+      // Notify the child that their suggestion was approved
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: suggestion.metadata.suggested_by,
+          family_id: profile.family_id,
+          type: 'success',
+          title: 'Reward Suggestion Approved! 🎉',
+          message: `Your reward suggestion "${suggestion.metadata.reward_name}" has been added to the store!`,
+          action_url: '/my-rewards',
+          action_text: 'View Rewards',
+          read: false
+        });
+
+      // Update UI
+      setRewards([newReward!, ...rewards]);
+      setSuggestions(suggestions.filter(s => s.id !== suggestion.id));
+      showAlert(`Reward "${suggestion.metadata.reward_name}" created successfully!`, "success");
+    } catch (error) {
+      console.error('Error in handleApproveSuggestion:', error);
+      showAlert('Failed to approve suggestion', "error");
+    }
+  };
+
+  const handleRejectSuggestion = async (suggestion: RewardSuggestion) => {
+    const confirmed = await showConfirm(`Reject suggestion "${suggestion.metadata.reward_name}"?`);
+    if (!confirmed) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+
+      // Mark notification as read
+      const { error } = await supabase
+        .from('notifications')
+        .update({ read: true })
+        .eq('id', suggestion.id);
+
+      if (error) {
+        console.error('Error updating notification:', error);
+        showAlert('Failed to reject suggestion', "error");
+        return;
+      }
+
+      // Optionally notify child of rejection
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', suggestion.metadata.suggested_by)
+        .single();
+
+      if (profile) {
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: suggestion.metadata.suggested_by,
+            family_id: profile.family_id,
+            type: 'info',
+            title: 'Reward Suggestion Not Added',
+            message: `Your suggestion "${suggestion.metadata.reward_name}" was reviewed. Try suggesting something else!`,
+            action_url: '/my-rewards',
+            action_text: 'View Rewards',
+            read: false
+          });
+      }
+
+      // Update UI
+      setSuggestions(suggestions.filter(s => s.id !== suggestion.id));
+      showAlert('Suggestion rejected', "info");
+    } catch (error) {
+      console.error('Error in handleRejectSuggestion:', error);
+      showAlert('Failed to reject suggestion', "error");
+    }
+  };
+
+  const loadRedemptions = async () => {
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) return;
+
+      // Get user's family_id
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile?.family_id) return;
+
+      // Load pending reward redemptions for this family
+      const { data: redemptionsData, error } = await supabase
+        .from('reward_redemptions')
+        .select(`
+          *,
+          reward:rewards(*),
+          user:profiles(id, full_name)
+        `)
+        .eq('status', 'pending')
+        .order('redeemed_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading redemptions:', error);
+        return;
+      }
+
+      if (redemptionsData) {
+        // Filter to only show redemptions for rewards in this family
+        const familyRedemptions = redemptionsData.filter(r => 
+          r.reward && r.reward.family_id === profile.family_id
+        );
+        setRedemptions(familyRedemptions);
+      }
+    } catch (error) {
+      console.error('Error in loadRedemptions:', error);
+    }
+  };
+
+  const handleApproveRedemption = async (redemptionId: string) => {
+    const confirmed = await showConfirm('Approve this reward request?');
+    if (!confirmed) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in', "error");
+        return;
+      }
+
+      // Update redemption status
+      const { error } = await supabase
+        .from('reward_redemptions')
+        .update({
+          status: 'approved',
+          approved_at: new Date().toISOString(),
+          approved_by: user.id
+        })
+        .eq('id', redemptionId);
+
+      if (error) {
+        console.error('Error approving redemption:', error);
+        showAlert('Failed to approve reward request', "error");
+        return;
+      }
+
+      // Update UI
+      setRedemptions(redemptions.filter(r => r.id !== redemptionId));
+      showAlert('Reward request approved!', "success");
+    } catch (error) {
+      console.error('Error in handleApproveRedemption:', error);
+      showAlert('Failed to approve reward request', "error");
+    }
+  };
+
+  const handleRejectRedemption = async (redemptionId: string) => {
+    const confirmed = await showConfirm('Reject this reward request? Points will be returned to the child.');
+    if (!confirmed) return;
+
+    try {
+      const supabase = createClientSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        showAlert('You must be logged in', "error");
+        return;
+      }
+
+      // Get redemption details to return points
+      const redemption = redemptions.find(r => r.id === redemptionId);
+      if (!redemption) return;
+
+      // Update redemption status
+      const { error: redemptionError } = await supabase
+        .from('reward_redemptions')
+        .update({
+          status: 'rejected',
+          approved_at: new Date().toISOString(),
+          approved_by: user.id
+        })
+        .eq('id', redemptionId);
+
+      if (redemptionError) {
+        console.error('Error rejecting redemption:', redemptionError);
+        showAlert('Failed to reject reward request', "error");
+        return;
+      }
+
+      // Return points to child (points are managed by triggers on reward_redemptions)
+      // The trigger will automatically handle point restoration
+
+      // Update UI
+      setRedemptions(redemptions.filter(r => r.id !== redemptionId));
+      showAlert('Reward request rejected. Points returned to child.', "info");
+    } catch (error) {
+      console.error('Error in handleRejectRedemption:', error);
+      showAlert('Failed to reject reward request', "error");
+    }
+  };
+
   const handleDeleteReward = async (rewardId: string) => {
     const confirmed = await showConfirm('Are you sure you want to delete this reward?');
     if (!confirmed) return;
@@ -261,6 +578,126 @@ export default function RewardsStorePage() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6">
+        {/* Reward Suggestions from Children */}
+        {suggestions.length > 0 && (
+          <div className="mb-8 bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-lg p-6 border-2 border-purple-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-purple-800 flex items-center gap-3">
+                <i className="fas fa-lightbulb"></i>
+                Child Reward Suggestions
+                <span className="text-sm bg-purple-200 text-purple-800 px-3 py-1 rounded-full font-semibold">
+                  {suggestions.length} new
+                </span>
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {suggestions.map((suggestion) => (
+                <div key={suggestion.id} className="bg-white rounded-xl p-6 border border-purple-200 hover:shadow-md transition">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800 text-lg mb-1">
+                        {suggestion.metadata.reward_name}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {suggestion.metadata.reward_description}
+                      </p>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <i className="fas fa-user-circle"></i>
+                        <span>Suggested by {suggestion.metadata.suggested_by_name}</span>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="text-2xl font-bold text-purple-600">
+                        {suggestion.metadata.suggested_points}
+                      </div>
+                      <div className="text-sm text-gray-500">points</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-purple-100">
+                    <button
+                      onClick={() => handleApproveSuggestion(suggestion)}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition font-semibold"
+                    >
+                      <i className="fas fa-check mr-2"></i> Approve & Add
+                    </button>
+                    <button
+                      onClick={() => handleRejectSuggestion(suggestion)}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
+                    >
+                      <i className="fas fa-times mr-2"></i> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Requested Rewards from Children */}
+        {redemptions.length > 0 && (
+          <div className="mb-8 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl shadow-lg p-6 border-2 border-blue-200">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-blue-800 flex items-center gap-3">
+                <i className="fas fa-gift"></i>
+                Pending Reward Requests
+                <span className="text-sm bg-blue-200 text-blue-800 px-3 py-1 rounded-full font-semibold">
+                  {redemptions.length} pending
+                </span>
+              </h2>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {redemptions.map((redemption) => (
+                <div key={redemption.id} className="bg-white rounded-xl p-6 border border-blue-200 hover:shadow-md transition">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1">
+                      <h3 className="font-bold text-gray-800 text-lg mb-1">
+                        {redemption.reward?.title || 'Unknown Reward'}
+                      </h3>
+                      {redemption.reward?.description && (
+                        <p className="text-sm text-gray-600 mb-2">
+                          {redemption.reward.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <i className="fas fa-user-circle"></i>
+                        <span>Requested by {redemption.user?.full_name || 'Child'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
+                        <i className="fas fa-clock"></i>
+                        <span>{new Date(redemption.redeemed_at).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {redemption.points_spent}
+                      </div>
+                      <div className="text-sm text-gray-500">points</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-blue-100">
+                    <button
+                      onClick={() => handleApproveRedemption(redemption.id)}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition font-semibold"
+                    >
+                      <i className="fas fa-check mr-2"></i> Approve
+                    </button>
+                    <button
+                      onClick={() => handleRejectRedemption(redemption.id)}
+                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-semibold"
+                    >
+                      <i className="fas fa-times mr-2"></i> Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Rewards Management Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Add New Reward Form */}
@@ -361,7 +798,14 @@ export default function RewardsStorePage() {
                     <div key={reward.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition bg-gradient-to-br from-cyan-50 to-teal-50">
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex-1">
-                          <h3 className="font-bold text-[#006372] text-lg">{reward.title}</h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-[#006372] text-lg">{reward.title}</h3>
+                            {reward.is_default && (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">
+                                ✓ Default
+                              </span>
+                            )}
+                          </div>
                           {reward.description && (
                             <p className="text-gray-600 text-sm mt-1">{reward.description}</p>
                           )}
@@ -373,12 +817,19 @@ export default function RewardsStorePage() {
                       </div>
                       
                       <div className="flex items-center justify-end mt-4 pt-4 border-t border-gray-200">
-                        <button
-                          onClick={() => handleDeleteReward(reward.id)}
-                          className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
-                        >
-                          <i className="fas fa-trash mr-2"></i> Remove
-                        </button>
+                        {!reward.is_default && (
+                          <button
+                            onClick={() => handleDeleteReward(reward.id)}
+                            className="px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                          >
+                            <i className="fas fa-trash mr-2"></i> Remove
+                          </button>
+                        )}
+                        {reward.is_default && (
+                          <div className="text-sm text-gray-500 italic">
+                            <i className="fas fa-lock mr-1"></i> Default reward (cannot be removed)
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
