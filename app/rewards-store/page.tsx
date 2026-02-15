@@ -260,12 +260,12 @@ export default function RewardsStorePage() {
       }
 
       // Load reward suggestion notifications for this parent
+      // Don't filter by read status - suggestions should stay until approved/rejected
       const { data: notificationsData, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .eq('action_url', '/rewards-store')
-        .eq('read', false)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -273,6 +273,7 @@ export default function RewardsStorePage() {
         return;
       }
 
+      console.log('✅ Found suggestions:', notificationsData?.length || 0);
       if (notificationsData) {
         console.log('Loaded suggestions:', notificationsData.length, notificationsData);
         setSuggestions(notificationsData as RewardSuggestion[]);
@@ -331,14 +332,14 @@ export default function RewardsStorePage() {
         return;
       }
 
-      // Mark notification as read (or delete it)
+      // Delete the notification since the suggestion has been handled
       const { error: notifError } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .delete()
         .eq('id', suggestion.id);
 
       if (notifError) {
-        console.error('Error updating notification:', notifError);
+        console.error('Error deleting notification:', notifError);
       }
 
       // Notify the child that their suggestion was approved
@@ -372,14 +373,14 @@ export default function RewardsStorePage() {
     try {
       const supabase = createClientSupabaseClient();
 
-      // Mark notification as read
+      // Delete the notification since the suggestion has been rejected
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .delete()
         .eq('id', suggestion.id);
 
       if (error) {
-        console.error('Error updating notification:', error);
+        console.error('Error deleting notification:', error);
         showAlert('Failed to reject suggestion', "error");
         return;
       }
