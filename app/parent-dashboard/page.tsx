@@ -741,11 +741,12 @@ export default function ParentDashboard() {
     try {
       const supabase = createClientSupabaseClient();
       
-      // Update task in database
+      // Update task in database - parent completing task should also approve it
       const { error } = await supabase
         .from('tasks')
         .update({ 
           completed: true,
+          approved: true,
           completed_at: new Date().toISOString()
         })
         .eq('id', taskId);
@@ -756,12 +757,13 @@ export default function ParentDashboard() {
         return;
       }
 
-      // Update local state
-      const updatedTasks = activeTasks?.map(task =>
-        task.id === taskId ? { ...task, status: "completed" as const, completed: true } : task
-      );
-      setActiveTasks(updatedTasks);
-      showAlert("Task marked as completed!", "success");
+      // Update local state - remove from active tasks since it's now completed and approved
+      setActiveTasks(activeTasks?.filter(task => task.id !== taskId));
+      
+      // Reload children to update points
+      await loadChildren();
+      
+      showAlert("Task marked as completed and approved!", "success");
     } catch (error) {
       console.error('Error in handleCompleteTask:', error);
       showAlert('Failed to mark task as completed', "error");

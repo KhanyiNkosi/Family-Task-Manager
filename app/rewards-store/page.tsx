@@ -408,8 +408,7 @@ export default function RewardsStorePage() {
         .from('reward_redemptions')
         .select(`
           *,
-          reward:rewards(*),
-          user:profiles(id, full_name)
+          reward:rewards!reward_id(*)
         `)
         .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
@@ -420,10 +419,24 @@ export default function RewardsStorePage() {
       }
 
       if (redemptionsData) {
+        // Get user profiles for each redemption
+        const userIds = redemptionsData.map(r => r.user_id);
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+
+        // Map profiles to redemptions
+        const redemptionsWithUsers = redemptionsData.map(r => ({
+          ...r,
+          user: profilesData?.find(p => p.id === r.user_id)
+        }));
+
         // Filter to only show redemptions for rewards in this family
-        const familyRedemptions = redemptionsData.filter(r => 
+        const familyRedemptions = redemptionsWithUsers.filter(r => 
           r.reward && r.reward.family_id === profile.family_id
         );
+        console.log('Loaded redemptions:', familyRedemptions.length, familyRedemptions);
         setRedemptions(familyRedemptions);
       }
     } catch (error) {
