@@ -239,6 +239,26 @@ export default function RewardsStorePage() {
       }
       console.log('Loading suggestions for user:', user.id);
 
+      // First, check ALL notifications for this user to debug
+      const { data: allNotifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(10);
+      
+      console.log('📋 ALL notifications for user:', allNotifs?.length || 0, allNotifs);
+      
+      // Filter to show only relevant fields
+      if (allNotifs && allNotifs.length > 0) {
+        console.log('📋 Notification details:', allNotifs.map(n => ({
+          id: n.id,
+          action_url: n.action_url,
+          read: n.read,
+          title: n.title,
+          created_at: n.created_at
+        })));
+      }
+
       // Load reward suggestion notifications for this parent
       const { data: notificationsData, error } = await supabase
         .from('notifications')
