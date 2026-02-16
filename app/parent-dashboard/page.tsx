@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import NotificationAlert from '@/components/NotificationAlert';
 import { useNotifications } from '@/hooks/useNotifications';
+import { usePremium } from '@/hooks/usePremium';
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import AddChildSection from '@/components/AddChildSection';
@@ -96,6 +97,9 @@ export default function ParentDashboard() {
     markAsRead, 
     dismissNotification 
   } = useNotifications();
+
+  // Premium status
+  const { isPremium, isLoading: premiumLoading } = usePremium();
 
   
   // Load profile image and family code for the current parent
@@ -715,6 +719,20 @@ export default function ParentDashboard() {
         return;
       }
 
+      // Check task limit for free users
+      if (!isPremium) {
+        const currentTaskCount = activeTasks.length;
+        if (currentTaskCount >= 3) {
+          const confirmed = await showConfirm(
+            "🚨 Free Tier Limit Reached!\n\nYou've reached the maximum of 3 tasks on the free plan. Upgrade to Premium for unlimited tasks!\n\nWould you like to view upgrade options?"
+          );
+          if (confirmed) {
+            router.push('/pricing');
+          }
+          return;
+        }
+      }
+
       // Get user's family_id
       const { data: profile } = await supabase
         .from('profiles')
@@ -890,6 +908,17 @@ export default function ParentDashboard() {
   // Delete task
   const handleDeleteTask = async (taskId: string) => {
     try {
+      // Prevent deletion for free users
+      if (!isPremium) {
+        const confirmed = await showConfirm(
+          "🔒 Premium Feature Required\n\nTask deletion is only available for Premium members. This ensures your family's task history and progress tracking remain intact.\n\nUpgrade to Premium to unlock task management and unlimited tasks!\n\nWould you like to view upgrade options?"
+        );
+        if (confirmed) {
+          router.push('/pricing');
+        }
+        return;
+      }
+
       const supabase = createClientSupabaseClient();
       
       // Check if task is completed/approved first
@@ -1431,6 +1460,40 @@ export default function ParentDashboard() {
                   >
                     <i className={`fas ${codeCopied ? 'fa-check' : 'fa-copy'} text-sm`}></i>
                     <span className="hidden sm:inline">{codeCopied ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Free Tier Info Card */}
+          {!premiumLoading && !isPremium && (
+            <div className="mb-8">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-lg p-4 text-white border-2 border-amber-300">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                      <i className="fas fa-info-circle text-lg"></i>
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
+                        Free Plan Limits
+                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Current Plan</span>
+                      </h2>
+                      <p className="text-white/90 text-xs leading-relaxed">
+                        <i className="fas fa-check-circle mr-1"></i>1 child • 
+                        <i className="fas fa-check-circle mr-1 ml-1"></i>3 tasks • 
+                        <i className="fas fa-check-circle mr-1 ml-1"></i>3 goals per child • 
+                        <i className="fas fa-lock mr-1 ml-1"></i>No task deletion
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/pricing')}
+                    className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <i className="fas fa-crown text-sm"></i>
+                    <span className="hidden sm:inline">Upgrade</span>
                   </button>
                 </div>
               </div>

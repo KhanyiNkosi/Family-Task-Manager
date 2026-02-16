@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientSupabaseClient } from "@/lib/supabaseClient";
+import { usePremium } from "@/hooks/usePremium";
 
 interface Goal {
   id: number;
@@ -24,6 +25,9 @@ export default function MyGoalsPage() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [profileImage, setProfileImage] = useState("");
   const [childAvatar, setChildAvatar] = useState("");
+
+  // Premium status
+  const { isPremium, isLoading: premiumLoading } = usePremium();
 
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ 
@@ -147,6 +151,18 @@ export default function MyGoalsPage() {
   };
 
   const handleCreateGoal = async () => {
+    // Check goal limit for free users
+    if (!isPremium) {
+      const activeGoalsCount = goals.filter(g => g.status === 'active').length;
+      if (activeGoalsCount >= 3) {
+        showAlert(
+          "⚠️ Free Tier Limit Reached!\n\nYou've reached the maximum of 3 active goals on the free plan. Complete or abandon an existing goal, or upgrade to Premium for unlimited goals!",
+          "warning"
+        );
+        return;
+      }
+    }
+
     const values = await showPrompt("Create New Goal", [
       { label: "Goal Title*", placeholder: "e.g., Complete 10 tasks", type: "text" },
       { label: "Description", placeholder: "What do you want to achieve?", type: "text" },
@@ -320,6 +336,32 @@ export default function MyGoalsPage() {
             </div>
           </div>
         </div>
+
+        {/* FREE TIER LIMIT INFO */}
+        {!premiumLoading && !isPremium && (
+          <div className="mb-6 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-lg p-4 text-white border-2 border-amber-300">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                  <i className="fas fa-info-circle text-lg"></i>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-base mb-1">Free Plan: 3 Active Goals Limit</h3>
+                  <p className="text-white/90 text-xs">
+                    You can have up to 3 active goals at a time. Complete or abandon existing goals to create new ones, or upgrade to Premium for unlimited goals!
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => router.push('/pricing')}
+                className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap text-sm"
+              >
+                <i className="fas fa-crown"></i>
+                <span className="hidden sm:inline">Upgrade</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* CREATE GOAL BUTTON */}
         <div className="mb-8 flex items-center justify-between">
