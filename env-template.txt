@@ -8,3 +8,13 @@ SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # Get from Su
 # Database URLs (NOT for frontend auth!)
 DATABASE_URL=postgresql://postgres.eailwpyubcopzikpblep:password@aws-1-eu-north-1.pooler.supabase.com:6543/postgres
 DIRECT_DATABASE_URL=postgresql://postgres:password@db.eailwpyubcopzikpblep.supabase.co:5432/postgres
+
+# Lemon Squeezy Payment Integration
+NEXT_PUBLIC_LEMONSQUEEZY_STORE_ID=your-store-id  # Get from Lemon Squeezy Dashboard → Settings → General
+LEMONSQUEEZY_API_KEY=your-api-key  # Get from Lemon Squeezy Dashboard → Settings → API
+LEMONSQUEEZY_WEBHOOK_SECRET=your-webhook-secret  # Get when creating webhook in Lemon Squeezy Dashboard
+
+# Lemon Squeezy Product Variant IDs (get these after creating products)
+NEXT_PUBLIC_LEMONSQUEEZY_MONTHLY_VARIANT_ID=your-monthly-variant-id
+NEXT_PUBLIC_LEMONSQUEEZY_YEARLY_VARIANT_ID=your-yearly-variant-id
+NEXT_PUBLIC_LEMONSQUEEZY_LIFETIME_VARIANT_ID=your-lifetime-variant-id

@@ -26,14 +26,38 @@ export default function PricingPage() {
     }
   };
 
-  const handleCheckout = (checkoutUrl: string) => {
-    // Add user_id and email as custom data for webhook
-    const url = new URL(checkoutUrl);
-    url.searchParams.set('checkout[email]', userEmail);
-    url.searchParams.set('checkout[custom][user_id]', userId);
+  const handleCheckout = async (variantId: string) => {
+    if (!variantId) {
+      alert('This plan is not yet configured. Please contact support@familytask.co');
+      return;
+    }
     
-    // Open checkout in new tab
-    window.open(url.toString(), '_blank');
+    if (!userId) {
+      router.push('/login?redirect=/pricing');
+      return;
+    }
+    
+    try {
+      // Create checkout session via our API
+      const response = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ variantId })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok || result.error) {
+        alert('Error: ' + (result.error || 'Failed to create checkout'));
+        return;
+      }
+      
+      // Redirect to Lemon Squeezy checkout
+      window.location.href = result.checkoutUrl;
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert('Failed to start checkout. Please try again or contact support@familytask.co');
+    }
   };
 
   if (isLoading) {
@@ -159,7 +183,7 @@ export default function PricingPage() {
               </li>
             </ul>
             <button
-              onClick={() => handleCheckout('https://your-store.lemonsqueezy.com/checkout/buy/your-monthly-variant')}
+              onClick={() => handleCheckout(process.env.NEXT_PUBLIC_LEMONSQUEEZY_MONTHLY_VARIANT_ID || '')}
               disabled={isPremium}
               className={`w-full py-3 px-6 rounded-lg font-semibold transition ${
                 isPremium
@@ -204,7 +228,7 @@ export default function PricingPage() {
               </li>
             </ul>
             <button
-              onClick={() => handleCheckout('https://your-store.lemonsqueezy.com/checkout/buy/your-yearly-variant')}
+              onClick={() => handleCheckout(process.env.NEXT_PUBLIC_LEMONSQUEEZY_YEARLY_VARIANT_ID || '')}
               disabled={isPremium}
               className={`w-full py-3 px-6 rounded-lg font-semibold transition ${
                 isPremium
