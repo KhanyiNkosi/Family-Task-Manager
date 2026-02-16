@@ -156,6 +156,8 @@ export default function ParentDashboard() {
   const navItems = [
     { href: "/", icon: "fas fa-home", label: "Home" },
     { href: "/parent-dashboard", icon: "fas fa-chart-bar", label: "Dashboard", active: true },
+    { href: "/parent-tasks", icon: "fas fa-tasks", label: "My Tasks" },
+    { href: "/parent-goals", icon: "fas fa-bullseye", label: "My Goals" },
     // AI features temporarily disabled - coming soon with full implementation
     // { href: "/ai-tasks", icon: "fas fa-robot", label: "AI Tasks" },
     // { href: "/ai-suggester", icon: "fas fa-brain", label: "AI Suggester" },
@@ -170,7 +172,7 @@ export default function ParentDashboard() {
 
   // State for children
   const [children, setChildren] = useState<Child[]>([]);
-  const [familyChildren, setFamilyChildren] = useState<{ id: string; name: string; total_points?: number }[]>([]);
+  const [familyChildren, setFamilyChildren] = useState<{ id: string; name: string; total_points?: number; role?: string }[]>([]);
 
   // State for bulletin messages
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
@@ -505,7 +507,7 @@ export default function ParentDashboard() {
       // Load all profiles in the family
       const { data: familyProfiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, full_name')
+        .select('id, full_name, role')
         .eq('family_id', profile.family_id);
 
       if (profilesError) {
@@ -516,56 +518,49 @@ export default function ParentDashboard() {
       console.log('Family profiles:', familyProfiles);
 
       if (familyProfiles && familyProfiles.length > 0) {
-        // For each profile, check if they're a child and calculate their points
-        const childrenWithPoints = [];
+        // For each profile, calculate their points and include ALL family members (children AND parents)
+        const membersWithPoints = [];
         
         for (const familyMember of familyProfiles) {
-          const { data: userProfile } = await supabase
-            .from('profiles')
-            .select('role')
-            .eq('id', familyMember.id)
-            .single();
+          // Calculate points from approved tasks
+          const { data: approvedTasks } = await supabase
+            .from('tasks')
+            .select('points')
+            .eq('assigned_to', familyMember.id)
+            .eq('approved', true);
           
-          // Only include children
-          if (userProfile?.role === 'child') {
-            // Calculate points from approved tasks
-            const { data: approvedTasks } = await supabase
-              .from('tasks')
-              .select('points')
-              .eq('assigned_to', familyMember.id)
-              .eq('approved', true);
-            
-            const earnedPoints = approvedTasks?.reduce((sum, task) => sum + (task.points || 0), 0) || 0;
-            
-            // Calculate points spent on APPROVED redemptions only
-            const { data: redemptions } = await supabase
-              .from('reward_redemptions')
-              .select('points_spent')
-              .eq('user_id', familyMember.id)
-              .eq('status', 'approved');
-            
-            const spentPoints = redemptions?.reduce((sum, r) => sum + (r.points_spent || 0), 0) || 0;
-            
-            const currentPoints = earnedPoints - spentPoints;
-            
-            console.log(`[Points Calc] ${familyMember.full_name}:`, {
-              earnedPoints,
-              spentPoints,
-              currentPoints,
-              approvedTasksCount: approvedTasks?.length || 0
-            });
-            
-            childrenWithPoints.push({
-              id: familyMember.id,
-              name: familyMember.full_name,
-              total_points: currentPoints
-            });
-          }
+          const earnedPoints = approvedTasks?.reduce((sum, task) => sum + (task.points || 0), 0) || 0;
+          
+          // Calculate points spent on APPROVED redemptions only
+          const { data: redemptions } = await supabase
+            .from('reward_redemptions')
+            .select('points_spent')
+            .eq('user_id', familyMember.id)
+            .eq('status', 'approved');
+          
+          const spentPoints = redemptions?.reduce((sum, r) => sum + (r.points_spent || 0), 0) || 0;
+          
+          const currentPoints = earnedPoints - spentPoints;
+          
+          console.log(`[Points Calc] ${familyMember.full_name}:`, {
+            earnedPoints,
+            spentPoints,
+            currentPoints,
+            approvedTasksCount: approvedTasks?.length || 0,
+            role: familyMember.role
+          });
+          
+          membersWithPoints.push({
+            id: familyMember.id,
+            name: familyMember.full_name,
+            total_points: currentPoints,
+            role: familyMember.role
+          });
         }
         
-        console.log('[loadChildren] Setting familyChildren state:', childrenWithPoints);
-        setFamilyChildren(childrenWithPoints);
-        console.log('Children loaded with points:', childrenWithPoints);
+        console.log('[loadChildren] Setting familyChildren state (includes all members):', membersWithPoints);
+        setFamilyChildren(membersWithPoints);
+        console.log('Family members loaded with points:', membersWithPoints);
       }
     } catch (error: any) {
       // Ignore AbortError - it's expected during cleanup/re-renders
@@ -1255,7 +1250,7 @@ export default function ParentDashboard() {
 
       <div className="flex">
         {/* SIDEBAR - Hidden on mobile */}
-        <aside className="sidebar hidden lg:block bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+        <aside className="sidebar hidden lg:flex flex-col bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
           <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
             <i className="fas fa-smile text-3xl"></i>
             <span>FamilyTask</span>
@@ -1424,8 +1419,11 @@ export default function ParentDashboard() {
               <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm opacity-90">Active Children</p>
+                    <p className="text-sm opacity-90">Family Members</p>
                     <p className="text-2xl font-bold mt-1">{familyChildren?.length || 0}</p>
+                    <p className="text-xs opacity-75 mt-1">
+                      {familyChildren?.filter(m => m.role === 'parent').length || 0} Parents • {familyChildren?.filter(m => m.role === 'child').length || 0} Children
+                    </p>
                   </div>
                   <i className="fas fa-users text-2xl opacity-80"></i>
                 </div>
@@ -1861,12 +1859,31 @@ export default function ParentDashboard() {
                       onChange={(e) => setNewTaskAssignee(e.target.value)}
                       className="p-3 border border-[#00C2E0]/30 rounded-lg focus:ring-2 focus:ring-[#00C2E0] md:col-span-3"
                     >
-                      <option value="">Select child</option>
-                      {familyChildren.map((child) => (
-                        <option key={child.id} value={child.id}>
-                          {child.name}
-                        </option>
-                      ))}
+                      <option value="">Select family member</option>
+                      {/* Group parents first */}
+                      {familyChildren.filter(m => m.role === 'parent').length > 0 && (
+                        <optgroup label="Parents">
+                          {familyChildren
+                            .filter(m => m.role === 'parent')
+                            .map((parent) => (
+                              <option key={parent.id} value={parent.id}>
+                                {parent.name}
+                              </option>
+                            ))}
+                        </optgroup>
+                      )}
+                      {/* Then children */}
+                      {familyChildren.filter(m => m.role === 'child').length > 0 && (
+                        <optgroup label="Children">
+                          {familyChildren
+                            .filter(m => m.role === 'child')
+                            .map((child) => (
+                              <option key={child.id} value={child.id}>
+                                {child.name}
+                              </option>
+                            ))}
+                        </optgroup>
+                      )}
                     </select>
                     <textarea
                       value={newTaskDescription}
@@ -1890,7 +1907,7 @@ export default function ParentDashboard() {
               {/* Children Progress Card */}
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold text-[#006372]">Children Progress</h2>
+                  <h2 className="text-xl font-bold text-[#006372]">Family Progress</h2>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => {
@@ -1903,7 +1920,7 @@ export default function ParentDashboard() {
                       <i className="fas fa-sync-alt"></i>
                     </button>
                     <div className="text-sm text-gray-600">
-                      <span className="text-[#00C2E0] font-medium">{familyChildren.length}</span> children
+                      <span className="text-[#00C2E0] font-medium">{familyChildren.length}</span> members
                     </div>
                   </div>
                 </div>
@@ -1912,11 +1929,11 @@ export default function ParentDashboard() {
                   {familyChildren.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
                       <i className="fas fa-users text-4xl mb-3 opacity-50"></i>
-                      <p>No children added yet</p>
+                      <p>No family members yet</p>
                     </div>
                   ) : (
                     familyChildren.map((child) => {
-                      // Get counts for this child
+                      // Get counts for this family member
                       const approvedCount = childApprovedCounts[child.id] || 0;
                       const currentTasksCount = activeTasks?.filter(t => t.assigned_to === child.id).length || 0;
                       const totalTasksCount = currentTasksCount + approvedCount;
@@ -1925,11 +1942,20 @@ export default function ParentDashboard() {
                       return (
                         <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                           <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white font-bold text-lg">
+                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                              child.role === 'parent' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-[#00C2E0] to-[#00a8c2]'
+                            }`}>
                               {child.name.charAt(0).toUpperCase()}
                             </div>
                             <div className="flex-1">
-                              <h3 className="font-semibold text-gray-800">{child.name}</h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold text-gray-800">{child.name}</h3>
+                                {child.role === 'parent' && (
+                                  <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                    Parent
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center gap-4 mt-2">
                                 <span className="text-sm font-semibold flex items-center gap-1">
                                   <i className="fas fa-star text-amber-500"></i>
@@ -2023,19 +2049,9 @@ export default function ParentDashboard() {
               <div className="bg-white rounded-2xl shadow-lg p-6 border border-blue-100/50">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-[#006372]">Reward Redemptions</h2>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={loadRedemptions}
-                      className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors"
-                      title="Refresh redemptions"
-                    >
-                      <i className="fas fa-refresh mr-1"></i>
-                      Refresh
-                    </button>
-                    <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
-                      {redemptions?.filter(r => r.status === "pending").length} pending
-                    </span>
-                  </div>
+                  <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                    {redemptions?.filter(r => r.status === "pending").length} pending
+                  </span>
                 </div>
 
                 <div className="space-y-4">

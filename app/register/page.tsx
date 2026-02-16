@@ -150,7 +150,62 @@ export default function RegisterPage() {
           setErrors({ general: error.message });
         }
       } else {
-        // Success! Set success state and redirect
+        // Success! Immediately create family and fix profile
+        console.log("✅ User created:", data.user?.id);
+        
+        try {
+          // CRITICAL FIX: Create family and update profile immediately
+          const userId = data.user?.id;
+          if (userId) {
+            if (formData.role === "parent") {
+              // Parent: Create new family
+              const familyId = crypto.randomUUID();
+              
+              console.log("Creating family for parent:", familyId);
+              
+              // Create family record using service role via API
+              const familyResponse = await fetch('/api/family/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  userId,
+                  familyId,
+                  role: 'parent'
+                })
+              });
+              
+              const familyResult = await familyResponse.json();
+              if (familyResult.success) {
+                console.log("✅ Family created and profile updated!");
+              } else {
+                console.warn("⚠️ Family creation failed:", familyResult.error);
+              }
+            } else {
+              // Child: Link to existing family
+              console.log("Linking child to family:", formData.familyCode);
+              
+              const linkResponse = await fetch('/api/family/link-child', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  userId,
+                  familyCode: formData.familyCode
+                })
+              });
+              
+              const linkResult = await linkResponse.json();
+              if (linkResult.success) {
+                console.log("✅ Child linked to family!");
+              } else {
+                console.warn("⚠️ Child linking failed:", linkResult.error);
+              }
+            }
+          }
+        } catch (familyError) {
+          console.error("Family setup error (non-fatal):", familyError);
+          // Continue anyway - user is created
+        }
+        
         setSuccess(true);
         
         // Store email for confirmation page

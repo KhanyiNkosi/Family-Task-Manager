@@ -309,7 +309,7 @@ export default function ParentProfilePage() {
     <div className="min-h-screen bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE]">
       <div className="flex">
         {/* SIDEBAR - Matches dashboard exactly */}
-        <aside className="sidebar hidden lg:block bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
+        <aside className="sidebar hidden lg:flex flex-col bg-gradient-to-b from-[#006372] to-[#004955] text-white w-64 p-6 fixed h-screen">
           {/* Logo - EXACTLY matches dashboard */}
           <div className="logo flex items-center gap-3 text-2xl font-extrabold mb-10">
             <i className="fas fa-smile text-3xl"></i>

@@ -208,41 +208,6 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
         </div>
       )}
 
-      {/* Compact Family Code Card */}
-      <div className="bg-white rounded-xl p-4 shadow-md border border-blue-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center text-white">
-              <i className="fas fa-users"></i>
-            </div>
-            <div>
-              <h3 className="font-bold text-gray-800 text-sm">Family Code</h3>
-              <p className="text-xs text-gray-500">Share with children to join</p>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <div className="font-mono text-sm font-semibold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-lg">
-              {showCode ? familyCode.slice(0, 8) + '...' : '••••••••'}
-            </div>
-            <button
-              onClick={() => setShowCode(!showCode)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition"
-              title={showCode ? 'Hide' : 'Show'}
-            >
-              <i className={`fas ${showCode ? 'fa-eye-slash' : 'fa-eye'} text-sm`}></i>
-            </button>
-            <button
-              onClick={handleCopyCode}
-              className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition text-sm font-medium flex items-center gap-1.5"
-            >
-              <i className={`fas ${copiedCode ? 'fa-check' : 'fa-copy'} text-xs`}></i>
-              {copiedCode ? 'Copied' : 'Copy'}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Children List - Only show if there are children */}
       {!loading && children.length > 0 && (
         <div className="bg-white rounded-xl p-4 shadow-md border border-blue-100">

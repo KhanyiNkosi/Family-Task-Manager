@@ -59,9 +59,36 @@ export default function ContactSupportPage() {
         return;
       }
 
+      // Send email notifications
+      try {
+        const emailResponse = await fetch('/api/send-support-email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: formData.name,
+            email: formData.email,
+            category: formData.category,
+            message: formData.message,
+            ticketNumber: newTicket?.ticket_number
+          }),
+        });
+
+        if (!emailResponse.ok) {
+          console.error('Failed to send email notifications');
+          // Don't fail the whole request if email fails
+          // Ticket is already saved in database
+        }
+      } catch (emailError) {
+        console.error('Error sending emails:', emailError);
+        // Continue - ticket is still saved
+      }
+
       setTicketNumber(newTicket?.ticket_number || null);
       setSuccess(true);
       setFormData({ name: "", email: "", category: "general", message: "" });
+      setIsLoading(false);
     } catch (err) {
       console.error("Unexpected error:", err);
       setError("An unexpected error occurred. Please try again.");

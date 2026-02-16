@@ -603,7 +603,7 @@ export default function AchievementsPage() {
                       animation: 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite'
                     } : {}}
                   >
-                    <i className={achievement.icon}></i>
+                    <i className={`${achievement.icon} text-white`}></i>
                   </div>
                 </div>
 
