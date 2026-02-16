@@ -305,7 +305,7 @@ export default function ProfilePage() {
                     </label>
                     <input
                       type="email"
-                      defaultValue="parent@familytask.com"
+                      defaultValue="parent@familytask.co"
                       className="styled-input w-full px-4 py-3 border border-[#e2e8f0] rounded-xl font-inherit overflow-hidden text-ellipsis"
                     />
                   </div>
