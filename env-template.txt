@@ -18,3 +18,7 @@ LEMONSQUEEZY_WEBHOOK_SECRET=your-webhook-secret  # Get when creating webhook in 
 NEXT_PUBLIC_LEMONSQUEEZY_MONTHLY_VARIANT_ID=your-monthly-variant-id
 NEXT_PUBLIC_LEMONSQUEEZY_YEARLY_VARIANT_ID=your-yearly-variant-id
 NEXT_PUBLIC_LEMONSQUEEZY_LIFETIME_VARIANT_ID=your-lifetime-variant-id
+
+# Resend Email Service (for support auto-replies)
+RESEND_API_KEY=re_your_api_key  # Get from Resend Dashboard → API Keys
+RESEND_WEBHOOK_SECRET=your_webhook_secret  # Get when creating webhook in Resend Dashboard
