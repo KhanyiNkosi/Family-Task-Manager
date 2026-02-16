@@ -407,7 +407,8 @@ export default function MyRewardsPage() {
       const parentId = parentProfile.id;
       
       // Create a notification for the PARENT (not the child)
-      const { error } = await supabase
+      console.log('Creating reward suggestion notification for parent:', parentProfile.id);
+      const { data: notificationData, error } = await supabase
         .from('notifications')
         .insert({
           user_id: parentId,
@@ -426,14 +427,25 @@ export default function MyRewardsPage() {
             suggested_by: user.id,
             suggested_by_name: profile.full_name
           }
-        });
+        })
+        .select();  // 🔍 IMPORTANT: .select() to verify insert succeeded
 
       if (error) {
-        console.error('Error creating suggestion:', error);
+        console.error('❌ Error creating suggestion:', error);
         showAlert('Failed to send suggestion: ' + error.message, "error");
         return;
       }
 
+      if (!notificationData || notificationData.length === 0) {
+        console.error('❌ Notification not created - RLS policy may be blocking');
+        console.error('   Child ID:', user.id);
+        console.error('   Parent ID:', parentProfile.id);
+        console.error('   Family ID:', profile.family_id);
+        showAlert('Failed to send suggestion - permission denied. Please contact support.', "error");
+        return;
+      }
+      
+      console.log('✅ Reward suggestion notification created successfully:', notificationData[0].id);
       showAlert(`Reward suggestion sent to parents!\n\n"${name}"\nYour parents will review your suggestion.`, "success");
     } catch (error) {
       console.error('Error in handleSuggestReward:', error);

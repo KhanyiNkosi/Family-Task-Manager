@@ -155,6 +155,8 @@ export default function RewardsStorePage() {
         setRewards(rewardsData);
       }
     } catch (error) {
+      // Ignore AbortError - normal when navigating away
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error in loadRewards:', error);
     }
   };
@@ -226,19 +228,44 @@ export default function RewardsStorePage() {
   };
 
   const loadSuggestions = async () => {
+    console.log('🔍 loadSuggestions called on Rewards Store page');
     try {
       const supabase = createClientSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) return;
+      if (!user) {
+        console.log('No user logged in, skipping suggestions load');
+        return;
+      }
+      console.log('Loading suggestions for user:', user.id);
+
+      // First, check ALL notifications for this user to debug
+      const { data: allNotifs } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .limit(10);
+      
+      console.log('📋 ALL notifications for user:', allNotifs?.length || 0, allNotifs);
+      
+      // Filter to show only relevant fields
+      if (allNotifs && allNotifs.length > 0) {
+        console.log('📋 Notification details:', allNotifs.map(n => ({
+          id: n.id,
+          action_url: n.action_url,
+          read: n.read,
+          title: n.title,
+          created_at: n.created_at
+        })));
+      }
 
       // Load reward suggestion notifications for this parent
+      // Don't filter by read status - suggestions should stay until approved/rejected
       const { data: notificationsData, error } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .eq('action_url', '/rewards-store')
-        .eq('read', false)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -246,10 +273,16 @@ export default function RewardsStorePage() {
         return;
       }
 
+      console.log('✅ Found suggestions:', notificationsData?.length || 0);
       if (notificationsData) {
+        console.log('Loaded suggestions:', notificationsData.length, notificationsData);
         setSuggestions(notificationsData as RewardSuggestion[]);
+      } else {
+        console.log('No suggestions found');
       }
     } catch (error) {
+      // Ignore AbortError - normal when navigating away
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error in loadSuggestions:', error);
     }
   };
@@ -309,14 +342,14 @@ export default function RewardsStorePage() {
         return;
       }
 
-      // Mark notification as read (or delete it)
+      // Delete the notification since the suggestion has been handled
       const { error: notifError } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .delete()
         .eq('id', suggestion.id);
 
       if (notifError) {
-        console.error('Error updating notification:', notifError);
+        console.error('Error deleting notification:', notifError);
       }
 
       // Notify the child that their suggestion was approved
@@ -360,14 +393,14 @@ export default function RewardsStorePage() {
     try {
       const supabase = createClientSupabaseClient();
 
-      // Mark notification as read
+      // Delete the notification since the suggestion has been rejected
       const { error } = await supabase
         .from('notifications')
-        .update({ read: true })
+        .delete()
         .eq('id', suggestion.id);
 
       if (error) {
-        console.error('Error updating notification:', error);
+        console.error('Error deleting notification:', error);
         showAlert('Failed to reject suggestion', "error");
         return;
       }
@@ -424,7 +457,7 @@ export default function RewardsStorePage() {
         .from('reward_redemptions')
         .select(`
           *,
-          reward:rewards(*)
+          reward:rewards!reward_id(*)
         `)
         .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
@@ -435,27 +468,30 @@ export default function RewardsStorePage() {
       }
 
       if (redemptionsData) {
-        // Filter to only show redemptions for rewards in this family
-        const familyRedemptions = redemptionsData.filter(r => 
-          r.reward && r.reward.family_id === profile.family_id
-        );
-        
-        // Enrich with user data
-        const userIds = [...new Set(familyRedemptions.map(r => r.user_id))];
-        const { data: usersData } = await supabase
+        // Get user profiles for each redemption
+        const userIds = redemptionsData.map(r => r.user_id);
+        const { data: profilesData } = await supabase
           .from('profiles')
           .select('id, full_name')
           .in('id', userIds);
-        
-        const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
-        const enrichedRedemptions = familyRedemptions.map(r => ({
+
+        // Map profiles to redemptions
+        const redemptionsWithUsers = redemptionsData.map(r => ({
           ...r,
-          user: usersMap.get(r.user_id)
+          user: profilesData?.find(p => p.id === r.user_id)
         }));
+
+        // Filter to only show redemptions for rewards in this family
+        const familyRedemptions = redemptionsWithUsers.filter(r => 
+          r.reward && r.reward.family_id === profile.family_id
+        );
         
-        setRedemptions(enrichedRedemptions);
+        console.log('Loaded redemptions:', familyRedemptions.length, familyRedemptions);
+        setRedemptions(familyRedemptions);
       }
     } catch (error) {
+      // Ignore AbortError - normal when navigating away
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Error in loadRedemptions:', error);
     }
   };

@@ -737,12 +737,42 @@ export default function ParentDashboard() {
   };
 
   // Complete task
-  const handleCompleteTask = (taskId: string) => {
-    const updatedTasks = activeTasks?.map(task =>
-      task.id === taskId ? { ...task, status: "completed" as const } : task
-    );
-    setActiveTasks(updatedTasks);
-    showAlert("Task marked as completed!", "success");
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      const supabase = createClientSupabaseClient();
+      
+      // Update task in database - parent completing task should also approve it
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          completed: true,
+          approved: true,
+          completed_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error completing task:', error);
+        showAlert('Failed to mark task as completed', "error");
+        return;
+      }
+
+      // Update local state - keep task but mark as completed and approved
+      const updatedTasks = activeTasks?.map(task =>
+        task.id === taskId 
+          ? { ...task, status: "approved" as const, completed: true, approved: true, completed_at: new Date().toISOString() } 
+          : task
+      );
+      setActiveTasks(updatedTasks);
+      
+      // Reload children to update points
+      await loadChildren();
+      
+      showAlert("Task marked as completed and approved!", "success");
+    } catch (error) {
+      console.error('Error in handleCompleteTask:', error);
+      showAlert('Failed to mark task as completed', "error");
+    }
   };
 
   // Approve task completion
@@ -1130,12 +1160,15 @@ export default function ParentDashboard() {
   const pendingTasks = activeTasks?.filter(task => task.status === 'pending').length || 0;
   const completedTasks = activeTasks?.filter(task => task.completed && task.approved).length || 0;
   
-  console.log('Dashboard stats:', { 
-    totalTasks: activeTasks?.length,
-    pendingTasks, 
-    completedTasks,
-    activeTasks: activeTasks?.map(t => ({ title: t.title, completed: t.completed, approved: t.approved }))
-  });
+  // Debug logging (remove after testing)
+  if (typeof window !== 'undefined') {
+    console.log('Task counts:', { 
+      total: activeTasks?.length, 
+      pending: pendingTasks, 
+      completed: completedTasks,
+      completedAndApproved: activeTasks?.filter(t => t.completed && t.approved).length
+    });
+  }
 
   const handleLogout = async () => {
     const confirmed = await showConfirm("Are you sure you want to logout?");
