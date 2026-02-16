@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { XMarkIcon, BellIcon, ExclamationTriangleIcon, CheckCircleIcon, InformationCircleIcon } from "@heroicons/react/24/outline";
 
 export type NotificationType = "info" | "success" | "warning" | "error" | "task" | "reward";
@@ -31,6 +32,7 @@ export default function NotificationAlert({
   maxNotifications = 3,
   autoClose = 5000
 }: NotificationAlertProps) {
+  const router = useRouter();
   const [visibleNotifications, setVisibleNotifications] = useState<Notification[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -102,6 +104,10 @@ export default function NotificationAlert({
     }
   };
 
+  const handleNavigate = (url: string) => {
+    router.push(url);
+  };
+
   const unreadCount = notifications.filter(n => !n.read).length;
 
   if (visibleNotifications.length === 0 && !isExpanded) {
@@ -158,12 +164,12 @@ export default function NotificationAlert({
                     </div>
                     <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
                     {notification.actionUrl && (
-                      <a
-                        href={notification.actionUrl}
-                        className="inline-block mt-2 text-sm font-medium text-[#00C2E0] hover:text-[#00a8c2]"
+                      <button
+                        onClick={() => handleNavigate(notification.actionUrl!)}
+                        className="inline-block mt-2 text-sm font-medium text-[#00C2E0] hover:text-[#00a8c2] cursor-pointer"
                       >
                         {notification.actionText || "View Details"}
-                      </a>
+                      </button>
                     )}
                   </div>
                   <div className="flex flex-col space-y-1 ml-2">
@@ -213,12 +219,12 @@ export default function NotificationAlert({
               </div>
               <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
               {notification.actionUrl && (
-                <a
-                  href={notification.actionUrl}
-                  className="inline-block mt-2 text-sm font-medium text-[#00C2E0] hover:text-[#00a8c2]"
+                <button
+                  onClick={() => handleNavigate(notification.actionUrl!)}
+                  className="inline-block mt-2 text-sm font-medium text-[#00C2E0] hover:text-[#00a8c2] cursor-pointer"
                 >
                   {notification.actionText || "View Details"}
-                </a>
+                </button>
               )}
             </div>
           </div>

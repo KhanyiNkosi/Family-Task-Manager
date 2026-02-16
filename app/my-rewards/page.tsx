@@ -376,23 +376,41 @@ export default function MyRewardsPage() {
       }
 
       // Find the parent in the family to send notification
-      const { data: parentProfile } = await supabase
-        .from('profiles')
+      // Step 1: Get all parent user IDs
+      const { data: parentUsers, error: parentUsersError } = await supabase
+        .from('user_profiles')
         .select('id')
-        .eq('family_id', profile.family_id)
-        .eq('role', 'parent')
-        .single();
-
-      if (!parentProfile) {
+        .eq('role', 'parent');
+      
+      if (parentUsersError || !parentUsers || parentUsers.length === 0) {
+        console.error('Error loading parent users:', parentUsersError);
         showAlert('Could not find a parent to send suggestion to', "error");
         return;
       }
-
+      
+      const parentIds = parentUsers.map(p => p.id);
+      
+      // Step 2: Find which parent is in this family
+      const { data: parentProfile, error: parentProfileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('family_id', profile.family_id)
+        .in('id', parentIds)
+        .maybeSingle();
+      
+      if (parentProfileError || !parentProfile) {
+        console.error('Parent lookup error:', parentProfileError);
+        showAlert('Could not find a parent to send suggestion to', "error");
+        return;
+      }
+      
+      const parentId = parentProfile.id;
+      
       // Create a notification for the PARENT (not the child)
       const { error } = await supabase
         .from('notifications')
         .insert({
-          user_id: parentProfile.id,  // ✅ Send to parent, not child
+          user_id: parentId,
           family_id: profile.family_id,
           type: 'info',
           title: 'New Reward Suggestion 💡',

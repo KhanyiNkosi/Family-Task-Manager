@@ -255,6 +255,16 @@ export default function RewardsStorePage() {
   };
 
   const handleApproveSuggestion = async (suggestion: RewardSuggestion) => {
+    // Check if user has premium subscription
+    if (!isPremium) {
+      showAlert('Premium subscription required to approve reward suggestions.\n\nUpgrade to premium to approve suggestions from your children!', "warning");
+      // Optionally redirect to upgrade page after a delay
+      setTimeout(() => {
+        router.push('/settings?tab=subscription');
+      }, 3000);
+      return;
+    }
+
     const confirmed = await showConfirm(`Create reward "${suggestion.metadata.reward_name}" for ${suggestion.metadata.suggested_points} points?`);
     if (!confirmed) return;
 
@@ -334,6 +344,16 @@ export default function RewardsStorePage() {
   };
 
   const handleRejectSuggestion = async (suggestion: RewardSuggestion) => {
+    // Check if user has premium subscription
+    if (!isPremium) {
+      showAlert('Premium subscription required to respond to reward suggestions.\n\nUpgrade to premium to approve or reject suggestions from your children!', "warning");
+      // Optionally redirect to upgrade page after a delay
+      setTimeout(() => {
+        router.push('/settings?tab=subscription');
+      }, 3000);
+      return;
+    }
+
     const confirmed = await showConfirm(`Reject suggestion "${suggestion.metadata.reward_name}"?`);
     if (!confirmed) return;
 
@@ -399,13 +419,12 @@ export default function RewardsStorePage() {
 
       if (!profile?.family_id) return;
 
-      // Load pending reward redemptions for this family
+      // Load pending reward redemptions for this family (without user join first)
       const { data: redemptionsData, error } = await supabase
         .from('reward_redemptions')
         .select(`
           *,
-          reward:rewards(*),
-          user:profiles(id, full_name)
+          reward:rewards(*)
         `)
         .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
@@ -420,7 +439,21 @@ export default function RewardsStorePage() {
         const familyRedemptions = redemptionsData.filter(r => 
           r.reward && r.reward.family_id === profile.family_id
         );
-        setRedemptions(familyRedemptions);
+        
+        // Enrich with user data
+        const userIds = [...new Set(familyRedemptions.map(r => r.user_id))];
+        const { data: usersData } = await supabase
+          .from('profiles')
+          .select('id, full_name')
+          .in('id', userIds);
+        
+        const usersMap = new Map(usersData?.map(u => [u.id, u]) || []);
+        const enrichedRedemptions = familyRedemptions.map(r => ({
+          ...r,
+          user: usersMap.get(r.user_id)
+        }));
+        
+        setRedemptions(enrichedRedemptions);
       }
     } catch (error) {
       console.error('Error in loadRedemptions:', error);
@@ -590,6 +623,29 @@ export default function RewardsStorePage() {
                 </span>
               </h2>
             </div>
+
+            {/* Premium Upgrade Notice for Non-Premium Users */}
+            {!isPremium && (
+              <div className="mb-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl p-4 shadow-lg flex items-start gap-4">
+                <div className="flex-shrink-0">
+                  <i className="fas fa-crown text-3xl text-yellow-200"></i>
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-lg mb-1">Premium Feature</h3>
+                  <p className="text-sm text-white/90">
+                    Your children can suggest rewards anytime, but responding to suggestions requires a Premium subscription.
+                    Upgrade now to approve or reject their creative ideas and manage your family's rewards!
+                  </p>
+                  <button
+                    onClick={() => router.push('/settings?tab=subscription')}
+                    className="mt-3 px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-gray-100 transition"
+                  >
+                    <i className="fas fa-star mr-2"></i>
+                    Upgrade to Premium
+                  </button>
+                </div>
+              </div>
+            )}
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {suggestions.map((suggestion) => (
@@ -618,15 +674,41 @@ export default function RewardsStorePage() {
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t border-purple-100">
                     <button
                       onClick={() => handleApproveSuggestion(suggestion)}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:shadow-lg transition font-semibold"
+                      className={`flex-1 px-4 py-2 ${
+                        isPremium
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-lg'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-lg'
+                      } text-white rounded-lg transition font-semibold relative group`}
+                      title={isPremium ? 'Approve suggestion' : 'Premium feature - Click to upgrade'}
                     >
+                      {!isPremium && (
+                        <i className="fas fa-crown mr-2 text-yellow-200"></i>
+                      )}
                       <i className="fas fa-check mr-2"></i> Approve & Add
+                      {!isPremium && (
+                        <span className="absolute -top-2 -right-2 bg-yellow-400 text-xs text-gray-900 px-2 py-1 rounded-full font-bold shadow-lg">
+                          Premium
+                        </span>
+                      )}
                     </button>
                     <button
                       onClick={() => handleRejectSuggestion(suggestion)}
-                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-semibold"
+                      className={`px-4 py-2 ${
+                        isPremium
+                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg'
+                      } rounded-lg transition font-semibold relative group`}
+                      title={isPremium ? 'Reject suggestion' : 'Premium feature - Click to upgrade'}
                     >
+                      {!isPremium && (
+                        <i className="fas fa-crown mr-2 text-yellow-200"></i>
+                      )}
                       <i className="fas fa-times mr-2"></i> Reject
+                      {!isPremium && (
+                        <span className="absolute -top-2 -right-2 bg-yellow-400 text-xs text-gray-900 px-2 py-1 rounded-full font-bold shadow-lg">
+                          Premium
+                        </span>
+                      )}
                     </button>
                   </div>
                 </div>
