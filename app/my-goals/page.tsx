@@ -70,6 +70,8 @@ export default function MyGoalsPage() {
       const supabase = createClientSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
 
+      if (!user) return;
+
       const imageKey = user ? `childProfileImage:${user.id}` : "childProfileImage";
       const avatarKey = user ? `childAvatar:${user.id}` : "childAvatar";
       const goalsKey = user ? `childGoals:${user.id}` : "childGoals";  // ✅ User-specific key
@@ -90,8 +92,34 @@ export default function MyGoalsPage() {
 
     loadLocalProfile();
 
+    // Listen for goals updates from global GoalsAutoUpdater component
+    const handleGoalsUpdate = (event: CustomEvent) => {
+      console.log('🔔 [MyGoals] Received goals update event:', event.detail);
+      if (isMounted) {
+        setGoals(event.detail);
+        
+        // Show completion alerts
+        const currentGoals = goals;
+        const updatedGoals = event.detail;
+        const newlyCompleted = updatedGoals.filter((g: Goal, i: number) => 
+          g.status === 'completed' && currentGoals[i]?.status === 'active'
+        );
+        
+        if (newlyCompleted.length > 0) {
+          console.log('🎉 [MyGoals] Goals completed:', newlyCompleted);
+          newlyCompleted.forEach((goal: Goal) => {
+            showAlert(`🎉 Goal Completed: "${goal.title}"!`, "success");
+          });
+        }
+      }
+    };
+
+    // Add event listener for goals updates
+    window.addEventListener('goalsUpdated', handleGoalsUpdate as EventListener);
+
     return () => {
       isMounted = false;
+      window.removeEventListener('goalsUpdated', handleGoalsUpdate as EventListener);
     };
   }, []);
 
@@ -124,7 +152,7 @@ export default function MyGoalsPage() {
       { label: "Description", placeholder: "What do you want to achieve?", type: "text" },
       { label: "Goal Type*", placeholder: "Select type", type: "select", options: ["daily", "weekly", "monthly"] },
       { label: "Target Value*", placeholder: "e.g., 10", type: "number" },
-      { label: "Unit", placeholder: "e.g., tasks, points, hours", type: "text" },
+      { label: "Unit*", placeholder: "Select unit", type: "select", options: ["tasks", "points", "hours", "minutes", "items"] },
     ]);
 
     if (values[0] && values[2] && values[3]) {
@@ -275,6 +303,24 @@ export default function MyGoalsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6">
+        {/* AUTO-UPDATE INFO BANNER */}
+        <div className="mb-6 bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0">
+              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center">
+                <i className="fas fa-magic text-white"></i>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-gray-800 mb-1">✨ Auto-Tracking Enabled!</h3>
+              <p className="text-sm text-gray-700">
+                Goals with unit "tasks" will automatically update when you complete tasks - even when you're on other pages! 
+                <span className="font-medium"> Create a goal like "Complete 10 tasks" (daily/weekly/monthly) and watch it progress as you work.</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* CREATE GOAL BUTTON */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -356,8 +402,15 @@ export default function MyGoalsPage() {
                     <div key={goal.id} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all border border-blue-200">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 border ${getTypeColor(goal.type)}`}>
-                            {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(goal.type)}`}>
+                              {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
+                            </div>
+                            {goal.unit.toLowerCase().includes('task') && (
+                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300">
+                                <i className="fas fa-magic"></i> Auto-tracking
+                              </div>
+                            )}
                           </div>
                           <h4 className="text-lg font-bold text-gray-800">{goal.title}</h4>
                           {goal.description && (
@@ -426,8 +479,15 @@ export default function MyGoalsPage() {
                     <div key={goal.id} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all border border-purple-200">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 border ${getTypeColor(goal.type)}`}>
-                            {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(goal.type)}`}>
+                              {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
+                            </div>
+                            {goal.unit.toLowerCase().includes('task') && (
+                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300">
+                                <i className="fas fa-magic"></i> Auto-tracking
+                              </div>
+                            )}
                           </div>
                           <h4 className="text-lg font-bold text-gray-800">{goal.title}</h4>
                           {goal.description && (
@@ -496,8 +556,15 @@ export default function MyGoalsPage() {
                     <div key={goal.id} className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all border border-green-200">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
-                          <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold mb-2 border ${getTypeColor(goal.type)}`}>
-                            {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
+                          <div className="flex items-center gap-2 mb-2">
+                            <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(goal.type)}`}>
+                              {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
+                            </div>
+                            {goal.unit.toLowerCase().includes('task') && (
+                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300">
+                                <i className="fas fa-magic"></i> Auto-tracking
+                              </div>
+                            )}
                           </div>
                           <h4 className="text-lg font-bold text-gray-800">{goal.title}</h4>
                           {goal.description && (

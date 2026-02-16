@@ -31,11 +31,12 @@ interface Task {
 }
 
 interface Child {
-  id: number;
+  id: string; // Changed from number to string (UUID)
   name: string;
-  points: number;
-  avatar: string;
-  tasksCompleted: number;
+  total_points?: number; // Changed from points to match actual data
+  points?: number; // Keep for backwards compatibility
+  avatar?: string; // Made optional
+  tasksCompleted?: number; // Made optional
 }
 
 interface BulletinMessage {
@@ -182,6 +183,12 @@ export default function ParentDashboard() {
   const [taskStatusFilter, setTaskStatusFilter] = useState<"all" | "pending" | "completed">("all");
   const [taskCategoryFilter, setTaskCategoryFilter] = useState<string>("all");
   const [taskSortBy, setTaskSortBy] = useState<"date" | "points" | "name">("date");
+
+  // Completed tasks count (separate from activeTasks since approved tasks are excluded)
+  const [completedTasksCount, setCompletedTasksCount] = useState(0);
+  
+  // Per-child approved tasks count for progress tracking
+  const [childApprovedCounts, setChildApprovedCounts] = useState<Record<string, number>>({});
 
   // Loading state to prevent concurrent calls
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -571,6 +578,31 @@ export default function ParentDashboard() {
 
       if (!profile?.family_id) return;
 
+      // Load completed/approved tasks count separately (since they're excluded from the main query)
+      const { count: approvedCount } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', user.id)
+        .eq('approved', true);
+      
+      setCompletedTasksCount(approvedCount || 0);
+      
+      // Load per-child approved task counts for progress tracking
+      const { data: approvedTasks } = await supabase
+        .from('tasks')
+        .select('assigned_to')
+        .eq('created_by', user.id)
+        .eq('approved', true);
+      
+      // Count approved tasks per child
+      const childCounts: Record<string, number> = {};
+      approvedTasks?.forEach(task => {
+        if (task.assigned_to) {
+          childCounts[task.assigned_to] = (childCounts[task.assigned_to] || 0) + 1;
+        }
+      });
+      setChildApprovedCounts(childCounts);
+
       // Load all tasks for this family, with status filter if needed
       let query = supabase
         .from('tasks')
@@ -757,13 +789,8 @@ export default function ParentDashboard() {
         return;
       }
 
-      // Update local state - keep task but mark as completed and approved
-      const updatedTasks = activeTasks?.map(task =>
-        task.id === taskId 
-          ? { ...task, status: "approved" as const, completed: true, approved: true, completed_at: new Date().toISOString() } 
-          : task
-      );
-      setActiveTasks(updatedTasks);
+      // Reload tasks to update completed count and remove from active tasks
+      await loadTasks();
       
       // Reload children to update points
       await loadChildren();
@@ -807,8 +834,8 @@ export default function ParentDashboard() {
 
       console.log('Task approved successfully!');
 
-      // Remove task from UI immediately - it's now completed and approved
-      setActiveTasks(activeTasks.filter(t => t.id !== taskId));
+      // Reload tasks to update completed count and remove from active tasks
+      await loadTasks();
       
       // Points are calculated dynamically from approved tasks in database
       // Reload children data to reflect updated points
@@ -842,10 +869,8 @@ export default function ParentDashboard() {
         return;
       }
 
-      // Update local state
-      setActiveTasks(activeTasks.map(task =>
-        task.id === taskId ? { ...task, status: 'pending', completed: false, completed_at: undefined } : task
-      ));
+      // Reload tasks to update counts
+      await loadTasks();
       
       showAlert('Task rejected and sent back to child', "success");
     } catch (error) {
@@ -1158,7 +1183,8 @@ export default function ParentDashboard() {
   // Calculate totals
   const totalPoints = familyChildren?.reduce((sum, child) => sum + (child.total_points || 0), 0) || 0;
   const pendingTasks = activeTasks?.filter(task => task.status === 'pending').length || 0;
-  const completedTasks = activeTasks?.filter(task => task.completed && task.approved).length || 0;
+  // Use the completedTasksCount from database (approved tasks are excluded from activeTasks)
+  const completedTasks = completedTasksCount;
   
   // Debug logging (remove after testing)
   if (typeof window !== 'undefined') {
@@ -1786,7 +1812,12 @@ export default function ParentDashboard() {
                     </div>
                   ) : (
                     familyChildren.map((child) => {
-                      const completedTasks = activeTasks?.filter(t => t.assigned_to === child.id && t.approved).length || 0;
+                      // Get counts for this child
+                      const approvedCount = childApprovedCounts[child.id] || 0;
+                      const currentTasksCount = activeTasks?.filter(t => t.assigned_to === child.id).length || 0;
+                      const totalTasksCount = currentTasksCount + approvedCount;
+                      const progressPercentage = totalTasksCount > 0 ? Math.round((approvedCount / totalTasksCount) * 100) : 0;
+                      
                       return (
                         <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                           <div className="flex items-center gap-4">
@@ -1802,7 +1833,7 @@ export default function ParentDashboard() {
                                 </span>
                                 <span className="text-sm text-gray-600">
                                   <i className="fas fa-check-circle text-green-500 mr-1"></i>
-                                  {completedTasks} completed
+                                  {approvedCount} completed
                                 </span>
                               </div>
                             </div>
@@ -1811,12 +1842,12 @@ export default function ParentDashboard() {
                               <div className="flex items-center gap-2">
                                 <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                                   <div 
-                                    className="h-full bg-gradient-to-r from-green-400 to-green-500"
-                                    style={{ width: `${Math.min((completedTasks / Math.max(activeTasks?.filter(t => t.assigned_to === child.id).length || 1, 1)) * 100, 100)}%` }}
+                                    className="h-full bg-gradient-to-r from-green-400 to-green-500 transition-all duration-500"
+                                    style={{ width: `${progressPercentage}%` }}
                                   ></div>
                                 </div>
                                 <span className="text-xs font-semibold text-gray-600">
-                                  {activeTasks?.filter(t => t.assigned_to === child.id).length || 0}
+                                  {totalTasksCount}
                                 </span>
                               </div>
                             </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState<"account" | "avatar">("avatar");
@@ -100,8 +101,22 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     const confirmed = await showConfirm("Are you sure you want to logout?");
     if (confirmed) {
-      showAlert("Logged out! (In a real app, this would clear session)", "info");
-      setTimeout(() => router.push("/"), 1500);
+      try {
+        const supabase = createClientSupabaseClient();
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          showAlert("Error logging out. Please try again.", "error");
+          console.error('Logout error:', error);
+          return;
+        }
+        
+        showAlert("Successfully logged out!", "success");
+        setTimeout(() => router.push("/"), 1000);
+      } catch (error) {
+        console.error('Logout error:', error);
+        showAlert("Error logging out. Please try again.", "error");
+      }
     }
   };
 

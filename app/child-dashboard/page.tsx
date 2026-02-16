@@ -116,6 +116,7 @@ export default function ChildDashboardPage() {
   const [points, setPoints] = useState(0);
   const [userName, setUserName] = useState("");
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [approvedTasksCount, setApprovedTasksCount] = useState(0); // Track approved tasks separately
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [redemptions, setRedemptions] = useState<RewardRedemption[]>([]);
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
@@ -307,6 +308,16 @@ export default function ChildDashboardPage() {
           console.log('No tasks data returned (null/undefined)');
         }
         
+        // Fetch count of approved tasks separately for progress tracking
+        const { count: approvedCount } = await supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('assigned_to', user.id)
+          .eq('approved', true);
+        
+        setApprovedTasksCount(approvedCount || 0);
+        console.log('Approved tasks count:', approvedCount);
+        
         // Load available rewards for the family
         const { data: profile } = await supabase
           .from('profiles')
@@ -454,6 +465,15 @@ export default function ChildDashboardPage() {
                   console.log('Real-time: After filtering approved:', unapprovedTasks.length, 'tasks');
                   setTasks(unapprovedTasks);
                 }
+                
+                // Fetch count of approved tasks separately
+                const { count: approvedCount } = await supabase
+                  .from('tasks')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('assigned_to', user.id)
+                  .eq('approved', true);
+                
+                setApprovedTasksCount(approvedCount || 0);
 
                 // Recalculate points dynamically
                 const { data: allTasks } = await supabase
@@ -1312,9 +1332,12 @@ export default function ChildDashboardPage() {
 
   const stats = {
     todo: tasks.filter(t => !t.completed && !t.approved).length,
-    completed: tasks.filter(t => t.completed && !t.approved).length,
+    completed: tasks.filter(t => t.completed).length + approvedTasksCount,  // Completed tasks shown + approved tasks (not shown)
     redeemed: redemptions.filter(r => r.status === 'approved').length
   };
+  
+  // Total tasks for progress calculation (shown tasks + approved tasks)
+  const totalTasks = tasks.length + approvedTasksCount;
 
   const todoTasks = tasks.filter(task => !task.completed && !task.approved);
   const completedTasks = tasks.filter(task => task.completed && !task.approved);
@@ -1851,17 +1874,20 @@ export default function ChildDashboardPage() {
             <div>
               <div className="flex justify-between mb-2">
                 <span className="text-[#006372] font-medium">Weekly Goal</span>
-                <span className="font-bold text-[#00C2E0]">{Math.round((stats.completed / tasks.length) * 100)}%</span>
+                <span className="font-bold text-[#00C2E0]">{totalTasks > 0 ? Math.round((stats.completed / totalTasks) * 100) : 0}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-3">
                 <div
                   className="bg-gradient-to-r from-cyan-500 to-teal-500 h-3 rounded-full transition-all duration-500"
-                  style={{ width: `${(stats.completed / tasks.length) * 100}%` }}
+                  style={{ width: `${totalTasks > 0 ? (stats.completed / totalTasks) * 100 : 0}%` }}
                 ></div>
               </div>
             </div>
             <div className="text-center text-gray-600 text-sm">
-              Complete {tasks.length - stats.completed} more tasks this week to reach 100%!
+              {stats.completed >= totalTasks ? 
+                '🎉 Amazing! You completed all your tasks!' :
+                `Complete ${totalTasks - stats.completed} more ${totalTasks - stats.completed === 1 ? 'task' : 'tasks'} this week to reach 100%!`
+              }
             </div>
           </div>
         </div>

@@ -94,14 +94,21 @@ export default function ContactSupportPage() {
               </p>
               <div className="space-y-3">
                 <Link
-                  href="/login"
+                  href="/my-support-tickets"
                   className="block w-full bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-xl font-bold hover:opacity-90 transition text-center"
+                >
+                  <i className="fas fa-ticket-alt mr-2"></i>
+                  View My Tickets
+                </Link>
+                <Link
+                  href="/login"
+                  className="block w-full text-[#00C2E0] py-3 rounded-xl font-medium hover:bg-gray-50 transition text-center border border-[#00C2E0]"
                 >
                   Back to Login
                 </Link>
                 <button
                   onClick={() => setSuccess(false)}
-                  className="block w-full text-[#00C2E0] py-3 rounded-xl font-medium hover:bg-gray-50 transition"
+                  className="block w-full text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition"
                 >
                   Send Another Message
                 </button>
