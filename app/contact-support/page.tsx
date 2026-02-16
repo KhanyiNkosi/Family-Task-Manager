@@ -234,11 +234,11 @@ export default function ContactSupportPage() {
             <p className="text-sm text-gray-600 mb-3">Need immediate help?</p>
             <div className="flex justify-center gap-4">
               <a
-                href="mailto:support@familytask.com"
+                href="mailto:support@familytask.co"
                 className="text-sm text-[#00C2E0] hover:underline font-medium inline-flex items-center gap-2"
               >
                 <i className="fas fa-envelope"></i>
-                support@familytask.com
+                support@familytask.co
               </a>
             </div>
           </div>

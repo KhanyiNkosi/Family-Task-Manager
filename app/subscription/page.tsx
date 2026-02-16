@@ -70,7 +70,7 @@ export default function SubscriptionPage() {
   const handleCancelSubscription = async () => {
     setAlertModal({
       show: true,
-      message: 'To cancel your subscription, please contact support@familytaskmanager.com or manage it directly from your Lemon Squeezy customer dashboard.',
+      message: 'To cancel your subscription, please contact support@familytask.co or manage it directly from your Lemon Squeezy customer dashboard.',
       type: 'info'
     });
     setShowCancelModal(false);

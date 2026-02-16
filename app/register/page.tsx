@@ -91,6 +91,18 @@ export default function RegisterPage() {
     setErrors({});
 
     try {
+      // Check registration limit first (app-level check)
+      const limitResponse = await fetch('/api/check-registration-limit');
+      const limitData = await limitResponse.json();
+      
+      if (!limitData.allowed) {
+        setErrors({ 
+          general: limitData.message || 'Registration is currently at capacity. Please try again later or contact support@familytask.co' 
+        });
+        setLoading(false);
+        return;
+      }
+
       // If child, validate family code first
       if (formData.role === "child") {
         const validateResponse = await fetch('/api/family/validate', {
