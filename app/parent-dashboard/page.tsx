@@ -98,7 +98,7 @@ export default function ParentDashboard() {
   } = useNotifications();
 
   
-  // Load profile image for the current parent (avoid cross-account reuse)
+  // Load profile image and family code for the current parent
   useEffect(() => {
     let isMounted = true;
 
@@ -120,7 +120,7 @@ export default function ParentDashboard() {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("profile_image")
+        .select("profile_image, family_id")
         .eq("id", userId)
         .single();
 
@@ -134,6 +134,10 @@ export default function ParentDashboard() {
 
       if (isMounted) {
         setParentProfileImage(profileImage);
+        // Set family code (family_id is the code)
+        if (profile?.family_id) {
+          setFamilyCode(profile.family_id);
+        }
       }
     };
 
@@ -192,6 +196,10 @@ export default function ParentDashboard() {
 
   // Loading state to prevent concurrent calls
   const [isLoadingData, setIsLoadingData] = useState(false);
+
+  // Family code state
+  const [familyCode, setFamilyCode] = useState<string>("");
+  const [codeCopied, setCodeCopied] = useState(false);
 
   // Modal states
   const [alertModal, setAlertModal] = useState({ show: false, message: "", type: "info" as "info" | "success" | "error" | "warning" });
@@ -1395,6 +1403,39 @@ export default function ParentDashboard() {
               </div>
             </div>
           </header>
+
+          {/* Family Code Card - Compact Display */}
+          {familyCode && (
+            <div className="mb-8">
+              <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 rounded-xl shadow-lg p-4 text-white">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center">
+                      <i className="fas fa-users text-lg"></i>
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-lg font-bold mb-1">Your Family Code</h2>
+                      <p className="text-sm font-mono font-semibold tracking-wide break-all">
+                        {familyCode}
+                      </p>
+                      <p className="text-white/80 text-xs mt-1">Share with children to join your family</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(familyCode);
+                      setCodeCopied(true);
+                      setTimeout(() => setCodeCopied(false), 2000);
+                    }}
+                    className="px-4 py-2 bg-white text-indigo-600 rounded-lg font-semibold hover:bg-indigo-50 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <i className={`fas ${codeCopied ? 'fa-check' : 'fa-copy'} text-sm`}></i>
+                    <span className="hidden sm:inline">{codeCopied ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Add Child Section */}
           <div className="mb-8">
