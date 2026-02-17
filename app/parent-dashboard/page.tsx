@@ -1422,57 +1422,6 @@ export default function ParentDashboard() {
               </div>
             </div>
 
-            {/* Task Limit Banner for Free Users */}
-            {!isPremium && (
-              <div className={`mt-6 p-4 rounded-xl shadow-md border-2 ${
-                totalFamilyTaskCount >= FAMILY_TASK_LIMIT
-                  ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300'
-                  : totalFamilyTaskCount >= FAMILY_TASK_LIMIT - 1
-                  ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300'
-                  : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300'
-              }`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                      totalFamilyTaskCount >= FAMILY_TASK_LIMIT
-                        ? 'bg-red-500'
-                        : totalFamilyTaskCount >= FAMILY_TASK_LIMIT - 1
-                        ? 'bg-amber-500'
-                        : 'bg-blue-500'
-                    }`}>
-                      <i className="fas fa-tasks text-white text-xl"></i>
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-800">
-                        {totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? (
-                          <>🚨 Task Limit Reached</>
-                        ) : totalFamilyTaskCount >= FAMILY_TASK_LIMIT - 1 ? (
-                          <>⚠️ Almost at Limit</>
-                        ) : (
-                          <>📊 Task Usage</>
-                        )}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {totalFamilyTaskCount} of {FAMILY_TASK_LIMIT} tasks used (free plan)
-                        {totalFamilyTaskCount >= FAMILY_TASK_LIMIT && (
-                          <span className="text-red-600 font-medium"> • Upgrade to create more!</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => router.push('/pricing')}
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition shadow-md hover:shadow-lg flex items-center gap-2"
-                  >
-                    <i className="fas fa-crown"></i>
-                    Upgrade to Premium
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
-              <div className="bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] text-white p-5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm opacity-90">Total Points</p>
@@ -1550,20 +1499,32 @@ export default function ParentDashboard() {
           {/* Free Tier Info Card */}
           {!premiumLoading && !isPremium && (
             <div className="mb-8">
-              <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl shadow-lg p-4 text-white border-2 border-amber-300">
+              <div className={`rounded-xl shadow-lg p-4 text-white border-2 ${
+                totalFamilyTaskCount >= FAMILY_TASK_LIMIT
+                  ? 'bg-gradient-to-r from-red-500 to-orange-600 border-red-300'
+                  : 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-300'
+              }`}>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-3 flex-1">
                     <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                      <i className="fas fa-info-circle text-lg"></i>
+                      <i className={`fas ${
+                        totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? 'fa-exclamation-triangle' : 'fa-info-circle'
+                      } text-lg`}></i>
                     </div>
                     <div className="flex-1">
                       <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-                        Free Plan Limits
+                        {totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? (
+                          <>🚨 Task Limit Reached</>
+                        ) : (
+                          <>Free Plan Limits</>
+                        )}
                         <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Current Plan</span>
                       </h2>
                       <p className="text-white/90 text-xs leading-relaxed">
                         <i className="fas fa-check-circle mr-1"></i>1 child • 
-                        <i className="fas fa-check-circle mr-1 ml-1"></i>3 tasks • 
+                        <i className={`fas ${
+                          totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? 'fa-times-circle' : 'fa-check-circle'
+                        } mr-1 ml-1`}></i><strong>{totalFamilyTaskCount}/{FAMILY_TASK_LIMIT} tasks used</strong> • 
                         <i className="fas fa-check-circle mr-1 ml-1"></i>3 goals per child • 
                         <i className="fas fa-lock mr-1 ml-1"></i>No task deletion
                       </p>
