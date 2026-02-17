@@ -199,6 +199,10 @@ export default function ParentDashboard() {
   // Completed tasks count (separate from activeTasks since approved tasks are excluded)
   const [completedTasksCount, setCompletedTasksCount] = useState(0);
   
+  // Task limit tracking for free users
+  const [totalFamilyTaskCount, setTotalFamilyTaskCount] = useState(0);
+  const FAMILY_TASK_LIMIT = 3;
+  
   // Per-child approved tasks count for progress tracking
   const [childApprovedCounts, setChildApprovedCounts] = useState<Record<string, number>>({});
 
@@ -602,6 +606,14 @@ export default function ParentDashboard() {
         .select('assigned_to')
         .eq('family_id', profile.family_id)
         .eq('approved', true);
+      
+      // Load total family task count for limit tracking
+      const { count: totalCount } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('family_id', profile.family_id);
+      
+      setTotalFamilyTaskCount(totalCount || 0);
       
       // Count approved tasks per child
       const childCounts: Record<string, number> = {};
@@ -1409,6 +1421,55 @@ export default function ParentDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* Task Limit Banner for Free Users */}
+            {!isPremium && (
+              <div className={`mt-6 p-4 rounded-xl shadow-md border-2 ${
+                totalFamilyTaskCount >= FAMILY_TASK_LIMIT
+                  ? 'bg-gradient-to-r from-red-50 to-orange-50 border-red-300'
+                  : totalFamilyTaskCount >= FAMILY_TASK_LIMIT - 1
+                  ? 'bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-300'
+                  : 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                      totalFamilyTaskCount >= FAMILY_TASK_LIMIT
+                        ? 'bg-red-500'
+                        : totalFamilyTaskCount >= FAMILY_TASK_LIMIT - 1
+                        ? 'bg-amber-500'
+                        : 'bg-blue-500'
+                    }`}>
+                      <i className="fas fa-tasks text-white text-xl"></i>
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-800">
+                        {totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? (
+                          <>🚨 Task Limit Reached</>
+                        ) : totalFamilyTaskCount >= FAMILY_TASK_LIMIT - 1 ? (
+                          <>⚠️ Almost at Limit</>
+                        ) : (
+                          <>📊 Task Usage</>
+                        )}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {totalFamilyTaskCount} of {FAMILY_TASK_LIMIT} tasks used (free plan)
+                        {totalFamilyTaskCount >= FAMILY_TASK_LIMIT && (
+                          <span className="text-red-600 font-medium"> • Upgrade to create more!</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => router.push('/pricing')}
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition shadow-md hover:shadow-lg flex items-center gap-2"
+                  >
+                    <i className="fas fa-crown"></i>
+                    Upgrade to Premium
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-8">
               <div className="bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] text-white p-5 rounded-2xl">
