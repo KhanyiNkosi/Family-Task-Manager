@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { lemonSqueezySetup, createCheckout } from '@lemonsqueezy/lemonsqueezy.js';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { createServerSupabaseAuthClient } from '@/lib/supabaseServer';
 
 // Configure Lemon Squeezy
 lemonSqueezySetup({
@@ -20,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get authenticated user
-    const supabase = createRouteHandlerClient({ cookies });
+    const supabase = createServerSupabaseAuthClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     
     if (authError || !user) {
