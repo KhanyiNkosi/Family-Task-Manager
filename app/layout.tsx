@@ -1,4 +1,11 @@
-﻿import type { Metadata } from "next";
+﻿/**
+ * FamilyTask - Family Task Manager
+ * Copyright (c) 2026 FamilyTask. All rights reserved.
+ * 
+ * Root Layout Component
+ */
+
+import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import GoalsAutoUpdater from "./components/GoalsAutoUpdater";

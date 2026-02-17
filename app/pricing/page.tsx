@@ -1,3 +1,10 @@
+/**
+ * FamilyTask - Family Task Manager
+ * Copyright (c) 2026 FamilyTask. All rights reserved.
+ * 
+ * Pricing Page
+ */
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -153,7 +160,7 @@ export default function PricingPage() {
             </div>
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold text-gray-800 mb-2">Monthly</h3>
-              <div className="text-4xl font-bold text-purple-600 mb-2">$4.99</div>
+              <div className="text-4xl font-bold text-purple-600 mb-2">$8.99</div>
               <p className="text-gray-600">per month</p>
             </div>
             <ul className="space-y-3 mb-8">
@@ -198,12 +205,12 @@ export default function PricingPage() {
           {/* Yearly Plan */}
           <div className="bg-gradient-to-br from-purple-600 to-pink-600 text-white rounded-2xl shadow-xl p-8 transform hover:scale-105 transition">
             <div className="absolute top-0 right-0 bg-yellow-400 text-gray-900 px-4 py-1 rounded-bl-lg rounded-tr-lg text-sm font-bold">
-              Save 40%
+              2 Months Free
             </div>
             <div className="text-center mb-6">
               <h3 className="text-2xl font-bold mb-2">Yearly</h3>
-              <div className="text-4xl font-bold mb-2">$35.99</div>
-              <p className="text-purple-100">$2.99/month billed annually</p>
+              <div className="text-4xl font-bold mb-2">$89.90</div>
+              <p className="text-purple-100">$7.49/month billed annually</p>
             </div>
             <ul className="space-y-3 mb-8">
               <li className="flex items-start">
@@ -212,7 +219,7 @@ export default function PricingPage() {
               </li>
               <li className="flex items-start">
                 <span className="text-yellow-300 mr-2">✓</span>
-                <span>Save $24/year</span>
+                <span>Save $18/year</span>
               </li>
               <li className="flex items-start">
                 <span className="text-yellow-300 mr-2">✓</span>

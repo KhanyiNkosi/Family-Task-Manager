@@ -1,3 +1,11 @@
+/**
+ * FamilyTask - Family Task Manager
+ * Copyright (c) 2026 FamilyTask. All rights reserved.
+ * 
+ * Goals Auto-Updater Component
+ * Automatically updates goals when tasks are approved and points are earned
+ */
+
 "use client";
 
 import { useEffect, useState } from 'react';
@@ -62,8 +70,9 @@ export default function GoalsAutoUpdater() {
             // Check if task is assigned to current user and was just approved
             if (payload.new?.assigned_to === user.id) {
               if (payload.new?.approved === true && payload.old?.approved === false) {
-                console.log('🎯 [GoalsAutoUpdater] Task just got approved! Updating goals...');
-                handleTaskApproval(user.id);
+                const taskPoints = payload.new?.points || 0;
+                console.log('🎯 [GoalsAutoUpdater] Task just got approved! Points:', taskPoints);
+                handleTaskApproval(user.id, taskPoints);
               }
             }
           }
@@ -84,7 +93,7 @@ export default function GoalsAutoUpdater() {
     };
   }, []);
 
-  const handleTaskApproval = (userId: string) => {
+  const handleTaskApproval = (userId: string, pointsEarned: number) => {
     const goalsKey = `childGoals:${userId}`;
     const savedGoals = localStorage.getItem(goalsKey);
 
@@ -94,7 +103,7 @@ export default function GoalsAutoUpdater() {
     }
 
     const currentGoals: Goal[] = JSON.parse(savedGoals);
-    const updatedGoals = incrementTaskGoals(currentGoals);
+    const updatedGoals = incrementTaskGoals(currentGoals, pointsEarned);
 
     console.log('📈 [GoalsAutoUpdater] Updated goals:', updatedGoals);
 
@@ -124,14 +133,22 @@ export default function GoalsAutoUpdater() {
     }
   };
 
-  const incrementTaskGoals = (goals: Goal[]): Goal[] => {
+  const incrementTaskGoals = (goals: Goal[], pointsEarned: number): Goal[] => {
     const today = new Date().toISOString().split('T')[0];
 
-    console.log('🔄 [GoalsAutoUpdater] Incrementing task goals. Today:', today);
+    console.log('🔄 [GoalsAutoUpdater] Incrementing goals. Points earned:', pointsEarned, 'Today:', today);
 
     return goals.map((goal) => {
-      // Only auto-increment goals with 'tasks' unit
-      if (goal.status !== 'active' || !goal.unit.toLowerCase().includes('task')) {
+      // Only auto-increment active goals with 'tasks' or 'points' unit
+      if (goal.status !== 'active') {
+        return goal;
+      }
+
+      const unitLower = goal.unit.toLowerCase();
+      const isTaskGoal = unitLower.includes('task');
+      const isPointsGoal = unitLower.includes('point');
+
+      if (!isTaskGoal && !isPointsGoal) {
         return goal;
       }
 
@@ -145,8 +162,10 @@ export default function GoalsAutoUpdater() {
       console.log('    - Should increment?', shouldIncrement);
 
       if (shouldIncrement) {
-        const newValue = goal.currentValue + 1;
-        console.log('    ✅ Incrementing!', goal.currentValue, '→', newValue);
+        // For task goals, increment by 1. For points goals, increment by points earned
+        const incrementAmount = isPointsGoal ? pointsEarned : 1;
+        const newValue = goal.currentValue + incrementAmount;
+        console.log('    ✅ Incrementing!', goal.currentValue, '→', newValue, `(+${incrementAmount})`);
 
         // Check if goal is now completed
         if (newValue >= goal.targetValue) {

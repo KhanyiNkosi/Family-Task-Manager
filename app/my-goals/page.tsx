@@ -348,8 +348,8 @@ export default function MyGoalsPage() {
             <div className="flex-1">
               <h3 className="font-bold text-gray-800 mb-1">✨ Auto-Tracking Enabled!</h3>
               <p className="text-sm text-gray-700">
-                Goals with unit "tasks" will automatically update when you complete tasks - even when you're on other pages! 
-                <span className="font-medium"> Create a goal like "Complete 10 tasks" (daily/weekly/monthly) and watch it progress as you work.</span>
+                Goals with unit "tasks" or "points" will automatically update when your tasks are approved - even when you're on other pages! 
+                <span className="font-medium"> Create goals like "Complete 10 tasks" or "Earn 100 points" (daily/weekly/monthly) and watch them progress as you work.</span>
               </p>
             </div>
           </div>
