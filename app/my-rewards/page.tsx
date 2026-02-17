@@ -375,21 +375,21 @@ export default function MyRewardsPage() {
         return;
       }
 
-      // Find the parent in the family to send notification
+      // Find the parent(s) in the family to send notification
+      // For 2-parent families, just pick the first one
       const { data: parentProfile, error: parentProfileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
-        .maybeSingle();
+        .limit(1)
+        .single();
       
       if (parentProfileError || !parentProfile) {
         console.error('Parent lookup error:', parentProfileError);
         showAlert('Could not find a parent to send suggestion to', "error");
         return;
       }
-      
-      const parentId = parentProfile.id;
       
       // Create a notification for the PARENT (not the child)
       console.log('Creating reward suggestion notification for parent:', parentProfile.id);
