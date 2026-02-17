@@ -2,6 +2,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import GoalsAutoUpdater from "./components/GoalsAutoUpdater";
+import { Analytics } from '@vercel/analytics/react';
 
 const inter = Inter({
   subsets: ["latin"],
@@ -47,6 +48,7 @@ export default function RootLayout({
       <body className={`${inter.className} bg-gradient-to-b from-[#F0F9FF] to-[#D8EEFE] min-h-screen`}>
         <GoalsAutoUpdater />
         {children}
+        <Analytics />
       </body>
     </html>
   );
