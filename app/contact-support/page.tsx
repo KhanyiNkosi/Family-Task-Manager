@@ -36,62 +36,39 @@ export default function ContactSupportPage() {
     }
 
     try {
-      const supabase = createClientSupabaseClient();
+      // Generate a simple ticket number (timestamp-based)
+      const ticketNum = Date.now();
       
-      // Store support ticket in database
-      const { data: newTicket, error: insertError } = await supabase
-        .from('support_tickets')
-        .insert({
+      // Send email directly (skip database for now)
+      const emailResponse = await fetch('/api/send-support-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           name: formData.name,
           email: formData.email,
           category: formData.category,
           message: formData.message,
-          status: 'open',
-          created_at: new Date().toISOString()
-        })
-        .select('ticket_number')
-        .single();
+          ticketNumber: ticketNum
+        }),
+      });
 
-      if (insertError) {
-        console.error("Error submitting support ticket:", insertError);
-        setError("Failed to submit your request. Please try again or email us directly.");
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json().catch(() => ({}));
+        console.error('Failed to send email:', errorData);
+        setError("Failed to send your message. Please try again or email us directly at support@familytask.co");
         setIsLoading(false);
         return;
       }
 
-      // Send email notifications
-      try {
-        const emailResponse = await fetch('/api/send-support-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: formData.name,
-            email: formData.email,
-            category: formData.category,
-            message: formData.message,
-            ticketNumber: newTicket?.ticket_number
-          }),
-        });
-
-        if (!emailResponse.ok) {
-          console.error('Failed to send email notifications');
-          // Don't fail the whole request if email fails
-          // Ticket is already saved in database
-        }
-      } catch (emailError) {
-        console.error('Error sending emails:', emailError);
-        // Continue - ticket is still saved
-      }
-
-      setTicketNumber(newTicket?.ticket_number || null);
+      setTicketNumber(ticketNum);
       setSuccess(true);
       setFormData({ name: "", email: "", category: "general", message: "" });
       setIsLoading(false);
     } catch (err) {
       console.error("Unexpected error:", err);
-      setError("An unexpected error occurred. Please try again.");
+      setError("An unexpected error occurred. Please email us directly at support@familytask.co");
       setIsLoading(false);
     }
   };
@@ -121,21 +98,15 @@ export default function ContactSupportPage() {
               </p>
               <div className="space-y-3">
                 <Link
-                  href="/my-support-tickets"
+                  href="/"
                   className="block w-full bg-gradient-to-r from-[#006372] to-[#00C2E0] text-white py-3 rounded-xl font-bold hover:opacity-90 transition text-center"
                 >
-                  <i className="fas fa-ticket-alt mr-2"></i>
-                  View My Tickets
-                </Link>
-                <Link
-                  href="/login"
-                  className="block w-full text-[#00C2E0] py-3 rounded-xl font-medium hover:bg-gray-50 transition text-center border border-[#00C2E0]"
-                >
-                  Back to Login
+                  <i className="fas fa-home mr-2"></i>
+                  Back to Home
                 </Link>
                 <button
                   onClick={() => setSuccess(false)}
-                  className="block w-full text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition"
+                  className="block w-full text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50 transition border border-gray-300"
                 >
                   Send Another Message
                 </button>
