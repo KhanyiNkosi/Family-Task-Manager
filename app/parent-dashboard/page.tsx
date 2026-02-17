@@ -716,10 +716,13 @@ export default function ParentDashboard() {
 
       // Check task limit for free users
       if (!isPremium) {
-        const currentTaskCount = activeTasks.length;
+        // Count only non-approved tasks (approved tasks are archived and don't count toward limit)
+        const currentTaskCount = activeTasks.filter(t => !t.approved).length;
+        console.log(`Task limit check: ${currentTaskCount} active tasks (limit: 3)`);
+        
         if (currentTaskCount >= 3) {
           const confirmed = await showConfirm(
-            "🚨 Free Tier Limit Reached!\n\nYou've reached the maximum of 3 tasks on the free plan. Upgrade to Premium for unlimited tasks!\n\nWould you like to view upgrade options?"
+            "🚨 Free Tier Limit Reached!\n\nYou've reached the maximum of 3 active tasks on the free plan. Complete and approve tasks to make room for new ones, or upgrade to Premium for unlimited tasks!\n\nWould you like to view upgrade options?"
           );
           if (confirmed) {
             router.push('/pricing');
