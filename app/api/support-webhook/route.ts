@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import crypto from 'crypto';
 
-const resend = new Resend(process.env.RESEND_API_KEY || '');
-
 // Verify Resend webhook signature
 function verifySignature(payload: string, signature: string): boolean {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
@@ -16,6 +14,12 @@ function verifySignature(payload: string, signature: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Resend API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      console.warn('RESEND_API_KEY not configured - webhook disabled');
+      return NextResponse.json({ error: 'Email service not configured' }, { status: 503 });
+    }
+
     const body = await request.text();
     const signature = request.headers.get('resend-signature');
     
@@ -40,6 +44,9 @@ export async function POST(request: NextRequest) {
     const ticketId = Math.random().toString(36).substring(2, 10).toUpperCase();
     
     console.log('Received support email from:', fromEmail);
+    
+    // Initialize Resend with API key
+    const resend = new Resend(process.env.RESEND_API_KEY);
     
     // Send acknowledgement email
     const result = await resend.emails.send({
