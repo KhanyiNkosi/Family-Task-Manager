@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClientSupabaseClient } from '@/lib/supabaseClient';
@@ -20,6 +20,15 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
+  const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
+  // Cooldown timer
+  useEffect(() => {
+    if (cooldownSeconds > 0) {
+      const timer = setTimeout(() => setCooldownSeconds(cooldownSeconds - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [cooldownSeconds]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -145,8 +154,9 @@ export default function RegisterPage() {
       if (error) {
         // Handle specific Supabase errors
         if (error.message.includes("rate limit")) {
+          setCooldownSeconds(300); // 5 minute cooldown
           setErrors({ 
-            general: "Too many registration attempts. Please wait a few minutes and try again, or check your email - you may have already received a confirmation link." 
+            general: "⏱️ Rate limit reached. Please wait 5 minutes before trying again, or check your email - you may have already received a confirmation link." 
           });
         } else if (error.message.includes("Anonymous") || error.message.includes("anonymous")) {
           setErrors({ 
@@ -583,13 +593,18 @@ export default function RegisterPage() {
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || cooldownSeconds > 0}
                 className="w-full bg-gradient-to-r from-cyan-500 to-teal-500 text-white py-4 rounded-xl font-bold hover:opacity-90 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
               >
                 {loading ? (
                   <>
                     <i className="fas fa-spinner fa-spin"></i>
                     Creating Account...
+                  </>
+                ) : cooldownSeconds > 0 ? (
+                  <>
+                    <i className="fas fa-clock"></i>
+                    Retry in {Math.floor(cooldownSeconds / 60)}:{(cooldownSeconds % 60).toString().padStart(2, '0')}
                   </>
                 ) : (
                   <>
