@@ -357,40 +357,6 @@ export default function SettingsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Account Settings */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Notification Settings */}
-            <div className="bg-white rounded-2xl shadow-xl p-6">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">Notification Settings</h2>
-              
-              <div className="space-y-4">
-                {[
-                  { key: "notifications", label: "Push Notifications", description: "Receive notifications for task updates" },
-                  { key: "emailUpdates", label: "Email Updates", description: "Get weekly summary emails" },
-                  { key: "soundEffects", label: "Sound Effects", description: "Play sounds for completed tasks" },
-                  { key: "dailyReminders", label: "Daily Reminders", description: "Send daily task reminders" },
-                  { key: "weeklyReports", label: "Weekly Reports", description: "Email weekly progress reports" },
-                ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between p-4 border border-gray-100 rounded-xl hover:bg-gray-50">
-                    <div>
-                      <div className="font-medium text-gray-800">{item.label}</div>
-                      <div className="text-sm text-gray-500">{item.description}</div>
-                    </div>
-                    <button
-                      onClick={() => handleSettingChange(item.key, !settings[item.key as keyof typeof settings])}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        settings[item.key as keyof typeof settings] ? "bg-[#00C2E0]" : "bg-gray-300"
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          settings[item.key as keyof typeof settings] ? "translate-x-6" : "translate-x-1"
-                        }`}
-                      />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Family Management */}
             <div className="bg-white rounded-2xl shadow-xl p-6">
               <div className="flex justify-between items-center mb-6">
