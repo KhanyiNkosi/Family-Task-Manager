@@ -376,26 +376,11 @@ export default function MyRewardsPage() {
       }
 
       // Find the parent in the family to send notification
-      // Step 1: Get all parent user IDs
-      const { data: parentUsers, error: parentUsersError } = await supabase
-        .from('user_profiles')
-        .select('id')
-        .eq('role', 'parent');
-      
-      if (parentUsersError || !parentUsers || parentUsers.length === 0) {
-        console.error('Error loading parent users:', parentUsersError);
-        showAlert('Could not find a parent to send suggestion to', "error");
-        return;
-      }
-      
-      const parentIds = parentUsers.map(p => p.id);
-      
-      // Step 2: Find which parent is in this family
       const { data: parentProfile, error: parentProfileError } = await supabase
         .from('profiles')
         .select('id')
         .eq('family_id', profile.family_id)
-        .in('id', parentIds)
+        .eq('role', 'parent')
         .maybeSingle();
       
       if (parentProfileError || !parentProfile) {
@@ -411,7 +396,7 @@ export default function MyRewardsPage() {
       const { data: notificationData, error } = await supabase
         .from('notifications')
         .insert({
-          user_id: parentId,
+          user_id: parentProfile.id,
           family_id: profile.family_id,
           type: 'info',
           title: 'New Reward Suggestion 💡',
