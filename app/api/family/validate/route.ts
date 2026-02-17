@@ -9,7 +9,7 @@ const supabaseAdmin = createClient(
 
 export async function POST(request: Request) {
   try {
-    const { familyCode } = await request.json();
+    const { familyCode, role, checkParentLimit } = await request.json();
     
     if (!familyCode) {
       return NextResponse.json(
@@ -33,12 +33,37 @@ export async function POST(request: Request) {
       }, { status: 404 });
     }
 
+    // If a parent is trying to join, check parent count limit (max 2 parents)
+    if (checkParentLimit && role === 'parent') {
+      const { count: parentCount, error: countError } = await supabaseAdmin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('family_id', familyCode)
+        .eq('role', 'parent');
+
+      if (countError) {
+        console.error('Error checking parent count:', countError);
+        return NextResponse.json({ 
+          error: 'Failed to validate family capacity',
+          valid: false 
+        }, { status: 500 });
+      }
+
+      if (parentCount && parentCount >= 2) {
+        return NextResponse.json({ 
+          error: 'This family already has 2 parents. Maximum limit reached.',
+          valid: false 
+        }, { status: 400 });
+      }
+    }
+
     return NextResponse.json({ 
       valid: true,
       message: 'Family code verified successfully',
       parentName: profile.full_name 
     });
   } catch (err) {
+    console.error('Validation error:', err);
     return NextResponse.json(
       { error: 'Internal server error', valid: false },
       { status: 500 }

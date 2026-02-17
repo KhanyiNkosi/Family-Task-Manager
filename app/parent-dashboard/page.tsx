@@ -29,6 +29,8 @@ interface Task {
   category?: string;
   photo_url?: string | null;
   photo_uploaded_at?: string | null;
+  created_by?: string; // UUID of creator
+  creator_name?: string; // Name of creator for display
 }
 
 interface Child {
@@ -585,11 +587,11 @@ export default function ParentDashboard() {
 
       if (!profile?.family_id) return;
 
-      // Load completed/approved tasks count separately (since they're excluded from the main query)
+      // Load completed/approved tasks count for entire family
       const { count: approvedCount } = await supabase
         .from('tasks')
         .select('*', { count: 'exact', head: true })
-        .eq('created_by', user.id)
+        .eq('family_id', profile.family_id)
         .eq('approved', true);
       
       setCompletedTasksCount(approvedCount || 0);
@@ -598,7 +600,7 @@ export default function ParentDashboard() {
       const { data: approvedTasks } = await supabase
         .from('tasks')
         .select('assigned_to')
-        .eq('created_by', user.id)
+        .eq('family_id', profile.family_id)
         .eq('approved', true);
       
       // Count approved tasks per child
@@ -610,11 +612,11 @@ export default function ParentDashboard() {
       });
       setChildApprovedCounts(childCounts);
 
-      // Load all tasks for this family, with status filter if needed
+      // Load all tasks for this FAMILY (not just created by this user)
       let query = supabase
         .from('tasks')
-        .select('*')
-        .eq('created_by', user.id)
+        .select('*, profiles!tasks_created_by_fkey(full_name)')
+        .eq('family_id', profile.family_id)
         .order('created_at', { ascending: false });
 
       // Apply status filter
@@ -656,7 +658,9 @@ export default function ParentDashboard() {
           help_message: task.help_message,
           category: task.category,
           photo_url: task.photo_url,
-          photo_uploaded_at: task.photo_uploaded_at
+          photo_uploaded_at: task.photo_uploaded_at,
+          created_by: task.created_by,
+          creator_name: task.profiles?.full_name || 'Unknown'
         }));
         setActiveTasks(formattedTasks);
       }
@@ -716,23 +720,33 @@ export default function ParentDashboard() {
 
       // Check task limit for free users
       if (!isPremium) {
-        // Count ALL tasks in database (including approved) to enforce 3-task limit
-        const { count, error: countError } = await supabase
-          .from('tasks')
-          .select('*', { count: 'exact', head: true })
-          .eq('created_by', user.id);
+        // Get user's family_id first
+        const { data: userProfile } = await supabase
+          .from('profiles')
+          .select('family_id')
+          .eq('id', user.id)
+          .single();
         
-        const totalTaskCount = count || 0;
-        console.log(`Task limit check: ${totalTaskCount} total tasks (limit: 3)`);
-        
-        if (totalTaskCount >= 3) {
-          const confirmed = await showConfirm(
-            "🚨 Free Tier Limit Reached!\n\nYou've reached the maximum of 3 total tasks on the free plan. To create more tasks, upgrade to Premium for unlimited tasks!\n\nWould you like to view upgrade options?"
-          );
-          if (confirmed) {
-            router.push('/pricing');
+        if (userProfile?.family_id) {
+          // Count ALL tasks for the FAMILY (including approved) to enforce 3-task limit
+          // This ensures the limit applies even with 2 parents
+          const { count, error: countError } = await supabase
+            .from('tasks')
+            .select('*', { count: 'exact', head: true })
+            .eq('family_id', userProfile.family_id);
+          
+          const totalTaskCount = count || 0;
+          console.log(`Family task limit check: ${totalTaskCount} total family tasks (limit: 3)`);
+          
+          if (totalTaskCount >= 3) {
+            const confirmed = await showConfirm(
+              "🚨 Free Tier Limit Reached!\n\nYour family has reached the maximum of 3 total tasks on the free plan. To create more tasks, upgrade to Premium for unlimited tasks!\n\nWould you like to view upgrade options?"
+            );
+            if (confirmed) {
+              router.push('/pricing');
+            }
+            return;
           }
-          return;
         }
       }
 
@@ -1554,6 +1568,12 @@ export default function ParentDashboard() {
                                     <span className="ml-2">• {new Date(task.completed_at).toLocaleDateString()}</span>
                                   )}
                                 </p>
+                                {task.creator_name && (
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    <i className="fas fa-user text-gray-400 mr-1"></i>
+                                    Created by {task.creator_name}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             {task.description && (
@@ -1767,6 +1787,12 @@ export default function ParentDashboard() {
                               <> • Due: <span className="font-medium">{new Date(task.due_date).toLocaleDateString()}</span></>
                             )}
                           </p>
+                          {task.creator_name && (
+                            <p className="text-xs text-gray-500 mt-1">
+                              <i className="fas fa-user text-gray-400 mr-1"></i>
+                              Created by {task.creator_name}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1 whitespace-nowrap">

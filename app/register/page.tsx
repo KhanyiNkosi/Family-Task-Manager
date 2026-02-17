@@ -16,6 +16,7 @@ export default function RegisterPage() {
     confirmPassword: "",
     role: "parent", // "parent" or "child"
     familyCode: "",
+    joinExistingFamily: false, // For parents joining as 2nd parent
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -87,6 +88,10 @@ export default function RegisterPage() {
       newErrors.familyCode = "Family code is required for child accounts";
     }
 
+    if (formData.role === "parent" && formData.joinExistingFamily && !formData.familyCode.trim()) {
+      newErrors.familyCode = "Family code is required to join an existing family";
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -114,12 +119,16 @@ export default function RegisterPage() {
         return;
       }
 
-      // If child, validate family code first
-      if (formData.role === "child") {
+      // If child OR parent joining existing family, validate family code first
+      if (formData.role === "child" || (formData.role === "parent" && formData.joinExistingFamily)) {
         const validateResponse = await fetch('/api/family/validate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ familyCode: formData.familyCode })
+          body: JSON.stringify({ 
+            familyCode: formData.familyCode,
+            role: formData.role,
+            checkParentLimit: formData.role === "parent"
+          })
         });
 
         const validateData = await validateResponse.json();
@@ -146,6 +155,7 @@ export default function RegisterPage() {
             name: formData.name,
             role: formData.role,
             family_code: formData.familyCode,
+            join_existing_family: formData.role === "parent" && formData.joinExistingFamily,
           },
           emailRedirectTo: redirectTo,
         },
@@ -177,8 +187,8 @@ export default function RegisterPage() {
           // CRITICAL FIX: Create family and update profile immediately
           const userId = data.user?.id;
           if (userId) {
-            if (formData.role === "parent") {
-              // Parent: Create new family
+            if (formData.role === "parent" && !formData.joinExistingFamily) {
+              // Parent: Create new family (only if not joining existing)
               const familyId = crypto.randomUUID();
               
               console.log("Creating family for parent:", familyId);
@@ -199,6 +209,25 @@ export default function RegisterPage() {
                 console.log("✅ Family created and profile updated!");
               } else {
                 console.warn("⚠️ Family creation failed:", familyResult.error);
+              }
+            } else if (formData.role === "parent" && formData.joinExistingFamily) {
+              // Parent joining existing family as 2nd parent
+              console.log("Linking 2nd parent to family:", formData.familyCode);
+              
+              const linkResponse = await fetch('/api/family/link-parent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  userId,
+                  familyCode: formData.familyCode
+                })
+              });
+              
+              const linkResult = await linkResponse.json();
+              if (linkResult.success) {
+                console.log("✅ 2nd parent linked to family!");
+              } else {
+                console.warn("⚠️ Parent linking failed:", linkResult.error);
               }
             } else {
               // Child: Link to existing family
@@ -529,13 +558,45 @@ export default function RegisterPage() {
                 <input type="hidden" name="role" value={formData.role} />
               </div>
 
-              {/* Family Code (only for children) */}
-              {formData.role === "child" && (
+              {/* For Parents: Option to join existing family */}
+              {formData.role === "parent" && (
+                <div className="animate-fade-in">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.joinExistingFamily}
+                        onChange={(e) => {
+                          setFormData(prev => ({ ...prev, joinExistingFamily: e.target.checked }));
+                          if (!e.target.checked) {
+                            setFormData(prev => ({ ...prev, familyCode: "" }));
+                            setErrors(prev => ({ ...prev, familyCode: "" }));
+                          }
+                        }}
+                        className="mt-1 w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <div className="flex-1">
+                        <p className="text-blue-900 font-medium">
+                          I want to join an existing family (as co-parent)
+                        </p>
+                        <p className="text-blue-700 text-sm mt-1">
+                          Check this if you're a parent joining a family that already exists. Maximum 2 parents per family.
+                        </p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* Family Code (for children OR parents joining existing family) */}
+              {(formData.role === "child" || (formData.role === "parent" && formData.joinExistingFamily)) && (
                 <div className="animate-fade-in">
                   <label className="block text-gray-700 font-medium mb-2">
                     Family Code <span className="text-red-500">*</span>
                     <span className="text-gray-500 text-sm font-normal ml-2">
-                      (Enter the code provided by your parent)
+                      {formData.role === "parent" 
+                        ? "(Enter the code from the first parent)" 
+                        : "(Enter the code provided by your parent)"}
                     </span>
                   </label>
                   <div className="relative">
@@ -562,7 +623,9 @@ export default function RegisterPage() {
                       <i className="fas fa-info-circle text-amber-600 text-lg mt-0.5"></i>
                       <div>
                         <p className="text-amber-800 text-sm">
-                          Ask your parent for the family code. This connects your account to your family.
+                          {formData.role === "parent" 
+                            ? "Get the family code from the first parent. Both parents will have equal access to manage the family." 
+                            : "Ask your parent for the family code. This connects your account to your family."}
                         </p>
                       </div>
                     </div>
