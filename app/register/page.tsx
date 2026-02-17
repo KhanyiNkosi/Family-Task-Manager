@@ -7,6 +7,8 @@ import { createClientSupabaseClient } from '@/lib/supabaseClient';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -400,15 +402,22 @@ export default function RegisterPage() {
                       <i className="fas fa-lock"></i>
                     </div>
                     <input
-                      type="password"
+                      type={showPassword ? "text" : "password"}
                       name="password"
                       value={formData.password}
                       onChange={handleChange}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                      className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         errors.password ? "border-red-500" : "border-gray-300"
                       }`}
                       placeholder="Create password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                    >
+                      <i className={`fas ${showPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
                   </div>
                   {errors.password && (
                     <p className="text-red-500 text-sm mt-1">{errors.password}</p>
@@ -436,15 +445,22 @@ export default function RegisterPage() {
                       <i className="fas fa-lock"></i>
                     </div>
                     <input
-                      type="password"
+                      type={showConfirmPassword ? "text" : "password"}
                       name="confirmPassword"
                       value={formData.confirmPassword}
                       onChange={handleChange}
-                      className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
+                      className={`w-full pl-10 pr-12 py-3 border rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${
                         errors.confirmPassword ? "border-red-500" : "border-gray-300"
                       }`}
                       placeholder="Confirm password"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-3 text-gray-500 hover:text-gray-700"
+                    >
+                      <i className={`fas ${showConfirmPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                    </button>
                   </div>
                   {errors.confirmPassword && (
                     <p className="text-red-500 text-sm mt-1">{errors.confirmPassword}</p>

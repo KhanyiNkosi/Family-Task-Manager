@@ -479,11 +479,6 @@ export default function ParentProfilePage() {
                   </div>
                   <span className="font-medium text-gray-700">Parent Account</span>
                 </div>
-                <Link href="/settings">
-                <button className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <i className="fas fa-cog text-gray-600"></i>
-                </button>
-                </Link>
               </div>
             </div>
             

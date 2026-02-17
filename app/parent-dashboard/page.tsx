@@ -1256,7 +1256,7 @@ export default function ParentDashboard() {
             <span>FamilyTask</span>
           </div>
 
-          <nav className="space-y-2">
+          <nav className="space-y-2 flex-1 overflow-y-auto pr-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}

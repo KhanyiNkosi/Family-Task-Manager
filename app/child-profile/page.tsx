@@ -363,11 +363,6 @@ export default function ChildProfilePage() {
                   </div>
                   <span className="font-medium text-gray-700">Child Account</span>
                 </div>
-                <Link href="/child-settings">
-                  <button className="p-3 bg-white rounded-xl shadow-sm border border-gray-200 hover:bg-gray-50 transition-colors">
-                    <i className="fas fa-cog text-gray-600"></i>
-                  </button>
-                </Link>
               </div>
             </div>
           </header>

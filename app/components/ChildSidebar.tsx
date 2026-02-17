@@ -79,18 +79,6 @@ export default function ChildSidebar({ activeView, onViewChange }: ChildSidebarP
 
         <div
           className={`flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-all ${
-            activeView === "settings"
-              ? "bg-white/20 text-white shadow-lg"
-              : "text-white/80 hover:bg-white/10 hover:text-white"
-          }`}
-          onClick={() => handleNavigation("settings", "/settings")}
-        >
-          <i className="fas fa-cog w-5 text-center"></i>
-          <span className="font-semibold">Settings</span>
-        </div>
-
-        <div
-          className={`flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-all ${
             activeView === "profile"
               ? "bg-white/20 text-white shadow-lg"
               : "text-white/80 hover:bg-white/10 hover:text-white"
