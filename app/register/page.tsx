@@ -144,9 +144,17 @@ export default function RegisterPage() {
 
       if (error) {
         // Handle specific Supabase errors
-        if (error.message.includes("Anonymous") || error.message.includes("anonymous")) {
+        if (error.message.includes("rate limit")) {
+          setErrors({ 
+            general: "Too many registration attempts. Please wait a few minutes and try again, or check your email - you may have already received a confirmation link." 
+          });
+        } else if (error.message.includes("Anonymous") || error.message.includes("anonymous")) {
           setErrors({ 
             general: "Authentication error. Please try again or contact support." 
+          });
+        } else if (error.message.includes("already registered")) {
+          setErrors({ 
+            general: "This email is already registered. Please log in instead, or use a different email." 
           });
         } else {
           setErrors({ general: error.message });
