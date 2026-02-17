@@ -182,11 +182,28 @@ export default function ParentGoalsPage() {
     if (!goal) return;
 
     const values = await showPrompt(`Update Progress: ${goal.title}`, [
-      { label: `Current Progress (${goal.unit})`, placeholder: `Current: ${goal.currentValue}/${goal.targetValue}`, type: "number" },
+      { 
+        label: `New Progress Value (currently: ${goal.currentValue}/${goal.targetValue} ${goal.unit})`, 
+        placeholder: goal.currentValue.toString(), 
+        type: "number" 
+      },
     ]);
 
     if (values[0]) {
       const newValue = parseInt(values[0]);
+      
+      // Validate the new value
+      if (isNaN(newValue) || newValue < 0) {
+        showAlert("Please enter a valid number", "error");
+        return;
+      }
+      
+      // Don't allow going backwards (can only increase or stay same)
+      if (newValue < goal.currentValue) {
+        showAlert(`Progress cannot go backwards! Current: ${goal.currentValue}, you entered: ${newValue}`, "warning");
+        return;
+      }
+      
       const updatedGoals = goals.map(g => {
         if (g.id === goalId) {
           const isCompleted = newValue >= g.targetValue;
@@ -206,7 +223,8 @@ export default function ParentGoalsPage() {
       if (updatedGoal?.status === 'completed') {
         showAlert(`🎉 Congratulations! You completed "${updatedGoal.title}"!`, "success");
       } else {
-        showAlert("Progress updated!", "success");
+        const increase = newValue - goal.currentValue;
+        showAlert(`Progress updated! ${increase > 0 ? `+${increase}` : 'No change'}`, "success");
       }
     }
   };
