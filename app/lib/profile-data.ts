@@ -42,28 +42,25 @@ export async function fetchParentProfileData(userId: string) {
       .eq('role', 'child');
 
 
-    // Tasks assigned (created by this parent)
+    // Tasks assigned (all family tasks, not just created by this parent)
     const { count: totalTasksAssigned } = await supabase
       .from('tasks')
       .select('id', { count: 'exact' })
-      .eq('family_id', familyId)
-      .eq('created_by', userId);
+      .eq('family_id', familyId);
 
-    // Completed tasks (created by this parent, completed AND approved)
+    // Completed tasks (ALL family tasks that are completed AND approved)
     const { count: completedTasks } = await supabase
       .from('tasks')
       .select('id', { count: 'exact' })
       .eq('family_id', familyId)
-      .eq('created_by', userId)
       .eq('completed', true)
       .eq('approved', true);
 
-    // Pending tasks (created by this parent, not completed)
+    // Pending tasks (all family tasks, not completed)
     const { count: pendingTasks } = await supabase
       .from('tasks')
       .select('id', { count: 'exact' })
       .eq('family_id', familyId)
-      .eq('created_by', userId)
       .eq('completed', false);
 
     // Total points (sum from reward_redemptions)

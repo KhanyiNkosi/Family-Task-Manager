@@ -1502,43 +1502,26 @@ export default function ParentDashboard() {
           {/* Free Tier Info Card */}
           {!premiumLoading && !isPremium && (
             <div className="mb-8">
-              <div className={`rounded-xl shadow-lg p-4 text-white border-2 ${
-                totalFamilyTaskCount >= FAMILY_TASK_LIMIT
-                  ? 'bg-gradient-to-r from-red-500 to-orange-600 border-red-300'
-                  : 'bg-gradient-to-r from-amber-500 to-orange-500 border-amber-300'
-              }`}>
+              <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 shadow-lg">
                 <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                      <i className={`fas ${
-                        totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? 'fa-exclamation-triangle' : 'fa-info-circle'
-                      } text-lg`}></i>
+                  <div className="flex items-start gap-4 flex-1">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-yellow-200 text-3xl flex-shrink-0">
+                      <i className="fas fa-crown"></i>
                     </div>
                     <div className="flex-1">
-                      <h2 className="text-lg font-bold mb-1 flex items-center gap-2">
-                        {totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? (
-                          <>🚨 Task Limit Reached</>
-                        ) : (
-                          <>Free Plan Limits</>
-                        )}
-                        <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">Current Plan</span>
-                      </h2>
-                      <p className="text-white/90 text-xs leading-relaxed">
-                        <i className="fas fa-check-circle mr-1"></i>1 child • 
-                        <i className={`fas ${
-                          totalFamilyTaskCount >= FAMILY_TASK_LIMIT ? 'fa-times-circle' : 'fa-check-circle'
-                        } mr-1 ml-1`}></i><strong>{totalFamilyTaskCount}/{FAMILY_TASK_LIMIT} tasks used</strong> • 
-                        <i className="fas fa-check-circle mr-1 ml-1"></i>3 goals per child • 
-                        <i className="fas fa-lock mr-1 ml-1"></i>No task deletion
+                      <h3 className="text-lg font-bold text-white mb-2">Premium Feature</h3>
+                      <p className="text-white/90 text-sm">
+                        <strong>Free Plan Limits:</strong> 3 tasks total • 1 child • 3 goals per child • No task deletion
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => router.push('/pricing')}
-                    className="px-4 py-2 bg-white text-orange-600 rounded-lg font-semibold hover:bg-orange-50 transition-all shadow-md hover:shadow-lg flex items-center gap-2 whitespace-nowrap"
+                    className="px-6 py-3 bg-white text-orange-600 rounded-xl font-semibold hover:bg-gray-100 transition-all whitespace-nowrap flex items-center gap-2 shadow-md"
                   >
-                    <i className="fas fa-crown text-sm"></i>
-                    <span className="hidden sm:inline">Upgrade</span>
+                    <i className="fas fa-star"></i>
+                    <span className="hidden sm:inline">Upgrade to Premium</span>
+                    <span className="sm:hidden">Upgrade</span>
                   </button>
                 </div>
               </div>

@@ -11,6 +11,7 @@ interface Child {
   email: string;
   points: number;
   joinedAt: string;
+  role?: string;
 }
 
 interface AddChildSectionProps {
@@ -68,32 +69,21 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
       if (profile?.family_id) {
         setFamilyCode(profile.family_id);
 
-        // Get all family members who are children
+        // Get all family members (children and parents) including current user
         const { data: childProfiles } = await supabase
           .from('profiles')
           .select(`
             id,
             full_name,
             email,
-            created_at
+            created_at,
+            role
           `)
-          .eq('family_id', profile.family_id)
-          .neq('id', user.id);
+          .eq('family_id', profile.family_id);
 
-        if (childProfiles) {
-          const childIds = childProfiles.map(c => c.id);
-          
-          if (childIds.length > 0) {
-            const { data: userProfiles } = await supabase
-              .from('user_profiles')
-              .select('id, role')
-              .in('id', childIds)
-              .eq('role', 'child');
-
+        if (childProfiles && childProfiles.length > 0) {
             // Calculate points dynamically for each child
             const childrenDataPromises = childProfiles.map(async (child) => {
-              const userProfile = userProfiles?.find(up => up.id === child.id);
-              if (!userProfile) return null;
 
               // Calculate points from approved tasks
               const { data: approvedTasks } = await supabase
@@ -121,6 +111,7 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
                 email: child.email,
                 points: currentPoints,
                 joinedAt: child.created_at,
+                role: child.role,
               };
             });
 
@@ -132,15 +123,8 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
               console.log('Calling onChildrenLoaded with:', childrenData);
               onChildrenLoaded(childrenData);
             }
-          } else {
-            console.log('No child profiles found');
-            setChildren([]);
-            if (onChildrenLoaded) {
-              onChildrenLoaded([]);
-            }
-          }
         } else {
-          console.log('No childIds found');
+          console.log('No child profiles found');
           setChildren([]);
           if (onChildrenLoaded) {
             onChildrenLoaded([]);
@@ -232,11 +216,22 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
                 className="flex items-center justify-between p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg hover:shadow-sm transition"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 bg-gradient-to-br from-cyan-500 to-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${
+                    child.role === 'parent' 
+                      ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
+                      : 'bg-gradient-to-br from-cyan-500 to-blue-500'
+                  }`}>
                     {child.name.charAt(0).toUpperCase()}
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-800 text-sm">{child.name}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-semibold text-gray-800 text-sm">{child.name}</h4>
+                      {child.role === 'parent' && (
+                        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                          Parent
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500">{child.email}</p>
                   </div>
                 </div>

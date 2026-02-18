@@ -112,6 +112,8 @@ export default function AchievementsPage() {
   const loadAllData = async (uid: string, role: string) => {
     const supabase = createClientSupabaseClient();
 
+    console.log('🏆 loadAllData called for role:', role);
+
     // Load all achievements
     const { data: achievementsData } = await supabase
       .from('achievements')
@@ -119,8 +121,11 @@ export default function AchievementsPage() {
       .order('rarity', { ascending: true })
       .order('requirement_value', { ascending: true });
 
+    console.log('🏆 Achievements loaded from DB:', achievementsData?.length || 0);
+
     if (achievementsData) {
       setAchievements(achievementsData);
+      console.log('🏆 Achievements set in state:', achievementsData.length);
     }
 
     if (role === 'parent') {
@@ -187,6 +192,8 @@ export default function AchievementsPage() {
   };
 
   const loadChildrenAchievements = async (parentId: string, supabase: any) => {
+    console.log('👶 loadChildrenAchievements called for parent:', parentId);
+    
     // Get parent's family_id
     const { data: parentProfile } = await supabase
       .from('profiles')
@@ -194,7 +201,10 @@ export default function AchievementsPage() {
       .eq('id', parentId)
       .single();
 
+    console.log('👶 Parent family_id:', parentProfile?.family_id);
+
     if (!parentProfile?.family_id) {
+      console.log('❌ No family_id found');
       return;
     }
 
@@ -205,7 +215,10 @@ export default function AchievementsPage() {
       .eq('family_id', parentProfile.family_id)
       .eq('role', 'child');
 
+    console.log('👶 Children profiles found:', childrenProfiles?.length || 0, childrenProfiles);
+
     if (!childrenProfiles || childrenProfiles.length === 0) {
+      console.log('❌ No children found');
       return;
     }
 
@@ -305,20 +318,31 @@ export default function AchievementsPage() {
   };
 
   const getFilteredAchievements = () => {
+    console.log('🔍 getFilteredAchievements called');
+    console.log('🔍 Filter:', filter);
+    console.log('🔍 User role:', userRole);
+    console.log('🔍 Total achievements:', achievements.length);
+    console.log('🔍 AllChildrenAchievements map size:', allChildrenAchievements.size);
+    
     if (userRole === 'parent') {
       // For parents, filter based on whether ANY child has earned it
       switch (filter) {
         case 'earned':
-          return achievements.filter(a => {
+          const earned = achievements.filter(a => {
             const childAchievements = allChildrenAchievements.get(a.id) || [];
             return childAchievements.some(ca => ca.is_earned);
           });
+          console.log('🔍 Earned achievements:', earned.length);
+          return earned;
         case 'locked':
-          return achievements.filter(a => {
+          const locked = achievements.filter(a => {
             const childAchievements = allChildrenAchievements.get(a.id) || [];
             return !childAchievements.some(ca => ca.is_earned);
           });
+          console.log('🔍 Locked achievements:', locked.length);
+          return locked;
         default:
+          console.log('🔍 All achievements:', achievements.length);
           return achievements;
       }
     } else {
@@ -398,6 +422,9 @@ export default function AchievementsPage() {
   }
 
   const filteredAchievements = getFilteredAchievements();
+  
+  console.log('📊 Filtered achievements count:', filteredAchievements.length);
+  console.log('📊 First 3 filtered achievements:', filteredAchievements.slice(0, 3));
   
   // Calculate earned count based on role
   const earnedCount = userRole === 'parent'
@@ -596,7 +623,9 @@ export default function AchievementsPage() {
                     } flex items-center justify-center text-4xl shadow-lg transition-all ${
                       isEarned 
                         ? 'ring-4 ring-white shadow-2xl scale-110' 
-                        : 'opacity-60 brightness-90'
+                        : userRole === 'parent' 
+                          ? 'opacity-80' 
+                          : 'opacity-60 grayscale'
                     }`}
                     style={isEarned ? {
                       filter: 'drop-shadow(0 0 12px rgba(59, 130, 246, 0.6))',

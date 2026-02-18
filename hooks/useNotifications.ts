@@ -144,6 +144,17 @@ export function useNotifications(): UseNotificationsReturn {
   // Dismiss (delete) a notification
   const dismissNotification = useCallback(async (id: string) => {
     try {
+      // Check if this is a reward suggestion notification
+      const notification = notifications.find(n => n.id === id);
+      
+      // If it's a reward suggestion, just mark as read (don't delete)
+      // This keeps the suggestion visible on the rewards page
+      if (notification?.actionUrl === '/rewards-store') {
+        await markAsRead(id);
+        return;
+      }
+
+      // For other notifications, delete them
       const { error: deleteError } = await supabase
         .from('notifications')
         .delete()
@@ -159,7 +170,7 @@ export function useNotifications(): UseNotificationsReturn {
       console.error('Error dismissing notification:', err);
       setError(err.message);
     }
-  }, [supabase]);
+  }, [supabase, notifications, markAsRead]);
 
   // Create a new notification
   const createNotification = useCallback(async (params: CreateNotificationParams) => {
