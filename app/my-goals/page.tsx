@@ -450,11 +450,6 @@ export default function MyGoalsPage() {
                             <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(goal.type)}`}>
                               {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
                             </div>
-                            {goal.unit.toLowerCase().includes('task') && (
-                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300">
-                                <i className="fas fa-magic"></i> Auto-tracking
-                              </div>
-                            )}
                           </div>
                           <h4 className="text-lg font-bold text-gray-800">{goal.title}</h4>
                           {goal.description && (
@@ -527,11 +522,6 @@ export default function MyGoalsPage() {
                             <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(goal.type)}`}>
                               {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
                             </div>
-                            {goal.unit.toLowerCase().includes('task') && (
-                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300">
-                                <i className="fas fa-magic"></i> Auto-tracking
-                              </div>
-                            )}
                           </div>
                           <h4 className="text-lg font-bold text-gray-800">{goal.title}</h4>
                           {goal.description && (
@@ -604,11 +594,6 @@ export default function MyGoalsPage() {
                             <div className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${getTypeColor(goal.type)}`}>
                               {getTypeIcon(goal.type)} {goal.type.toUpperCase()}
                             </div>
-                            {goal.unit.toLowerCase().includes('task') && (
-                              <div className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium bg-cyan-100 text-cyan-700 border border-cyan-300">
-                                <i className="fas fa-magic"></i> Auto-tracking
-                              </div>
-                            )}
                           </div>
                           <h4 className="text-lg font-bold text-gray-800">{goal.title}</h4>
                           {goal.description && (
