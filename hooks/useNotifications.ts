@@ -149,7 +149,9 @@ export function useNotifications(): UseNotificationsReturn {
       
       // If it's a reward suggestion, just mark as read (don't delete)
       // This keeps the suggestion visible on the rewards page
-      if (notification?.actionUrl === '/rewards-store') {
+      // Check both camelCase and snake_case (Supabase returns snake_case from DB)
+      const actionUrl = (notification as any)?.action_url || notification?.actionUrl;
+      if (actionUrl === '/rewards-store') {
         await markAsRead(id);
         return;
       }

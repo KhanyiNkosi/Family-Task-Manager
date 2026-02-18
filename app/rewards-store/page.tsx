@@ -123,11 +123,16 @@ export default function RewardsStorePage() {
   }, []);
 
   const loadRewards = async () => {
+    console.log('🎁 loadRewards called');
     try {
       const supabase = createClientSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       
-      if (!user) return;
+      if (!user) {
+        console.log('❌ No user, skipping rewards load');
+        return;
+      }
+      console.log('👤 Loading rewards for user:', user.id);
 
       // Get user's family_id
       const { data: profile } = await supabase
@@ -136,8 +141,13 @@ export default function RewardsStorePage() {
         .eq('id', user.id)
         .single();
 
-      if (!profile?.family_id) return;
+      console.log('👨‍👩‍👧 User profile:', profile);
+      if (!profile?.family_id) {
+        console.log('❌ No family_id found');
+        return;
+      }
 
+      console.log('🔍 Querying rewards for family:', profile.family_id);
       // Load all active rewards for this family
       const { data: rewardsData, error } = await supabase
         .from('rewards')
@@ -147,17 +157,22 @@ export default function RewardsStorePage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error loading rewards:', error);
+        console.error('❌ Error loading rewards:', error);
         return;
       }
 
+      console.log('✅ Rewards loaded from DB:', rewardsData?.length || 0, rewardsData);
       if (rewardsData) {
         setRewards(rewardsData);
+        console.log('✅ Rewards set in state:', rewardsData.length);
       }
     } catch (error) {
       // Ignore AbortError - normal when navigating away
-      if (error instanceof Error && error.name === 'AbortError') return;
-      console.error('Error in loadRewards:', error);
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.log('⚠️ AbortError in loadRewards (normal)');
+        return;
+      }
+      console.error('❌ Error in loadRewards:', error);
     }
   };
 
