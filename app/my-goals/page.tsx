@@ -337,23 +337,7 @@ export default function MyGoalsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto p-6">
-        {/* AUTO-UPDATE INFO BANNER */}
-        <div className="mb-6 bg-gradient-to-r from-cyan-50 to-blue-50 border border-cyan-200 rounded-xl p-4">
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <div className="w-10 h-10 bg-cyan-500 rounded-full flex items-center justify-center">
-                <i className="fas fa-magic text-white"></i>
-              </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-800 mb-1">✨ Auto-Tracking Enabled!</h3>
-              <p className="text-sm text-gray-700">
-                Goals with unit "tasks" or "points" will automatically update when your tasks are approved - even when you're on other pages! 
-                <span className="font-medium"> Create goals like "Complete 10 tasks" or "Earn 100 points" (daily/weekly/monthly) and watch them progress as you work.</span>
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* INFO: Goals update based on points system only - manual updates required for now */}
 
         {/* FREE TIER LIMIT INFO */}
         {!premiumLoading && !isPremium && (

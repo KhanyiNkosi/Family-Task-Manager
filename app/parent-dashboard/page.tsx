@@ -1452,20 +1452,7 @@ export default function ParentDashboard() {
                   <i className="fas fa-check-circle text-2xl opacity-80"></i>
                 </div>
               </div>
-              {/* FAMILY MEMBERS BANNER REMOVED - Was only showing parent who created account */}
-              {/* TODO: Fix family member display to show all members correctly before re-enabling */}
-              {/* <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white p-5 rounded-2xl">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm opacity-90">Family Members</p>
-                    <p className="text-2xl font-bold mt-1">{familyChildren?.length || 0}</p>
-                    <p className="text-xs opacity-75 mt-1">
-                      {familyChildren?.filter(m => m.role === 'parent').length || 0} Parents • {familyChildren?.filter(m => m.role === 'child').length || 0} Children
-                    </p>
-                  </div>
-                  <i className="fas fa-users text-2xl opacity-80"></i>
-                </div>
-              </div> */}
+              {/* FAMILY MEMBERS BANNER REMOVED PERMANENTLY - Was misleading and not displaying correctly */}
             </div>
 
           {/* Family Code Card - Compact Display */}

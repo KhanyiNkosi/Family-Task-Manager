@@ -725,39 +725,41 @@ export default function RewardsStorePage() {
                   <div className="flex items-center gap-2 mt-4 pt-4 border-t border-purple-100">
                     <button
                       onClick={() => handleApproveSuggestion(suggestion)}
+                      disabled={!isPremium}
                       className={`flex-1 px-4 py-2 ${
                         isPremium
-                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-lg'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 hover:shadow-lg'
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-500 hover:shadow-lg cursor-pointer'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                       } text-white rounded-lg transition font-semibold relative group`}
-                      title={isPremium ? 'Approve suggestion' : 'Premium feature - Click to upgrade'}
+                      title={isPremium ? 'Approve suggestion' : 'Premium feature - Upgrade to unlock'}
                     >
                       {!isPremium && (
-                        <i className="fas fa-crown mr-2 text-yellow-200"></i>
+                        <i className="fas fa-lock mr-2"></i>
                       )}
                       <i className="fas fa-check mr-2"></i> Approve & Add
                       {!isPremium && (
-                        <span className="absolute -top-2 -right-2 bg-yellow-400 text-xs text-gray-900 px-2 py-1 rounded-full font-bold shadow-lg">
-                          Premium
+                        <span className="absolute -top-2 -right-2 bg-gray-400 text-xs text-white px-2 py-1 rounded-full font-bold shadow-lg">
+                          <i className="fas fa-lock text-xs"></i> Locked
                         </span>
                       )}
                     </button>
                     <button
                       onClick={() => handleRejectSuggestion(suggestion)}
+                      disabled={!isPremium}
                       className={`px-4 py-2 ${
                         isPremium
-                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:shadow-lg'
+                          ? 'bg-gray-200 text-gray-700 hover:bg-gray-300 cursor-pointer'
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
                       } rounded-lg transition font-semibold relative group`}
-                      title={isPremium ? 'Reject suggestion' : 'Premium feature - Click to upgrade'}
+                      title={isPremium ? 'Reject suggestion' : 'Premium feature - Upgrade to unlock'}
                     >
                       {!isPremium && (
-                        <i className="fas fa-crown mr-2 text-yellow-200"></i>
+                        <i className="fas fa-lock mr-2"></i>
                       )}
                       <i className="fas fa-times mr-2"></i> Reject
                       {!isPremium && (
-                        <span className="absolute -top-2 -right-2 bg-yellow-400 text-xs text-gray-900 px-2 py-1 rounded-full font-bold shadow-lg">
-                          Premium
+                        <span className="absolute -top-2 -right-2 bg-gray-400 text-xs text-white px-2 py-1 rounded-full font-bold shadow-lg">
+                          <i className="fas fa-lock text-xs"></i> Locked
                         </span>
                       )}
                     </button>
