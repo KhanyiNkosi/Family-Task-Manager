@@ -175,6 +175,19 @@ export default function ChildProfilePage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Check file size (warn if > 500KB, reject if > 2MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB
+      const warnSize = 500 * 1024; // 500KB
+      
+      if (file.size > maxSize) {
+        showAlert(`Image too large! Maximum size is 2MB. Your file is ${(file.size / 1024 / 1024).toFixed(2)}MB. Please compress or resize the image.`, "error");
+        return;
+      }
+      
+      if (file.size > warnSize) {
+        showAlert(`⚠️ Large image detected (${(file.size / 1024).toFixed(0)}KB). For best performance, we recommend images under 500KB. Consider compressing before uploading.`, "warning");
+      }
+      
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;

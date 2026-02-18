@@ -238,19 +238,38 @@ export default function MyRewardsPage() {
         return;
       }
 
-      // Find the parent to notify
+      // Get parent user ID from family (improved query with better error handling)
       const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
         .select('id, role, full_name')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
+        .limit(1)
         .maybeSingle();
 
-      console.log('My-rewards - parent lookup:', { parentProfile, parentError, familyId: profile.family_id });
+      console.log('My-rewards - parent lookup:', { 
+        parentProfile, 
+        parentError, 
+        familyId: profile.family_id,
+        errorDetails: parentError?.message 
+      });
+
+      if (parentError) {
+        console.error('Error querying for parent:', parentError);
+      }
 
       if (!parentProfile) {
+        // Try to find ANY parent in the system as fallback
+        const { data: anyParent } = await supabase
+          .from('profiles')
+          .select('id, role, full_name, family_id')
+          .eq('family_id', profile.family_id)
+          .limit(5);
+        
+        console.log('All profiles in family:', anyParent);
+        
         showAlert(
-          "No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they're in the same family",
+          "No parent found in your family. This might mean:\n1. Your parent hasn't logged in yet\n2. Your family setup is incomplete\n\nPlease ask your parent to log in to the app.",
           "warning"
         );
         return;

@@ -65,7 +65,8 @@ export default function ChildSidebar({ activeView, onViewChange }: ChildSidebarP
           <span className="font-semibold">Rewards Store</span>
         </div>
 
-        <div
+        {/* AI Suggester removed - feature was misleading */}
+        {/* <div
           className={`flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-all ${
             activeView === "ai"
               ? "bg-white/20 text-white shadow-lg"
@@ -75,7 +76,7 @@ export default function ChildSidebar({ activeView, onViewChange }: ChildSidebarP
         >
           <i className="fas fa-brain w-5 text-center"></i>
           <span className="font-semibold">AI Suggester</span>
-        </div>
+        </div> */}
 
         <div
           className={`flex items-center gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-all ${

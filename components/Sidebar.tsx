@@ -11,7 +11,8 @@ export default function Sidebar() {
     { name: "Home", icon: "fas fa-home", path: "/" },
     { name: "Child Dashboard", icon: "fas fa-child", path: "/child-dashboard" },
     { name: "Parent Dashboard", icon: "fas fa-user-friends", path: "/parent-dashboard" },
-    { name: "AI Suggester", icon: "fas fa-robot", path: "/ai-suggester" },
+    // AI Suggester removed - feature was misleading
+    // { name: "AI Suggester", icon: "fas fa-robot", path: "/ai-suggester" },
     { name: "Rewards Store", icon: "fas fa-gift", path: "/rewards-store" },
     { name: "Profile", icon: "fas fa-user", path: "/profile" },
     { name: "About", icon: "fas fa-info-circle", path: "/about" },

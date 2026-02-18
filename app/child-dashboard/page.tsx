@@ -122,8 +122,9 @@ export default function ChildDashboardPage() {
   const [bulletinMessages, setBulletinMessages] = useState<BulletinMessage[]>([]);
   const [toast, setToast] = useState({ show: false, message: "" });
   const [pepTalkModal, setPepTalkModal] = useState({ show: false, message: "", emoji: "" });
-  const [taskHelperModal, setTaskHelperModal] = useState({ show: false, task: null as Task | null, messages: [] as { text: string, sender: 'user' | 'ai' }[] });
-  const [helperInput, setHelperInput] = useState("");
+  // AI Task Helper removed - feature was misleading
+  // const [taskHelperModal, setTaskHelperModal] - REMOVED
+  // const [helperInput, setHelperInput] - REMOVED
   const [alertModal, setAlertModal] = useState({ show: false, message: "", type: "info" as "info" | "success" | "error" | "warning" });
   const [confirmModal, setConfirmModal] = useState({ show: false, message: "", onConfirm: () => {} });
   const [promptModal, setPromptModal] = useState({ show: false, message: "", defaultValue: "", onConfirm: (value: string) => {} });
@@ -725,19 +726,38 @@ export default function ChildDashboardPage() {
         return;
       }
 
-      // Get parent user ID from family
+      // Get parent user ID from family (improved query with better error handling)
       const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
         .select('id, role, full_name')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
+        .limit(1)
         .maybeSingle();
 
-      console.log('Task reminder - parent lookup:', { parentProfile, parentError, familyId: profile.family_id });
+      console.log('Task reminder - parent lookup:', { 
+        parentProfile, 
+        parentError, 
+        familyId: profile.family_id,
+        errorDetails: parentError?.message 
+      });
+
+      if (parentError) {
+        console.error('Error querying for parent:', parentError);
+      }
 
       if (!parentProfile) {
+        // Try to find ANY parent in the system as fallback
+        const { data: anyParent } = await supabase
+          .from('profiles')
+          .select('id, role, full_name, family_id')
+          .eq('family_id', profile.family_id)
+          .limit(5);
+        
+        console.log('All profiles in family:', anyParent);
+        
         showAlert(
-          "No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they're in the same family",
+          "No parent found in your family. This might mean:\n1. Your parent hasn't logged in yet\n2. Your family setup is incomplete\n\nPlease ask your parent to log in to the app.",
           "warning"
         );
         return;
@@ -796,19 +816,38 @@ export default function ChildDashboardPage() {
         return;
       }
 
-      // Get parent user ID from family
+      // Get parent user ID from family (improved query with better error handling)
       const { data: parentProfile, error: parentError } = await supabase
         .from('profiles')
         .select('id, role, full_name')
         .eq('family_id', profile.family_id)
         .eq('role', 'parent')
+        .limit(1)
         .maybeSingle();
 
-      console.log('Reward reminder - parent lookup:', { parentProfile, parentError, familyId: profile.family_id });
+      console.log('Reward reminder - parent lookup:', { 
+        parentProfile, 
+        parentError, 
+        familyId: profile.family_id,
+        errorDetails: parentError?.message 
+      });
+
+      if (parentError) {
+        console.error('Error querying for parent:', parentError);
+      }
 
       if (!parentProfile) {
+        // Try to find ANY parent in the system as fallback
+        const { data: anyParent } = await supabase
+          .from('profiles')
+          .select('id, role, full_name, family_id')
+          .eq('family_id', profile.family_id)
+          .limit(5);
+        
+        console.log('All profiles in family:', anyParent);
+        
         showAlert(
-          "No parent found in your family. Ask your parent to:\n1. Log in to the app\n2. Make sure they're in the same family",
+          "No parent found in your family. This might mean:\n1. Your parent hasn't logged in yet\n2. Your family setup is incomplete\n\nPlease ask your parent to log in to the app.",
           "warning"
         );
         return;
@@ -1205,130 +1244,8 @@ export default function ChildDashboardPage() {
     }, 5000);
   };
 
-  const openTaskHelper = (task: Task) => {
-    const welcomeMessage = {
-      text: `Hi! 👋 I'm here to help you with "${task.title}". Ask me questions like:\n• How do I start?\n• Where do I find the tools?\n• Can you break this down into steps?\n• What's the best way to do this?`,
-      sender: 'ai' as const
-    };
-    setTaskHelperModal({ show: true, task, messages: [welcomeMessage] });
-  };
-
-  const sendHelperMessage = () => {
-    if (!helperInput.trim() || !taskHelperModal.task) return;
-
-    const userMessage = { text: helperInput, sender: 'user' as const };
-    const newMessages = [...taskHelperModal.messages, userMessage];
-    
-    // Simulate AI thinking
-    setTaskHelperModal({ ...taskHelperModal, messages: [...newMessages, { text: '🤔 Thinking...', sender: 'ai' }] });
-    
-    setTimeout(() => {
-      const response = generateTaskHelp(helperInput, taskHelperModal.task!);
-      const aiMessage = { text: response, sender: 'ai' as const };
-      setTaskHelperModal({ ...taskHelperModal, messages: [...newMessages, aiMessage] });
-      setHelperInput('');
-    }, 1000);
-  };
-
-  const generateTaskHelp = (question: string, task: Task): string => {
-    const lowerQuestion = question.toLowerCase();
-    const taskTitle = task.title.toLowerCase();
-    const taskDesc = task.description?.toLowerCase() || '';
-    const category = task.category?.toLowerCase() || '';
-    const fullTaskText = `${taskTitle} ${taskDesc}`;
-
-    // Task-specific keyword detection
-    const getTaskSpecificAdvice = (type: string): string => {
-      // Homework/School tasks
-      if (fullTaskText.includes('homework') || fullTaskText.includes('math') || fullTaskText.includes('reading') || fullTaskText.includes('study')) {
-        if (type === 'start') return `To start "${task.title}": First, gather your books, pencils, and paper. Find a quiet spot with good lighting. Read the instructions twice before beginning. Start with the problem you understand best! 📚✨`;
-        if (type === 'steps') return `Breaking down "${task.title}":\n\n1️⃣ Read all instructions carefully\n2️⃣ Gather materials (textbook, notebook, calculator)\n3️⃣ Start with easiest questions first\n4️⃣ Show your work for math problems\n5️⃣ Take 5-min break every 20 minutes\n6️⃣ Double-check your answers\n\nStudy tip: Explain it out loud to yourself! 🎓`;
-        if (type === 'where') return `For "${task.title}", you'll need:\n• Your backpack or school bag\n• Textbooks (usually on your desk or shelf)\n• Pencils/pens (desk drawer)\n• Calculator (ask parent if needed)\n• Quiet space (your room or dining table)\n\nHave everything before you start! 📝`;
-      }
-
-      // Cleaning tasks
-      if (fullTaskText.includes('clean') || fullTaskText.includes('room') || fullTaskText.includes('bedroom') || fullTaskText.includes('tidy')) {
-        if (type === 'start') return `Start "${task.title}" by picking up big items off the floor first! Put clothes in hamper, toys in bins. This makes the room look way better immediately and motivates you to finish! 🧹`;
-        if (type === 'steps') return `"${task.title}" - Room cleaning steps:\n\n1️⃣ Put dirty clothes in hamper\n2️⃣ Put toys/games back on shelves\n3️⃣ Make your bed (pull up sheets & blanket)\n4️⃣ Clear off desk - organize papers\n5️⃣ Dust surfaces with cloth\n6️⃣ Vacuum or sweep floor\n7️⃣ Take out any trash\n\nPro tip: Put on music! 🎵`;
-        if (type === 'where') return `For "${task.title}", grab:\n• Hamper/laundry basket (closet/corner of room)\n• Cleaning cloth (under sink or laundry room)\n• Vacuum/broom (hall closet or garage)\n• Trash bag if needed\n\nMost cleaning supplies are under the kitchen sink! 🧼`;
-      }
-
-      // Pet care
-      if (fullTaskText.includes('dog') || fullTaskText.includes('pet') || fullTaskText.includes('cat') || fullTaskText.includes('walk')) {
-        if (type === 'start') return `For "${task.title}": First, grab the leash (usually by the door). Let your dog see it - they'll get excited! Put on your shoes, check if it's raining (grab jacket if needed), then clip on the leash. Your dog will be so happy! 🐕💙`;
-        if (type === 'steps') return `"${task.title}" - Pet care steps:\n\n1️⃣ Get leash and poop bags (by door)\n2️⃣ Put on shoes and jacket\n3️⃣ Clip leash to collar\n4️⃣ Walk around the block (15-20 mins)\n5️⃣ Let them sniff and do their business\n6️⃣ Pick up poop (use bag!)\n7️⃣ Come home, give them water\n8️⃣ Wash your hands\n\nYour pet loves this time with you! 🐾`;
-        if (type === 'where') return `For "${task.title}", find:\n• Leash (hanging by front/back door)\n• Poop bags (near leash or in garage)\n• Dog treats (pantry or pet shelf)\n• Water bowl (kitchen floor or pet area)\n\nCheck your dog's collar is secure before going! 🦴`;
-      }
-
-      // Dishes/Kitchen
-      if (fullTaskText.includes('dish') || fullTaskText.includes('kitchen') || fullTaskText.includes('wash') || fullTaskText.includes('plates')) {
-        if (type === 'start') return `To start "${task.title}": Scrape leftover food into trash first. Then stack plates by size. Fill sink with warm soapy water. Start with cups and glasses (cleanest items first), then plates, then pots. You'll be done quick! 🍽️`;
-        if (type === 'steps') return `"${task.title}" - Dishwashing made easy:\n\n1️⃣ Scrape food into trash\n2️⃣ Stack by type (cups, plates, pots)\n3️⃣ Fill sink with warm soapy water\n4️⃣ Wash cups first (they're cleanest)\n5️⃣ Then plates and bowls\n6️⃣ Pots and pans last\n7️⃣ Rinse with clean water\n8️⃣ Dry with towel or let air-dry\n9️⃣ Put away when dry\n\nTip: Hot water = easier cleaning! 💧`;
-        if (type === 'where') return `For "${task.title}", you need:\n• Dish soap (under sink or by sink)\n• Sponge (also under sink)\n• Dish towel (drawer near sink)\n• Drying rack (on counter)\n\nIf sink is full, ask parent to remove garbage disposal items! 🧽`;
-      }
-
-      // Trash/Outdoor
-      if (fullTaskText.includes('trash') || fullTaskText.includes('garbage') || fullTaskText.includes('bins')) {
-        if (type === 'start') return `For "${task.title}": Check all small trash cans in rooms (bathrooms, bedrooms). Empty them into the big kitchen trash bag. Tie the bag tight, take it outside to the bin. Don't forget to put a new bag in! 🗑️`;
-        if (type === 'steps') return `"${task.title}" - Trash duty:\n\n1️⃣ Collect small trash bags from all rooms\n2️⃣ Empty into main kitchen trash\n3️⃣ Tie bag securely (no holes!)\n4️⃣ Take outside to bin (put in garage if cold)\n5️⃣ Put new bag in kitchen can\n6️⃣ Replace small bathroom bags if needed\n7️⃣ Wash hands when done\n\nQuick task - you got this! 💪`;
-        if (type === 'where') return `For "${task.title}", find:\n• Main trash bin (outside by garage/curb)\n• Extra trash bags (under kitchen sink)\n• Small trash cans (bathrooms, bedrooms)\n\nIf bins are full, ask parent where overflow bags go! 🚮`;
-      }
-
-      // Yard work
-      if (fullTaskText.includes('yard') || fullTaskText.includes('lawn') || fullTaskText.includes('rake') || fullTaskText.includes('garden')) {
-        if (type === 'start') return `To start "${task.title}": Check the weather first - if it's too hot, wait till evening. Grab your tools from the shed/garage. Wear old clothes and closed-toe shoes. Work in sections - don't try to do it all at once! 🌳`;
-        if (type === 'steps') return `"${task.title}" - Outdoor work plan:\n\n1️⃣ Check weather - dress appropriately\n2️⃣ Get tools (garage/shed)\n3️⃣ Start in one corner/section\n4️⃣ Work methodically across the area\n5️⃣ Take water breaks every 15 mins\n6️⃣ Collect debris in bags/bin\n7️⃣ Put tools back clean\n8️⃣ Wash up when done\n\nYard work = fresh air + exercise! 🌿`;
-        if (type === 'where') return `For "${task.title}", look for:\n• Rake/tools (garage or shed)\n• Work gloves (also garage)\n• Yard waste bags (near trash cans)\n• Water bottle (bring from kitchen!)\n\nAsk parent where they keep specific lawn equipment! 🛠️`;
-      }
-
-      return ''; // Will fall through to generic responses
-    };
-
-    // Question type detection with task-specific answers
-    if (lowerQuestion.includes('start') || lowerQuestion.includes('begin')) {
-      const specific = getTaskSpecificAdvice('start');
-      if (specific) return specific;
-      return `To start "${task.title}": Break it into the tiniest first step possible. What's one thing you can do right now in 30 seconds? Do that! Then the next step will feel easier. 🚀`;
-    }
-
-    if (lowerQuestion.includes('where') || lowerQuestion.includes('find') || lowerQuestion.includes('tool') || lowerQuestion.includes('supply') || lowerQuestion.includes('need')) {
-      const specific = getTaskSpecificAdvice('where');
-      if (specific) return specific;
-      return `For "${task.title}", common places to check:\n• Garage/shed for tools\n• Under kitchen sink for cleaning supplies\n• Closets/pantry for household items\n• Your room/desk for school stuff\n\nCan't find it? Ask your parent - they'll know exactly where it is! 🔍`;
-    }
-
-    if (lowerQuestion.includes('step') || lowerQuestion.includes('break') || lowerQuestion.includes('how')) {
-      const specific = getTaskSpecificAdvice('steps');
-      if (specific) return specific;
-      
-      // Generic but still useful step breakdown
-      return `Here's how to tackle "${task.title}":\n\n1️⃣ Understand what "done" looks like\n2️⃣ Gather everything you'll need\n3️⃣ Clear your workspace\n4️⃣ Start with the easiest part\n5️⃣ Work steadily - short breaks OK\n6️⃣ Check your work\n7️⃣ Clean up after\n\n${task.description ? `Remember: ${task.description}` : 'You\'ve got this!'} ⭐`;
-    }
-
-    if (lowerQuestion.includes('best way') || lowerQuestion.includes('tips') || lowerQuestion.includes('advice')) {
-      return `Pro tips for "${task.title}":\n\n🎵 Put on your favorite music\n⏱️ Set a timer - race against it!\n🎯 Focus on quality, not just speed\n🎁 Reward yourself after (snack/screen time)\n💪 Do it when you're most energized\n\n${task.description ? `Parent said: "${task.description}"` : 'Remember why this matters to your family!'} ✨`;
-    }
-
-    if (lowerQuestion.includes('hard') || lowerQuestion.includes('difficult') || lowerQuestion.includes('can\'t') || lowerQuestion.includes('help')) {
-      return `I hear you - "${task.title}" feels tough! 💙\n\nTry this:\n🎯 Do just 5 minutes. Set a timer.\n💪 After 5 mins, you can stop OR keep going\n🌟 You'll probably want to finish!\n\n${task.description ? `Remember: ${task.description}\n\n` : ''}If it's truly too hard, ask your parent to break it down more. That's totally OK! You're not giving up, you're being smart. 🧠`;
-    }
-
-    if (lowerQuestion.includes('time') || lowerQuestion.includes('long') || lowerQuestion.includes('quick')) {
-      const estimatedTime = Math.ceil(task.points / 5);
-      return `"${task.title}" usually takes about ${estimatedTime}-${estimatedTime + 10} minutes if you focus and don't get distracted.\n\nQuick tips:\n⏰ Set a timer for ${estimatedTime} minutes\n📱 Put phone away during task\n🎯 Stay focused = finish faster\n🎉 Then enjoy your free time!\n\nIt's worth ${task.points} points - that's ${estimatedTime} mins of work for rewards! 💎`;
-    }
-
-    // Default with task description if available
-    if (task.description) {
-      return `About "${task.title}":\n\n${task.description}\n\nThis task is worth ${task.points} points! ${
-        task.points >= 100 ? 'That\'s a big one - take your time and do it well! 🏆' :
-        task.points >= 50 ? 'Good value for your effort! 💪' :
-        'Quick task - you\'ll finish in no time! ⚡'
-      }\n\nWhat specifically would you like help with? Ask me about:\n• How to start\n• Where to find things\n• Step-by-step breakdown\n• Time it takes`;
-    }
-
-    return `I'm here to help with "${task.title}"! (${task.points} points) 🌟\n\nAsk me specific questions like:\n• "How do I start?"\n• "Where can I find...?"\n• "Can you break this into steps?"\n• "How long will it take?"\n• "What's the best way?"\n\nThe more specific your question, the better I can help! 💡`;
-  };
+  // AI Task Helper functions removed - feature was misleading
+  // Functions removed: openTaskHelper, sendHelperMessage, generateTaskHelp (120+ lines)
 
   const stats = {
     todo: tasks.filter(t => !t.completed && !t.approved).length,
@@ -1719,13 +1636,7 @@ export default function ChildDashboardPage() {
                       >
                         <i className="fas fa-check mr-2"></i>Mark Complete
                       </button>
-                      <button
-                        onClick={() => openTaskHelper(task)}
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 text-white py-2 px-4 rounded-lg font-medium hover:opacity-90 transition-opacity"
-                        title="Get AI help with this task"
-                      >
-                        <i className="fas fa-lightbulb"></i>
-                      </button>
+                      {/* AI Helper button removed - feature was misleading */}
                       {!task.help_requested && (
                         <button
                           onClick={() => requestHelp(task.id)}
@@ -2004,73 +1915,7 @@ export default function ChildDashboardPage() {
         </div>
       )}
 
-      {/* Task Helper Modal */}
-      {taskHelperModal.show && taskHelperModal.task && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn p-4"
-          onClick={() => setTaskHelperModal({ show: false, task: null, messages: [] })}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col animate-scaleIn"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 rounded-t-2xl flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="text-3xl">💡</div>
-                <div>
-                  <h3 className="text-white font-bold text-lg">Task Helper AI</h3>
-                  <p className="text-white/80 text-sm">{taskHelperModal.task.title}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setTaskHelperModal({ show: false, task: null, messages: [] })}
-                className="text-white hover:bg-white/20 rounded-lg p-2 transition-colors"
-              >
-                <i className="fas fa-times text-xl"></i>
-              </button>
-            </div>
-
-            {/* Chat Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {taskHelperModal.messages.map((msg, idx) => (
-                <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%] rounded-2xl p-3 ${
-                    msg.sender === 'user' 
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-br-none' 
-                      : 'bg-gray-100 text-gray-800 rounded-bl-none'
-                  }`}>
-                    <p className="text-sm whitespace-pre-line">{msg.text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Input Area */}
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={helperInput}
-                  onChange={(e) => setHelperInput(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && sendHelperMessage()}
-                  placeholder="Ask me anything about this task..."
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <button
-                  onClick={sendHelperMessage}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-2 rounded-xl font-medium hover:opacity-90 transition-opacity"
-                >
-                  <i className="fas fa-paper-plane"></i>
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Ask about how to start, where to find things, or tips! 🤖
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Task Helper Modal removed - feature was misleading */}
 
       {/* Alert Modal */}
       {alertModal.show && (
