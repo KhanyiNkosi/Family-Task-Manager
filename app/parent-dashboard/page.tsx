@@ -1421,15 +1421,19 @@ export default function ParentDashboard() {
                 </div>
               </div>
             </div>
+          </header>
 
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm opacity-90">Total Points</p>
-                    <p className="text-2xl font-bold mt-1">{totalPoints}</p>
-                  </div>
-                  <i className="fas fa-star text-2xl opacity-80"></i>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-gradient-to-r from-cyan-500 to-cyan-600 text-white p-5 rounded-2xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm opacity-90">Total Points</p>
+                  <p className="text-2xl font-bold mt-1">{totalPoints}</p>
                 </div>
+                <i className="fas fa-star text-2xl opacity-80"></i>
               </div>
+            </div>
               <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-5 rounded-2xl">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1461,7 +1465,6 @@ export default function ParentDashboard() {
                 </div>
               </div>
             </div>
-          </header>
 
           {/* Family Code Card - Compact Display */}
           {familyCode && (
