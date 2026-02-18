@@ -62,6 +62,49 @@ export async function POST(request: Request) {
     
     console.log(`[Family Create] ✅ Profile updated with family_id`);
     
+    // Step 3: Create default rewards for the new family
+    const defaultRewards = [
+      {
+        title: '🍦 Ice Cream Treat',
+        description: 'Enjoy a delicious ice cream treat!',
+        points_cost: 20,
+        family_id: familyId,
+        created_by: userId,
+        is_active: true,
+        is_default: true
+      },
+      {
+        title: '📱 30 Mins Screen Time',
+        description: 'Extra 30 minutes of screen time for your favorite activity!',
+        points_cost: 30,
+        family_id: familyId,
+        created_by: userId,
+        is_active: true,
+        is_default: true
+      },
+      {
+        title: '🎮 1 Hour Video Games',
+        description: 'One full hour to play your favorite video games!',
+        points_cost: 50,
+        family_id: familyId,
+        created_by: userId,
+        is_active: true,
+        is_default: true
+      }
+    ];
+    
+    const { error: rewardsError } = await supabase
+      .from('rewards')
+      .insert(defaultRewards);
+    
+    if (rewardsError) {
+      console.error('[Family Create] Default rewards creation failed:', rewardsError);
+      // Don't fail the whole request - family is already created
+      // Just log the error and continue
+    } else {
+      console.log(`[Family Create] ✅ Created 3 default rewards`);
+    }
+    
     return NextResponse.json({ 
       success: true, 
       familyId,
