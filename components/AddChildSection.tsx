@@ -69,7 +69,7 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
       if (profile?.family_id) {
         setFamilyCode(profile.family_id);
 
-        // Get all family members (children and parents) including current user
+        // Get only children in the family (exclude parents)
         const { data: childProfiles } = await supabase
           .from('profiles')
           .select(`
@@ -79,7 +79,8 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
             created_at,
             role
           `)
-          .eq('family_id', profile.family_id);
+          .eq('family_id', profile.family_id)
+          .eq('role', 'child');
 
         if (childProfiles && childProfiles.length > 0) {
             // Calculate points dynamically for each child
