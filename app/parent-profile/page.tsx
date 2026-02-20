@@ -90,6 +90,7 @@ export default function ParentProfilePage() {
   
   // Load profile data on component mount
   useEffect(() => {
+    console.log('🚀 Parent Profile LOADED - Version: 2026-02-20-v3');
     setIsClient(true);
     
     // Fetch profile data from Supabase
