@@ -31,6 +31,7 @@ interface Task {
   photo_uploaded_at?: string | null;
   created_by?: string; // UUID of creator
   creator_name?: string; // Name of creator for display
+  creator_role?: string; // Role of creator (parent or child)
 }
 
 interface Child {
@@ -627,7 +628,7 @@ export default function ParentDashboard() {
       // Load all tasks for this FAMILY (not just created by this user)
       let query = supabase
         .from('tasks')
-        .select('*, profiles!tasks_created_by_fkey(full_name)')
+        .select('*, profiles!tasks_created_by_fkey(full_name, role)')
         .eq('family_id', profile.family_id)
         .order('created_at', { ascending: false });
 
@@ -672,7 +673,8 @@ export default function ParentDashboard() {
           photo_url: task.photo_url,
           photo_uploaded_at: task.photo_uploaded_at,
           created_by: task.created_by,
-          creator_name: task.profiles?.full_name || 'Unknown'
+          creator_name: task.profiles?.full_name || 'Unknown',
+          creator_role: task.profiles?.role || 'unknown'
         }));
         setActiveTasks(formattedTasks);
       }
@@ -1797,8 +1799,8 @@ export default function ParentDashboard() {
                           </p>
                           {task.creator_name && (
                             <p className="text-xs text-gray-500 mt-1">
-                              <i className="fas fa-user text-gray-400 mr-1"></i>
-                              Created by {task.creator_name}
+                              <i className={`fas ${task.creator_role === 'parent' ? 'fa-user-tie' : 'fa-child'} text-gray-400 mr-1`}></i>
+                              {task.creator_role === 'parent' ? 'Assigned by' : 'Requested by'} {task.creator_name}
                             </p>
                           )}
                         </div>

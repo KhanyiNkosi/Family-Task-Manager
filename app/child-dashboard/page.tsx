@@ -291,7 +291,7 @@ export default function ChildDashboardPage() {
         // Fetch child's assigned tasks (exclude approved tasks)
         const { data: childTasks, error: tasksError } = await supabase
           .from('tasks')
-          .select('*')
+          .select('*, profiles!tasks_created_by_fkey(full_name, role)')
           .eq('assigned_to', user.id)
           .or('approved.is.null,approved.eq.false')
           .order('created_at', { ascending: false });
@@ -302,7 +302,13 @@ export default function ChildDashboardPage() {
           console.log('Loaded tasks:', childTasks.length, 'tasks found');
           console.log('Task data:', childTasks);
           // CRITICAL: Filter out approved tasks before setting state
-          const unapprovedTasks = childTasks.filter(task => !task.approved);
+          const unapprovedTasks = childTasks
+            .filter(task => !task.approved)
+            .map(task => ({
+              ...task,
+              creator_name: task.profiles?.full_name || 'Unknown',
+              creator_role: task.profiles?.role || 'unknown'
+            }));
           console.log('After filtering approved:', unapprovedTasks.length, 'tasks remaining');
           setTasks(unapprovedTasks);
         } else {
@@ -1597,6 +1603,12 @@ export default function ChildDashboardPage() {
                         </div>
                         {task.description && (
                           <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                        )}
+                        {task.creator_name && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            <i className={`fas ${task.creator_role === 'parent' ? 'fa-user-tie' : 'fa-child'} text-gray-400 mr-1`}></i>
+                            {task.creator_role === 'parent' ? 'Assigned by' : 'Requested by'} {task.creator_name}
+                          </p>
                         )}
                         {task.help_requested && (
                           <span className="inline-block mt-2 text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
