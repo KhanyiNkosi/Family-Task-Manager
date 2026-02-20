@@ -939,7 +939,7 @@ export default function ParentProfilePage() {
                                 key={member.id}
                                 className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50/50 to-white rounded-xl border border-blue-100/50 hover:shadow-md transition-all"
                               >
-                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                <div className="flex items-center gap-4 flex-1 min-w-0 overflow-hidden">
                                   <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 ${
                                     member.role === 'parent' 
                                       ? 'bg-gradient-to-r from-purple-500 to-purple-600' 
@@ -947,9 +947,9 @@ export default function ParentProfilePage() {
                                   }`}>
                                     {member.full_name.charAt(0).toUpperCase()}
                                   </div>
-                                  <div className="flex-1 min-w-0 overflow-hidden" style={{ maxWidth: 'calc(100% - 200px)' }}>
-                                    <div className="flex items-center gap-2 mb-1">
-                                      <p className="font-bold text-gray-800 truncate">{member.full_name}</p>
+                                  <div className="flex-1 min-w-0" style={{ maxWidth: '300px' }}>
+                                    <div className="flex items-center gap-2 mb-1 overflow-hidden">
+                                      <p className="font-bold text-gray-800 truncate flex-shrink">{member.full_name}</p>
                                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                                         member.role === 'parent'
                                           ? 'bg-purple-100 text-purple-700'
@@ -958,7 +958,18 @@ export default function ParentProfilePage() {
                                         {member.role === 'parent' ? '👔 Parent' : '👶 Child'}
                                       </span>
                                     </div>
-                                    <p className="text-sm text-gray-600 overflow-hidden overflow-ellipsis whitespace-nowrap" style={{ maxWidth: '100%' }}>{member.email}</p>
+                                    <p 
+                                      className="text-sm text-gray-600" 
+                                      style={{ 
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
+                                        maxWidth: '100%',
+                                        display: 'block'
+                                      }}
+                                    >
+                                      {member.email}
+                                    </p>
                                   </div>
                                   <div className="flex items-center gap-3 flex-shrink-0">
                                     {member.role === 'child' && (
