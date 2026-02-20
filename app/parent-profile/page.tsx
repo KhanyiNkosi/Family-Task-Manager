@@ -57,6 +57,12 @@ export default function ParentProfilePage() {
   const [editedProfile, setEditedProfile] = useState<ParentProfile>({ ...profile });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Family members management states
+  const [familyMembers, setFamilyMembers] = useState<Array<{id: string, full_name: string, email: string, role: string, points: number}>>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<{id: string, full_name: string, email: string} | null>(null);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  
   // Modal states
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: "success" | "error" | "warning" | "info" }>({ show: false, message: "", type: "info" });
   const [confirmModal, setConfirmModal] = useState<{ show: boolean; message: string; onConfirm: () => void }>({ show: false, message: "", onConfirm: () => {} });
@@ -151,6 +157,117 @@ export default function ParentProfilePage() {
       setIsLoading(false);
     }
   };
+
+  // Fetch family members
+  const fetchFamilyMembers = async () => {
+    try {
+      setLoadingMembers(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      // Get current user's family_id
+      const { data: userProfile } = await supabase
+        .from('profiles')
+        .select('family_id')
+        .eq('id', session.user.id)
+        .single();
+
+      if (!userProfile?.family_id) return;
+
+      // Get all family members
+      const { data: members } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, role, created_at')
+        .eq('family_id', userProfile.family_id)
+        .order('role', { ascending: false }) // Parents first
+        .order('created_at', { ascending: true });
+
+      if (members) {
+        // Calculate points for each member
+        const membersWithPoints = await Promise.all(
+          members.map(async (member) => {
+            // Calculate points from approved tasks
+            const { data: approvedTasks } = await supabase
+              .from('tasks')
+              .select('points')
+              .eq('assigned_to', member.id)
+              .eq('approved', true);
+            
+            const earnedPoints = approvedTasks?.reduce((sum, task) => sum + (task.points || 0), 0) || 0;
+            
+            // Calculate points spent on APPROVED redemptions
+            const { data: redemptions } = await supabase
+              .from('reward_redemptions')
+              .select('points_spent')
+              .eq('user_id', member.id)
+              .eq('status', 'approved');
+            
+            const spentPoints = redemptions?.reduce((sum, r) => sum + (r.points_spent || 0), 0) || 0;
+            const currentPoints = earnedPoints - spentPoints;
+
+            return {
+              ...member,
+              points: currentPoints
+            };
+          })
+        );
+        
+        setFamilyMembers(membersWithPoints);
+      }
+    } catch (error) {
+      console.error('Error fetching family members:', error);
+    } finally {
+      setLoadingMembers(false);
+    }
+  };
+
+  // Delete family member
+  const handleDeleteMember = (member: {id: string, full_name: string, email: string}) => {
+    setMemberToDelete(member);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!memberToDelete) return;
+    
+    try {
+      // Delete the member's profile (CASCADE will delete related data)
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', memberToDelete.id);
+      
+      if (error) {
+        console.error('Error deleting family member:', error);
+        showAlert('Failed to delete family member. Please try again.', 'error');
+        return;
+      }
+      
+      // Refresh the list
+      await fetchFamilyMembers();
+      
+      // Close modal
+      setShowDeleteConfirm(false);
+      setMemberToDelete(null);
+      
+      showAlert(`${memberToDelete.full_name} has been removed from the family.`, 'success');
+    } catch (error) {
+      console.error('Error deleting family member:', error);
+      showAlert('An error occurred while deleting the family member.', 'error');
+    }
+  };
+
+  const cancelDeleteMember = () => {
+    setShowDeleteConfirm(false);
+    setMemberToDelete(null);
+  };
+
+  // Load family members when component mounts
+  useEffect(() => {
+    if (!isLoading) {
+      fetchFamilyMembers();
+    }
+  }, [isLoading]);
 
   // Navigation items - Custom for parent-profile
   const navItems: NavItem[] = [
@@ -784,6 +901,93 @@ export default function ParentProfilePage() {
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Family Members Management Section */}
+                    {!isEditing && (
+                      <div className="mt-8 bg-white rounded-2xl shadow-md p-6 border border-gray-100">
+                        <div className="flex items-center justify-between mb-6">
+                          <h3 className="text-xl font-bold text-[#006372] flex items-center gap-2">
+                            <Users size={24} className="text-[#00C2E0]" />
+                            Family Members Management
+                          </h3>
+                          <button
+                            onClick={fetchFamilyMembers}
+                            className="px-4 py-2 bg-[#00C2E0]/10 text-[#00C2E0] rounded-lg text-sm font-medium hover:bg-[#00C2E0]/20 transition-colors flex items-center gap-2"
+                            title="Refresh list"
+                          >
+                            <i className="fas fa-sync-alt"></i>
+                            Refresh
+                          </button>
+                        </div>
+
+                        {loadingMembers ? (
+                          <div className="text-center py-8">
+                            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#00C2E0]"></div>
+                            <p className="text-gray-600 mt-2">Loading family members...</p>
+                          </div>
+                        ) : familyMembers.length === 0 ? (
+                          <div className="text-center py-8">
+                            <Users size={48} className="text-gray-300 mx-auto mb-3" />
+                            <p className="text-gray-600">No family members found</p>
+                            <p className="text-sm text-gray-500 mt-1">Invite children to join your family</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {familyMembers.map((member) => (
+                              <div
+                                key={member.id}
+                                className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50/50 to-white rounded-xl border border-blue-100/50 hover:shadow-md transition-all"
+                              >
+                                <div className="flex items-center gap-4 flex-1 min-w-0">
+                                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0 ${
+                                    member.role === 'parent' 
+                                      ? 'bg-gradient-to-r from-purple-500 to-purple-600' 
+                                      : 'bg-gradient-to-r from-cyan-400 to-blue-500'
+                                  }`}>
+                                    {member.full_name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <p className="font-bold text-gray-800 truncate">{member.full_name}</p>
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                        member.role === 'parent'
+                                          ? 'bg-purple-100 text-purple-700'
+                                          : 'bg-cyan-100 text-cyan-700'
+                                      }`}>
+                                        {member.role === 'parent' ? '👔 Parent' : '👶 Child'}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-gray-600 truncate">{member.email}</p>
+                                  </div>
+                                  <div className="flex items-center gap-3 flex-shrink-0">
+                                    {member.role === 'child' && (
+                                      <span className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                                        <i className="fas fa-star text-amber-500"></i>
+                                        {member.points}
+                                      </span>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteMember(member)}
+                                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                      title="Remove family member"
+                                    >
+                                      <i className="fas fa-trash"></i>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                          <p className="text-sm text-blue-800">
+                            <i className="fas fa-info-circle mr-2"></i>
+                            <strong>Note:</strong> Deleting a family member will permanently remove their profile, tasks, points, achievements, and all activity history. This action cannot be undone.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -791,6 +995,50 @@ export default function ParentProfilePage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && memberToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i className="fas fa-exclamation-triangle text-red-500 text-2xl"></i>
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">Remove Family Member?</h3>
+              <p className="text-gray-600">
+                Are you sure you want to remove <span className="font-bold text-gray-800">{memberToDelete.full_name}</span> from your family?
+              </p>
+              <p className="text-sm text-red-600 mt-3">
+                ⚠️ This will permanently delete:
+              </p>
+              <ul className="text-sm text-gray-600 mt-2 space-y-1 text-left">
+                <li>• Their profile and account</li>
+                <li>• All their tasks (pending and completed)</li>
+                <li>• Their points and achievements</li>
+                <li>• All their activity history</li>
+              </ul>
+              <p className="text-sm font-bold text-red-600 mt-3">
+                This action cannot be undone!
+              </p>
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={cancelDeleteMember}
+                className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteMember}
+                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-medium hover:opacity-90 transition-opacity"
+              >
+                Yes, Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Alert Modal */}
       {alertModal.show && (
