@@ -89,6 +89,7 @@ export default function RewardsStorePage() {
   };
 
   useEffect(() => {
+    console.log('🚀 Rewards Store LOADED - Version: 2026-02-20-v3');
     loadRewards();
     loadSuggestions();
     loadRedemptions();
