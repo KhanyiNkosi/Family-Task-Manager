@@ -911,7 +911,7 @@ export default function ChildDashboardPage() {
 
         if (uploadError) {
           console.error('Upload error:', uploadError);
-          showAlert(`Failed to upload photo: ${uploadError.message}`, "error");
+          showAlert("Unable to upload photo. Please check your connection and try again.", "error");
           setUploadingPhoto(false);
           return;
         }
@@ -951,7 +951,10 @@ export default function ChildDashboardPage() {
 
       if (error) {
         console.error('Error completing task:', error);
-        showAlert(`Failed to complete task: ${error.message}`, "error");
+        const friendlyMessage = error.message.includes('row-level security') || error.message.includes('policy')
+          ? "Unable to save photo. Please try again or contact support."
+          : "Failed to complete task. Please try again.";
+        showAlert(friendlyMessage, "error");
         setUploadingPhoto(false);
         return;
       }
