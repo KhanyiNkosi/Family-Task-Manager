@@ -172,7 +172,7 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
         </div>
       )}
 
-      {/* Family Members List with Delete Option */}
-      {!loading && children.length > 0 && (
-        <div className="bg-whiRemoved - Moved to Parent Profile Page */
+      {/* Family Members List Removed - Moved to Parent Profile Page */}
+    </div>
+  );
 }
