@@ -172,61 +172,7 @@ export default function AddChildSection({ onChildrenLoaded }: AddChildSectionPro
         </div>
       )}
 
-      {/* Children List - Only show if there are children */}
-      {!loading && children.length > 0 && (
-        <div className="bg-white rounded-xl p-4 shadow-md border border-blue-100">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-gray-800">
-              <i className="fas fa-users text-cyan-500 mr-2"></i>
-              Family Members ({children.length})
-            </h3>
-            <button
-              onClick={fetchFamilyData}
-              className="p-1.5 text-gray-500 hover:text-cyan-500 transition text-xs"
-              title="Refresh"
-            >
-              <i className="fas fa-sync-alt"></i>
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {children.map((child) => (
-              <div
-                key={child.id}
-                className="flex items-center justify-between p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded-lg hover:shadow-sm transition"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm ${
-                    child.role === 'parent' 
-                      ? 'bg-gradient-to-br from-purple-500 to-pink-500' 
-                      : 'bg-gradient-to-br from-cyan-500 to-blue-500'
-                  }`}>
-                    {child.name.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold text-gray-800 text-sm">{child.name}</h4>
-                      {child.role === 'parent' && (
-                        <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium">
-                          Parent
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500">{child.email}</p>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5 text-amber-600 font-semibold text-sm">
-                    <i className="fas fa-star text-xs"></i>
-                    <span>{child.points || 0}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Family Members List Removed - Was displaying incorrect counts and emails */}
     </div>
   );
 }
