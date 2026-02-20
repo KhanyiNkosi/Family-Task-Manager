@@ -595,16 +595,16 @@ export default function RewardsStorePage() {
   };
 
   const handleDeleteReward = async (rewardId: string) => {
-    const confirmed = await showConfirm('Are you sure you want to delete this reward?');
+    const confirmed = await showConfirm('Are you sure you want to delete this reward? All pending and approved redemptions will also be deleted.');
     if (!confirmed) return;
 
     try {
       const supabase = createClientSupabaseClient();
       
-      // Instead of deleting, mark as inactive
+      // Actually delete the reward (CASCADE will delete redemptions)
       const { error } = await supabase
         .from('rewards')
-        .update({ is_active: false })
+        .delete()
         .eq('id', rewardId);
 
       if (error) {
@@ -614,7 +614,7 @@ export default function RewardsStorePage() {
       }
 
       setRewards(rewards.filter(r => r.id !== rewardId));
-      showAlert('Reward deleted successfully', "success");
+      showAlert('Reward and all its redemptions deleted successfully', "success");
     } catch (error) {
       console.error('Error in handleDeleteReward:', error);
       showAlert('Failed to delete reward', "error");
