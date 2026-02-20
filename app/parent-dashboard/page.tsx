@@ -385,6 +385,11 @@ export default function ParentDashboard() {
         .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
 
+      console.log('[Parent Dashboard] Redemptions loaded:', redemptionsData?.length || 0, 'items');
+      if (redemptionsData) {
+        console.log('[Parent Dashboard] Redemption statuses:', redemptionsData.map(r => ({ id: r.id, status: r.status })));
+      }
+
       if (error) {
         console.error('Error loading redemptions:', error);
         return;

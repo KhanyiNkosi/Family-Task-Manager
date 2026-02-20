@@ -477,6 +477,11 @@ export default function RewardsStorePage() {
         .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
 
+      console.log('Raw redemptions query result:', redemptionsData?.length || 0, 'items');
+      if (redemptionsData) {
+        console.log('Redemptions statuses:', redemptionsData.map(r => ({ id: r.id, status: r.status })));
+      }
+
       if (error) {
         console.error('Error loading redemptions:', error);
         return;
