@@ -957,7 +957,7 @@ export default function ParentProfilePage() {
                                         {member.role === 'parent' ? '👔 Parent' : '👶 Child'}
                                       </span>
                                     </div>
-                                    <p className="text-sm text-gray-600 truncate break-all">{member.email}</p>
+                                    <p className="text-sm text-gray-600 truncate max-w-[200px]">{member.email}</p>
                                   </div>
                                   <div className="flex items-center gap-3 flex-shrink-0">
                                     {member.role === 'child' && (
