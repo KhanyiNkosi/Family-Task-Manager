@@ -255,6 +255,7 @@ export default function ParentTasksPage() {
           reward:rewards(*)
         `)
         .eq('user_id', user.id)
+        .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
 
       setRedemptions(redemptionsData || []);

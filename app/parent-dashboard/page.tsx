@@ -377,11 +377,12 @@ export default function ParentDashboard() {
 
       const familyMemberIds = familyMembers.map(m => m.id);
 
-      // Only query reward_redemptions by user_id (not family_id)
+      // Only query reward_redemptions by user_id (not family_id) - PENDING ONLY
       const { data: redemptionsData, error } = await supabase
         .from('reward_redemptions')
         .select('*')
         .in('user_id', familyMemberIds)
+        .eq('status', 'pending')
         .order('redeemed_at', { ascending: false });
 
       if (error) {
@@ -1134,14 +1135,12 @@ export default function ParentDashboard() {
       const redemption = redemptions.find(r => r.id === redemptionId);
       if (!redemption) return;
 
-      // Update redemption status to approved
+      console.log('Attempting to delete redemption:', redemptionId);
+
+      // Delete redemption permanently (reward already given to child)
       const { error: redemptionError } = await supabase
         .from('reward_redemptions')
-        .update({ 
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: user.id
-        })
+        .delete()
         .eq('id', redemptionId);
 
       if (redemptionError) {
@@ -1150,18 +1149,18 @@ export default function ParentDashboard() {
         return;
       }
 
+      console.log('Redemption deleted successfully:', redemptionId);
+
       // Points are calculated dynamically from approved tasks minus redemptions
       // No need to manually deduct points - they'll be reflected automatically
       
-      // Update local state
-      setRedemptions(redemptions.map(r =>
-        r.id === redemptionId ? { ...r, status: 'approved', approved_at: new Date().toISOString(), approved_by: user.id } : r
-      ));
+      // Update local state - remove the redemption
+      setRedemptions(redemptions.filter(r => r.id !== redemptionId));
       
       // Reload children to update their points (recalculates from tasks/redemptions)
       await loadChildren();
       
-      showAlert(`Redemption approved! ${redemption.points_spent} points deducted from child.`, "success");
+      showAlert(`Redemption approved and removed! ${redemption.points_spent} points deducted from child.`, "success");
     } catch (error) {
       console.error('Error in handleApproveRedemption:', error);
       showAlert('Failed to approve redemption', "error");
@@ -1178,14 +1177,12 @@ export default function ParentDashboard() {
       const redemption = redemptions.find(r => r.id === redemptionId);
       if (!redemption) return;
 
-      // Update redemption status to rejected
+      console.log('Attempting to delete redemption:', redemptionId);
+
+      // Delete redemption permanently (points automatically restored)
       const { error } = await supabase
         .from('reward_redemptions')
-        .update({ 
-          status: 'rejected',
-          approved_at: new Date().toISOString(),
-          approved_by: user.id
-        })
+        .delete()
         .eq('id', redemptionId);
 
       if (error) {
@@ -1194,12 +1191,12 @@ export default function ParentDashboard() {
         return;
       }
 
-      // Update local state
-      setRedemptions(redemptions.map(r =>
-        r.id === redemptionId ? { ...r, status: 'rejected', approved_at: new Date().toISOString(), approved_by: user.id } : r
-      ));
+      console.log('Redemption deleted successfully:', redemptionId);
+
+      // Update local state - remove the redemption
+      setRedemptions(redemptions.filter(r => r.id !== redemptionId));
       
-      showAlert('Redemption rejected.', "success");
+      showAlert('Redemption rejected and removed. Points returned to child.', "success");
     } catch (error) {
       console.error('Error in handleRejectRedemption:', error);
       showAlert('Failed to reject redemption', "error");
