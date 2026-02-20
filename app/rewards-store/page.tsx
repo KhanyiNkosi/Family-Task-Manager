@@ -512,7 +512,7 @@ export default function RewardsStorePage() {
   };
 
   const handleApproveRedemption = async (redemptionId: string) => {
-    const confirmed = await showConfirm('Approve this reward request?');
+    const confirmed = await showConfirm('Approve this reward request? The redemption will be permanently deleted after approval.');
     if (!confirmed) return;
 
     try {
@@ -524,14 +524,10 @@ export default function RewardsStorePage() {
         return;
       }
 
-      // Update redemption status
+      // Delete redemption permanently (reward already given to child)
       const { error } = await supabase
         .from('reward_redemptions')
-        .update({
-          status: 'approved',
-          approved_at: new Date().toISOString(),
-          approved_by: user.id
-        })
+        .delete()
         .eq('id', redemptionId);
 
       if (error) {
@@ -542,7 +538,7 @@ export default function RewardsStorePage() {
 
       // Update UI
       setRedemptions(redemptions.filter(r => r.id !== redemptionId));
-      showAlert('Reward request approved!', "success");
+      showAlert('Reward request approved and removed!', "success");
     } catch (error) {
       console.error('Error in handleApproveRedemption:', error);
       showAlert('Failed to approve reward request', "error");
@@ -550,7 +546,7 @@ export default function RewardsStorePage() {
   };
 
   const handleRejectRedemption = async (redemptionId: string) => {
-    const confirmed = await showConfirm('Reject this reward request? Points will be returned to the child.');
+    const confirmed = await showConfirm('Reject this reward request? Points will be returned to the child and the redemption deleted.');
     if (!confirmed) return;
 
     try {
@@ -566,14 +562,10 @@ export default function RewardsStorePage() {
       const redemption = redemptions.find(r => r.id === redemptionId);
       if (!redemption) return;
 
-      // Update redemption status
+      // Delete redemption permanently (points will be auto-restored by trigger)
       const { error: redemptionError } = await supabase
         .from('reward_redemptions')
-        .update({
-          status: 'rejected',
-          approved_at: new Date().toISOString(),
-          approved_by: user.id
-        })
+        .delete()
         .eq('id', redemptionId);
 
       if (redemptionError) {
@@ -587,7 +579,7 @@ export default function RewardsStorePage() {
 
       // Update UI
       setRedemptions(redemptions.filter(r => r.id !== redemptionId));
-      showAlert('Reward request rejected. Points returned to child.', "info");
+      showAlert('Reward request rejected and removed. Points returned to child.', "info");
     } catch (error) {
       console.error('Error in handleRejectRedemption:', error);
       showAlert('Failed to reject reward request', "error");

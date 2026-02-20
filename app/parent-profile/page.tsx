@@ -949,7 +949,7 @@ export default function ParentProfilePage() {
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">
                                       <p className="font-bold text-gray-800 truncate">{member.full_name}</p>
-                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${
                                         member.role === 'parent'
                                           ? 'bg-purple-100 text-purple-700'
                                           : 'bg-cyan-100 text-cyan-700'
@@ -957,7 +957,7 @@ export default function ParentProfilePage() {
                                         {member.role === 'parent' ? '👔 Parent' : '👶 Child'}
                                       </span>
                                     </div>
-                                    <p className="text-sm text-gray-600 truncate">{member.email}</p>
+                                    <p className="text-sm text-gray-600 truncate break-all">{member.email}</p>
                                   </div>
                                   <div className="flex items-center gap-3 flex-shrink-0">
                                     {member.role === 'child' && (
