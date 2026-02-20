@@ -480,7 +480,11 @@ export default function RewardsStorePage() {
 
       console.log('Raw redemptions query result:', redemptionsData?.length || 0, 'items');
       if (redemptionsData) {
-        console.log('Redemptions statuses:', redemptionsData.map(r => ({ id: r.id, status: r.status })));
+        console.log('Redemption IDs and statuses:', redemptionsData.map(r => ({ 
+          id: r.id.slice(0, 12) + '...', 
+          status: r.status,
+          points: r.points_spent 
+        })));
       }
 
       if (error) {
@@ -530,17 +534,30 @@ export default function RewardsStorePage() {
         return;
       }
 
+      console.log('🔴 ATTEMPTING DELETE - Redemption ID:', redemptionId.slice(0, 12) + '...');
+
       // Delete redemption permanently (reward already given to child)
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('reward_redemptions')
         .delete()
         .eq('id', redemptionId);
 
+      console.log('📊 DELETE RESPONSE - Error:', error, 'Count:', count);
+
       if (error) {
-        console.error('Error approving redemption:', error);
+        console.error('❌ DELETE FAILED - Error:', error);
         showAlert('Failed to approve reward request', "error");
         return;
       }
+
+      // Verify deletion by checking if record still exists
+      const { data: checkData, error: checkError } = await supabase
+        .from('reward_redemptions')
+        .select('id, status')
+        .eq('id', redemptionId)
+        .maybeSingle();
+      
+      console.log('🔍 VERIFICATION QUERY - Record still exists?:', checkData, 'Error:', checkError);
 
       // Update UI
       setRedemptions(redemptions.filter(r => r.id !== redemptionId));

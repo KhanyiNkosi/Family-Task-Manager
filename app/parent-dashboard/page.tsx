@@ -387,7 +387,11 @@ export default function ParentDashboard() {
 
       console.log('[Parent Dashboard] Redemptions loaded:', redemptionsData?.length || 0, 'items');
       if (redemptionsData) {
-        console.log('[Parent Dashboard] Redemption statuses:', redemptionsData.map(r => ({ id: r.id, status: r.status })));
+        console.log('[Parent Dashboard] Redemption IDs:', redemptionsData.map(r => ({ 
+          id: r.id.slice(0, 12) + '...', 
+          status: r.status,
+          points: r.points_spent 
+        })));
       }
 
       if (error) {
@@ -1140,16 +1144,18 @@ export default function ParentDashboard() {
       const redemption = redemptions.find(r => r.id === redemptionId);
       if (!redemption) return;
 
-      console.log('Attempting to delete redemption:', redemptionId);
+      console.log('🔴 [Dashboard] ATTEMPTING DELETE - ID:', redemptionId.slice(0, 12) + '...');
 
       // Delete redemption permanently (reward already given to child)
-      const { error: redemptionError } = await supabase
+      const { error: redemptionError, count } = await supabase
         .from('reward_redemptions')
         .delete()
         .eq('id', redemptionId);
 
+      console.log('📊 [Dashboard] DELETE RESPONSE - Error:', redemptionError, 'Count:', count);
+
       if (redemptionError) {
-        console.error('Error approving redemption:', redemptionError);
+        console.error('❌ [Dashboard] DELETE FAILED:', redemptionError);
         showAlert('Failed to approve redemption', "error");
         return;
       }
