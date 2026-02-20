@@ -852,7 +852,18 @@ export default function ParentProfilePage() {
                           <Mail size={0} className="text-[#00C2E0]" />
                           <span className="text-sm font-medium text-[#00C2E0]">Email</span>
                         </div>
-                        <p className="text-lg font-semibold text-[#006372]">{profile.email}</p>
+                        <p 
+                          className="text-lg font-semibold text-[#006372]"
+                          style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '100%',
+                            display: 'block'
+                          }}
+                        >
+                          {profile.email}
+                        </p>
                       </div>
                       <div className="p-5 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                         <div className="flex items-center gap-3 mb-2">
