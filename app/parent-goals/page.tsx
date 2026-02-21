@@ -170,7 +170,7 @@ export default function ParentGoalsPage() {
       };
 
       saveGoals([...goals, newGoal]);
-      showAlert(`Goal "${newGoal.title}" created successfully! 🎯\n\nYou can manually track your progress or let it auto-update!", "success");
+      showAlert(`Goal "${newGoal.title}" created successfully! 🎯\n\nYou can manually track your progress or let it auto-update!`, "success");
     } else {
       showAlert("Please fill in all required fields (marked with *)", "warning");
     }
