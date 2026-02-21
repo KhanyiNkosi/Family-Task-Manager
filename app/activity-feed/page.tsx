@@ -273,17 +273,25 @@ export default function ActivityFeedPage() {
 
     const supabase = createClientSupabaseClient();
     
+    console.log('🔴 Attempting to delete activity:', activityId);
+    
     const { error } = await supabase
       .from('activity_feed')
       .delete()
       .eq('id', activityId);
 
     if (error) {
-      console.error('Error deleting activity:', error);
-      showAlert('Failed to delete activity', 'error');
+      console.error('❌ Error deleting activity:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+      console.error('❌ Error message:', error.message);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error hint:', error.hint);
+      showAlert(`Failed to delete activity: ${error.message}`, 'error');
       return;
     }
 
+    console.log('✅ Activity deleted successfully:', activityId);
+    
     // Remove from local state
     setActivities(activities.filter(a => a.id !== activityId));
     showAlert('Activity deleted successfully', 'success');
