@@ -1572,14 +1572,14 @@ export default function ParentDashboard() {
                     const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || 'Unknown';
                     return (
                       <div key={task.id} className="p-5 bg-white rounded-xl border-2 border-amber-200 shadow-sm">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                          <div className="flex-1 w-full sm:w-auto">
                             <div className="flex items-center gap-3 mb-2">
                               <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
                                 <i className="fas fa-check text-green-600"></i>
                               </div>
-                              <div>
-                                <h3 className="font-bold text-gray-800">{task.title}</h3>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-gray-800 break-words">{task.title}</h3>
                                 <p className="text-sm text-gray-600">
                                   Completed by <span className="font-semibold text-amber-700">{childName}</span>
                                   {task.completed_at && (
@@ -1598,12 +1598,12 @@ export default function ParentDashboard() {
                               <p className="text-gray-600 text-sm mt-2 ml-11">{task.description}</p>
                             )}
                           </div>
-                          <div className="flex flex-col items-end gap-3 ml-4">
-                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                          <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto sm:ml-4">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1 w-fit">
                               <i className="fas fa-star text-amber-500"></i>
                               {task.points}
                             </span>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 w-full sm:w-auto">
                               <button
                                 onClick={() => handleApproveTask(task.id)}
                                 className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
@@ -1655,14 +1655,14 @@ export default function ParentDashboard() {
                     const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || 'Unknown';
                     return (
                       <div key={task.id} className="p-5 bg-white rounded-xl border-2 border-purple-200 shadow-sm">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
+                        <div className="flex flex-col sm:flex-row items-start justify-between gap-3">
+                          <div className="flex-1 w-full sm:w-auto">
                             <div className="flex items-center gap-3 mb-2">
                               <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
                                 <i className="fas fa-hand-paper text-purple-600"></i>
                               </div>
-                              <div>
-                                <h3 className="font-bold text-gray-800">{task.title}</h3>
+                              <div className="flex-1">
+                                <h3 className="font-bold text-gray-800 break-words">{task.title}</h3>
                                 <p className="text-sm text-gray-600">
                                   <span className="font-semibold text-purple-700">{childName}</span> needs help
                                   {task.help_requested_at && (
@@ -1681,8 +1681,8 @@ export default function ParentDashboard() {
                               </div>
                             )}
                           </div>
-                          <div className="flex flex-col items-end gap-3 ml-4">
-                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1">
+                          <div className="flex flex-col sm:items-end gap-3 w-full sm:w-auto sm:ml-4">
+                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1 w-fit">
                               <i className="fas fa-star text-xs"></i>
                               {task.points}
                             </span>
@@ -1782,10 +1782,10 @@ export default function ParentDashboard() {
                     const childName = familyChildren.find(c => c.id === task.assigned_to)?.name || task.assignedTo;
                     return (
                     <div key={task.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
-                      <div className="flex items-center justify-between mb-2 gap-4">
-                        <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3 sm:gap-4">
+                        <div className="flex-1 w-full sm:w-auto min-w-0">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="font-semibold text-gray-800">{task.title}</h3>
+                            <h3 className="font-semibold text-gray-800 break-words">{task.title}</h3>
                             {task.category && (
                               <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium capitalize">
                                 {task.category}
@@ -1812,8 +1812,8 @@ export default function ParentDashboard() {
                             </p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1 whitespace-nowrap">
+                        <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
+                          <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-bold flex items-center gap-1 whitespace-nowrap w-fit">
                             <i className="fas fa-star text-amber-500"></i>
                             {task.points}
                           </span>

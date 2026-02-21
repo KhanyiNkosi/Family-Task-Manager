@@ -1581,18 +1581,18 @@ export default function ChildDashboardPage() {
                       : 'bg-gray-50 border-gray-200'
                   } transition-all`}
                 >
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex items-start gap-3 flex-1">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-1 ${
+                  <div className="flex flex-col sm:flex-row justify-between items-start mb-3 gap-2 sm:gap-0">
+                    <div className="flex items-start gap-3 flex-1 w-full sm:w-auto">
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center mt-1 flex-shrink-0 ${
                         task.completed ? 'bg-green-500' : 'border-2 border-gray-400'
                       }`}>
                         {task.completed && (
                           <i className="fas fa-check text-white text-xs"></i>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className={`font-medium ${task.completed ? 'text-[#00C2E0]/70 line-through' : 'text-gray-800'}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className={`font-medium break-words ${task.completed ? 'text-[#00C2E0]/70 line-through' : 'text-gray-800'}`}>
                             {task.title}
                           </span>
                           {task.category && (
@@ -1617,8 +1617,8 @@ export default function ChildDashboardPage() {
                         )}
                       </div>
                     </div>
-                    <div className="text-right ml-3">
-                      <div className="font-bold text-amber-500 flex items-center justify-end gap-1">
+                    <div className="ml-8 sm:ml-3 w-fit">
+                      <div className="font-bold text-amber-500 flex items-center gap-1 whitespace-nowrap">
                         <i className="fas fa-star text-sm"></i>
                         <span className="text-[#00C2E0]">{task.points}</span>
                       </div>
