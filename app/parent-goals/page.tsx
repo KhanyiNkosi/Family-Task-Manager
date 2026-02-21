@@ -149,11 +149,10 @@ export default function ParentGoalsPage() {
     }
     
     const values = await showPrompt("Create New Goal", [
-      { label: "Goal Title*", placeholder: "e.g., Complete 10 household tasks", type: "text" },
+      { label: "Goal Title*", placeholder: "e.g., Earn 200 points this month", type: "text" },
       { label: "Description", placeholder: "What do you want to achieve?", type: "text" },
       { label: "Goal Type*", placeholder: "Select type", type: "select", options: ["daily", "weekly", "monthly"] },
-      { label: "Target Value*", placeholder: "e.g., 10", type: "number" },
-      { label: "Unit*", placeholder: "Select unit", type: "select", options: ["tasks", "points", "hours", "minutes", "items"] },
+      { label: "Target Points*", placeholder: "e.g., 200", type: "number" },
     ]);
 
     if (values[0] && values[2] && values[3]) {
@@ -164,14 +163,14 @@ export default function ParentGoalsPage() {
         type: values[2] as 'daily' | 'weekly' | 'monthly',
         targetValue: parseInt(values[3]),
         currentValue: 0,
-        unit: values[4] || "items",
+        unit: "points", // Always points now
         status: 'active',
         createdAt: new Date().toISOString().split('T')[0],
         dueDate: calculateDueDate(values[2] as 'daily' | 'weekly' | 'monthly'),
       };
 
       saveGoals([...goals, newGoal]);
-      showAlert(`Goal "${newGoal.title}" created successfully! 🎯`, "success");
+      showAlert(`Goal "${newGoal.title}" created successfully! 🎯\n\nYou can manually track your progress or let it auto-update!", "success");
     } else {
       showAlert("Please fill in all required fields (marked with *)", "warning");
     }
@@ -183,7 +182,7 @@ export default function ParentGoalsPage() {
 
     const values = await showPrompt(`Update Progress: ${goal.title}`, [
       { 
-        label: `New Progress Value (currently: ${goal.currentValue}/${goal.targetValue} ${goal.unit})`, 
+        label: `Points Earned (current: ${goal.currentValue}/${goal.targetValue} points)`, 
         placeholder: goal.currentValue.toString(), 
         type: "number" 
       },
@@ -200,7 +199,7 @@ export default function ParentGoalsPage() {
       
       // Don't allow going backwards (can only increase or stay same)
       if (newValue < goal.currentValue) {
-        showAlert(`Progress cannot go backwards! Current: ${goal.currentValue}, you entered: ${newValue}`, "warning");
+        showAlert(`Progress cannot go backwards! Current: ${goal.currentValue} points, you entered: ${newValue} points`, "warning");
         return;
       }
       
@@ -224,7 +223,7 @@ export default function ParentGoalsPage() {
         showAlert(`🎉 Congratulations! You completed "${updatedGoal.title}"!`, "success");
       } else {
         const increase = newValue - goal.currentValue;
-        showAlert(`Progress updated! ${increase > 0 ? `+${increase}` : 'No change'}`, "success");
+        showAlert(`Progress updated! ${increase > 0 ? `+${increase} points` : 'No change'}`, "success");
       }
     }
   };

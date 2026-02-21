@@ -164,11 +164,10 @@ export default function MyGoalsPage() {
     }
 
     const values = await showPrompt("Create New Goal", [
-      { label: "Goal Title*", placeholder: "e.g., Complete 10 tasks", type: "text" },
+      { label: "Goal Title*", placeholder: "e.g., Earn 100 points this week", type: "text" },
       { label: "Description", placeholder: "What do you want to achieve?", type: "text" },
       { label: "Goal Type*", placeholder: "Select type", type: "select", options: ["daily", "weekly", "monthly"] },
-      { label: "Target Value*", placeholder: "e.g., 10", type: "number" },
-      { label: "Unit*", placeholder: "Select unit", type: "select", options: ["tasks", "points", "hours", "minutes", "items"] },
+      { label: "Target Points*", placeholder: "e.g., 100", type: "number" },
     ]);
 
     if (values[0] && values[2] && values[3]) {
@@ -179,68 +178,16 @@ export default function MyGoalsPage() {
         type: values[2] as 'daily' | 'weekly' | 'monthly',
         targetValue: parseInt(values[3]),
         currentValue: 0,
-        unit: values[4] || "items",
+        unit: "points", // Always points now
         status: 'active',
         createdAt: new Date().toISOString().split('T')[0],
         dueDate: calculateDueDate(values[2] as 'daily' | 'weekly' | 'monthly'),
       };
 
       saveGoals([...goals, newGoal]);
-      showAlert(`Goal "${newGoal.title}" created successfully! 🎯`, "success");
+      showAlert(`Goal "${newGoal.title}" created successfully! 🎯\n\nIt will automatically track your points as you complete tasks!`, "success");
     } else {
       showAlert("Please fill in all required fields (marked with *)", "warning");
-    }
-  };
-
-  const handleUpdateProgress = async (goalId: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-
-    const values = await showPrompt(`Update Progress: ${goal.title}`, [
-      { 
-        label: `New Progress Value (currently: ${goal.currentValue}/${goal.targetValue} ${goal.unit})`, 
-        placeholder: goal.currentValue.toString(), 
-        type: "number" 
-      },
-    ]);
-
-    if (values[0]) {
-      const newValue = parseInt(values[0]);
-      
-      // Validate the new value
-      if (isNaN(newValue) || newValue < 0) {
-        showAlert("Please enter a valid number", "error");
-        return;
-      }
-      
-      // Don't allow going backwards (can only increase or stay same)
-      if (newValue < goal.currentValue) {
-        showAlert(`Progress cannot go backwards! Current: ${goal.currentValue}, you entered: ${newValue}`, "warning");
-        return;
-      }
-      
-      const updatedGoals = goals.map(g => {
-        if (g.id === goalId) {
-          const isCompleted = newValue >= g.targetValue;
-          return {
-            ...g,
-            currentValue: newValue,
-            status: isCompleted ? 'completed' as const : g.status,
-            completedAt: isCompleted ? new Date().toISOString().split('T')[0] : g.completedAt,
-          };
-        }
-        return g;
-      });
-
-      saveGoals(updatedGoals);
-      
-      const updatedGoal = updatedGoals.find(g => g.id === goalId);
-      if (updatedGoal?.status === 'completed') {
-        showAlert(`🎉 Congratulations! You completed "${updatedGoal.title}"!`, "success");
-      } else {
-        const increase = newValue - goal.currentValue;
-        showAlert(`Progress updated! ${increase > 0 ? `+${increase}` : 'No change'}`, "success");
-      }
     }
   };
 
@@ -477,20 +424,22 @@ export default function MyGoalsPage() {
                         <span><i className="fas fa-clock mr-1"></i>Created: {goal.createdAt}</span>
                       </div>
 
+                      {/* Auto-tracking info */}
+                      <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center gap-2">
+                        <i className="fas fa-magic text-blue-600"></i>
+                        <p className="text-xs text-blue-700">
+                          <strong>Auto-tracked:</strong> Updates as you earn points!
+                        </p>
+                      </div>
+
                       {/* Actions */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleUpdateProgress(goal.id)}
-                          className="flex-1 px-4 py-2 bg-[#006372] text-white rounded-lg hover:bg-[#004d5a] transition text-sm font-medium"
-                        >
-                          <i className="fas fa-plus mr-2"></i>Update
-                        </button>
-                        <button
                           onClick={() => handleAbandonGoal(goal.id)}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
+                          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
                           title="Mark as abandoned"
                         >
-                          <i className="fas fa-ban"></i>
+                          <i className="fas fa-ban mr-2"></i>Abandon
                         </button>
                         <button
                           onClick={() => handleDeleteGoal(goal.id)}
@@ -549,20 +498,22 @@ export default function MyGoalsPage() {
                         <span><i className="fas fa-clock mr-1"></i>Created: {goal.createdAt}</span>
                       </div>
 
+                      {/* Auto-tracking info */}
+                      <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3 flex items-center gap-2">
+                        <i className="fas fa-magic text-purple-600"></i>
+                        <p className="text-xs text-purple-700">
+                          <strong>Auto-tracked:</strong> Updates as you earn points!
+                        </p>
+                      </div>
+
                       {/* Actions */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleUpdateProgress(goal.id)}
-                          className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-sm font-medium"
-                        >
-                          <i className="fas fa-plus mr-2"></i>Update
-                        </button>
-                        <button
                           onClick={() => handleAbandonGoal(goal.id)}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
+                          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
                           title="Mark as abandoned"
                         >
-                          <i className="fas fa-ban"></i>
+                          <i className="fas fa-ban mr-2"></i>Abandon
                         </button>
                         <button
                           onClick={() => handleDeleteGoal(goal.id)}
@@ -621,20 +572,22 @@ export default function MyGoalsPage() {
                         <span><i className="fas fa-clock mr-1"></i>Created: {goal.createdAt}</span>
                       </div>
 
+                      {/* Auto-tracking info */}
+                      <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                        <i className="fas fa-magic text-green-600"></i>
+                        <p className="text-xs text-green-700">
+                          <strong>Auto-tracked:</strong> Updates as you earn points!
+                        </p>
+                      </div>
+
                       {/* Actions */}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => handleUpdateProgress(goal.id)}
-                          className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
-                        >
-                          <i className="fas fa-plus mr-2"></i>Update
-                        </button>
-                        <button
                           onClick={() => handleAbandonGoal(goal.id)}
-                          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
+                          className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm"
                           title="Mark as abandoned"
                         >
-                          <i className="fas fa-ban"></i>
+                          <i className="fas fa-ban mr-2"></i>Abandon
                         </button>
                         <button
                           onClick={() => handleDeleteGoal(goal.id)}

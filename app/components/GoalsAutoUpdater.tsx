@@ -4,6 +4,7 @@
  * 
  * Goals Auto-Updater Component
  * Automatically updates goals when tasks are approved and points are earned
+ * NOTE: All goals are now points-based only for automatic tracking
  */
 
 "use client";
@@ -139,16 +140,15 @@ export default function GoalsAutoUpdater() {
     console.log('🔄 [GoalsAutoUpdater] Incrementing goals. Points earned:', pointsEarned, 'Today:', today);
 
     return goals.map((goal) => {
-      // Only auto-increment active goals with 'tasks' or 'points' unit
+      // Only auto-increment active goals
       if (goal.status !== 'active') {
         return goal;
       }
 
+      // All goals are points-based now
       const unitLower = goal.unit.toLowerCase();
-      const isTaskGoal = unitLower.includes('task');
-      const isPointsGoal = unitLower.includes('point');
-
-      if (!isTaskGoal && !isPointsGoal) {
+      if (!unitLower.includes('point')) {
+        // Skip non-points goals (shouldn't exist, but safe check)
         return goal;
       }
 
@@ -157,15 +157,14 @@ export default function GoalsAutoUpdater() {
 
       console.log('  🎯 Checking goal:', goal.title);
       console.log('    - Status:', goal.status);
-      console.log('    - Unit:', goal.unit);
+      console.log('    - Current:', goal.currentValue, '/', goal.targetValue, 'points');
       console.log('    - Due date:', goal.dueDate);
       console.log('    - Should increment?', shouldIncrement);
 
       if (shouldIncrement) {
-        // For task goals, increment by 1. For points goals, increment by points earned
-        const incrementAmount = isPointsGoal ? pointsEarned : 1;
-        const newValue = goal.currentValue + incrementAmount;
-        console.log('    ✅ Incrementing!', goal.currentValue, '→', newValue, `(+${incrementAmount})`);
+        // Always increment by points earned
+        const newValue = goal.currentValue + pointsEarned;
+        console.log('    ✅ Incrementing!', goal.currentValue, '→', newValue, `(+${pointsEarned} points)`);
 
         // Check if goal is now completed
         if (newValue >= goal.targetValue) {
@@ -182,7 +181,7 @@ export default function GoalsAutoUpdater() {
           currentValue: newValue
         };
       } else {
-        console.log('    ⏭️ Skipped (expired or wrong type)');
+        console.log('    ⏭️ Skipped (expired)');
       }
 
       return goal;
