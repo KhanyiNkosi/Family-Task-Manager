@@ -1416,7 +1416,7 @@ export default function ParentDashboard() {
               <div className="flex items-center gap-4">
                 
                 <div className="flex items-center gap-3 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white overflow-hidden">
+                  <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-[#00C2E0] to-[#00a8c2] flex items-center justify-center text-white overflow-hidden">
                     {isClient && parentProfileImage ? (
                       <img 
                         src={parentProfileImage} 
@@ -1424,10 +1424,10 @@ export default function ParentDashboard() {
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <i className="fas fa-user text-white text-sm"></i>
+                      <i className="fas fa-user text-white text-xs sm:text-sm"></i>
                     )}
                   </div>
-                  <span className="font-medium text-gray-700">Parent Dashboard</span>
+                  <span className="font-medium text-gray-700 text-sm sm:text-base">Parent Dashboard</span>
                 </div>
               </div>
             </div>
@@ -1994,7 +1994,7 @@ export default function ParentDashboard() {
                       return (
                         <div key={child.id} className="p-4 bg-gradient-to-br from-blue-50/50 to-white rounded-xl border border-blue-100/50">
                           <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg ${
+                            <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold text-base sm:text-lg ${
                               child.role === 'parent' ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-[#00C2E0] to-[#00a8c2]'
                             }`}>
                               {child.name.charAt(0).toUpperCase()}
